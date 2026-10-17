@@ -1,0 +1,457 @@
+"""
+Phase 3: Train the model to convergence, with checkpointing and recovery.
+
+Designed to survive a multi-day CPU run: every checkpoint carries optimizer
+state and RNG-independent progress, so `--resume` picks up exactly where an
+interrupted run left off.
+
+Usage
+-----
+    python train.py                      # start (or auto-resume) a run
+    python train.py --resume             # force resume from latest checkpoint
+    python train.py --benchmark 20       # measure throughput, then exit
+"""
+import argparse
+import glob
+import json
+import math
+import os
+import signal
+import sys
+import time
+
+import numpy as np
+import torch
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from slmlog import log, warn, error, critical, phase, human, fmt_dur
+from model import GPT, GPTConfig
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TRAIN_BIN = os.path.join(HERE, "train.bin")
+VAL_BIN = os.path.join(HERE, "val.bin")
+LOSSES_PATH = os.path.join(HERE, "losses.json")
+CONFIG_PATH = os.path.join(HERE, "training_config.json")
+STATS_PATH = os.path.join(HERE, "training_stats.json")
+BEST_PATH = os.path.join(HERE, "best_model.pt")
+FINAL_PATH = os.path.join(HERE, "final_model.pt")
+CKPT_GLOB = os.path.join(HERE, "checkpoint_step_*.pt")
+KEEP_CHECKPOINTS = 3
+
+_INTERRUPTED = {"flag": False}
+
+
+def _handle_sigint(signum, frame):
+    if _INTERRUPTED["flag"]:
+        raise KeyboardInterrupt
+    _INTERRUPTED["flag"] = True
+    warn("Interrupt received - will checkpoint and exit after this step.")
+
+
+def build_args():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--batch-size", type=int, default=4)
+    ap.add_argument("--grad-accum-steps", type=int, default=8)
+    ap.add_argument("--block-size", type=int, default=256)
+    ap.add_argument("--n-layer", type=int, default=10)
+    ap.add_argument("--n-head", type=int, default=10)
+    ap.add_argument("--n-embd", type=int, default=640)
+    ap.add_argument("--dropout", type=float, default=0.1)
+    ap.add_argument("--learning-rate", type=float, default=6e-4)
+    ap.add_argument("--min-lr", type=float, default=1e-5)
+    ap.add_argument("--warmup-steps", type=int, default=1000)
+    ap.add_argument("--max-steps", type=int, default=10000)
+    ap.add_argument("--weight-decay", type=float, default=0.1)
+    ap.add_argument("--beta1", type=float, default=0.9)
+    ap.add_argument("--beta2", type=float, default=0.95)
+    ap.add_argument("--grad-clip", type=float, default=1.0)
+    ap.add_argument("--eval-interval", type=int, default=500)
+    ap.add_argument("--eval-iters", type=int, default=40)
+    ap.add_argument("--checkpoint-interval", type=int, default=1000)
+    ap.add_argument("--log-interval", type=int, default=100)
+    ap.add_argument("--patience-steps", type=int, default=5000,
+                    help="stop if val loss has not improved for this many steps")
+    ap.add_argument("--seed", type=int, default=1337)
+    ap.add_argument("--threads", type=int, default=0, help="0 = physical cores")
+    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--benchmark", type=int, default=0)
+    return ap.parse_args()
+
+
+# --------------------------------------------------------------- data loading
+class Data:
+    def __init__(self, block_size, batch_size, device):
+        if not (os.path.exists(TRAIN_BIN) and os.path.exists(VAL_BIN)):
+            raise FileNotFoundError("train.bin/val.bin missing - run preprocess.py")
+        self.train = np.memmap(TRAIN_BIN, dtype=np.uint16, mode="r")
+        self.val = np.memmap(VAL_BIN, dtype=np.uint16, mode="r")
+        self.block_size = block_size
+        self.batch_size = batch_size
+        self.device = device
+        log("Data: train {} tokens | val {} tokens".format(
+            human(len(self.train)), human(len(self.val))))
+
+    def get_batch(self, split, rng):
+        arr = self.train if split == "train" else self.val
+        hi = len(arr) - self.block_size - 1
+        ix = rng.integers(0, hi, size=self.batch_size)
+        x = np.stack([arr[i:i + self.block_size] for i in ix]).astype(np.int64)
+        y = np.stack([arr[i + 1:i + 1 + self.block_size] for i in ix]).astype(np.int64)
+        return (torch.from_numpy(x).to(self.device),
+                torch.from_numpy(y).to(self.device))
+
+
+def lr_at(step, args):
+    """Linear warmup then cosine decay to min_lr."""
+    if step < args.warmup_steps:
+        return args.learning_rate * (step + 1) / max(1, args.warmup_steps)
+    if step >= args.max_steps:
+        return args.min_lr
+    progress = (step - args.warmup_steps) / max(1, args.max_steps - args.warmup_steps)
+    coeff = 0.5 * (1.0 + math.cos(math.pi * progress))
+    return args.min_lr + coeff * (args.learning_rate - args.min_lr)
+
+
+@torch.no_grad()
+def estimate_loss(model, data, args, rng):
+    model.eval()
+    out = {}
+    for split in ("train", "val"):
+        losses = torch.zeros(args.eval_iters)
+        for i in range(args.eval_iters):
+            x, y = data.get_batch(split, rng)
+            _, loss = model(x, y)
+            losses[i] = loss.item()
+        out[split] = losses.mean().item()
+    model.train()
+    return out
+
+
+# ------------------------------------------------------------- checkpointing
+def save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats):
+    tmp = path + ".tmp"
+    torch.save({
+        "model": model.state_dict(),
+        "optimizer": opt.state_dict(),
+        "step": step,
+        "best_val_loss": best_val,
+        "history": history,
+        "model_config": cfg.to_dict(),
+        "train_args": vars(args),
+        "stats": stats,
+    }, tmp)
+    os.replace(tmp, path)
+
+
+def save_model_only(path, model, step, best_val, cfg, history):
+    tmp = path + ".tmp"
+    torch.save({
+        "model": model.state_dict(),
+        "step": step,
+        "best_val_loss": best_val,
+        "model_config": cfg.to_dict(),
+        "history": history,
+    }, tmp)
+    os.replace(tmp, path)
+
+
+def rotate_checkpoints(keep=KEEP_CHECKPOINTS):
+    files = sorted(glob.glob(CKPT_GLOB),
+                   key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0]))
+    for old in files[:-keep]:
+        try:
+            os.remove(old)
+        except OSError as e:
+            warn("could not delete {}: {}".format(old, e))
+
+
+def latest_checkpoint():
+    files = glob.glob(CKPT_GLOB)
+    if not files:
+        return None
+    return max(files, key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0]))
+
+
+def load_checkpoint_safely(path):
+    """Return the checkpoint dict, or None if the file is unreadable."""
+    try:
+        return torch.load(path, map_location="cpu", weights_only=False)
+    except Exception as e:
+        error("Checkpoint {} is corrupt ({}).".format(os.path.basename(path), e))
+        return None
+
+
+def main():
+    args = build_args()
+    signal.signal(signal.SIGINT, _handle_sigint)
+
+    torch.manual_seed(args.seed)
+    threads = args.threads or (os.cpu_count() or 4) // 2
+    torch.set_num_threads(max(1, threads))
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    phase("Phase 3: Training Started")
+    log("Device: {} | torch {} | threads {}".format(
+        device, torch.__version__, torch.get_num_threads()))
+    if device == "cuda":
+        log("GPU: {}".format(torch.cuda.get_device_name(0)))
+
+    cfg = GPTConfig(vocab_size=50257, block_size=args.block_size,
+                    n_layer=args.n_layer, n_head=args.n_head,
+                    n_embd=args.n_embd, dropout=args.dropout)
+    model = GPT(cfg).to(device)
+    opt, n_decay, n_nodecay = model.configure_optimizers(
+        args.weight_decay, args.learning_rate, (args.beta1, args.beta2))
+
+    log("Model created ({} params, {} non-embedding)".format(
+        human(model.num_params()), human(model.num_params(non_embedding=True))))
+    for k, v in model.param_breakdown().items():
+        log("  {:<40} {:>12,}".format(k, v))
+    log("Optimizer: AdamW | decayed {:,} | undecayed {:,}".format(n_decay, n_nodecay))
+
+    tokens_per_step = args.batch_size * args.grad_accum_steps * args.block_size
+    log("Effective batch: {} seqs x {} tokens = {} tokens/step".format(
+        args.batch_size * args.grad_accum_steps, args.block_size, tokens_per_step))
+
+    data = Data(args.block_size, args.batch_size, device)
+    rng = np.random.default_rng(args.seed)
+
+    start_step = 0
+    best_val = float("inf")
+    history = {"step": [], "train_loss": [], "val_loss": [], "lr": [],
+               "tokens_seen": [], "wall_seconds": []}
+    stats = {"nan_events": 0, "oom_events": 0, "lr_scale": 1.0,
+             "resumed_from": None, "wall_seconds": 0.0}
+
+    ckpt_path = latest_checkpoint()
+    if ckpt_path and (args.resume or True):
+        ck = load_checkpoint_safely(ckpt_path)
+        if ck is None:
+            # Corruption recovery: fall back to the previous checkpoint.
+            others = sorted(glob.glob(CKPT_GLOB),
+                            key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0]))
+            for cand in reversed(others[:-1]):
+                ck = load_checkpoint_safely(cand)
+                if ck:
+                    ckpt_path = cand
+                    warn("Recovered from previous checkpoint {}".format(cand))
+                    break
+        if ck:
+            model.load_state_dict(ck["model"])
+            opt.load_state_dict(ck["optimizer"])
+            start_step = ck["step"]
+            best_val = ck.get("best_val_loss", float("inf"))
+            history = ck.get("history", history)
+            stats.update(ck.get("stats", {}))
+            stats["resumed_from"] = os.path.basename(ckpt_path)
+            log("Resumed from {} at step {} (best val {:.4f})".format(
+                os.path.basename(ckpt_path), start_step, best_val))
+
+    with open(CONFIG_PATH, "w", encoding="utf-8") as fh:
+        json.dump({"model": cfg.to_dict(), "training": vars(args),
+                   "tokens_per_step": tokens_per_step,
+                   "total_training_tokens": tokens_per_step * args.max_steps},
+                  fh, indent=2)
+
+    # ------------------------------------------------------------- benchmark
+    if args.benchmark:
+        log("Benchmarking {} optimizer steps ...".format(args.benchmark))
+        model.train()
+        t0 = time.time()
+        for _ in range(args.benchmark):
+            for _ in range(args.grad_accum_steps):
+                x, y = data.get_batch("train", rng)
+                _, loss = model(x, y)
+                (loss / args.grad_accum_steps).backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
+            opt.step()
+            opt.zero_grad(set_to_none=True)
+        dt = time.time() - t0
+        per_step = dt / args.benchmark
+        tps = tokens_per_step / per_step
+        log("Benchmark: {:.1f}s/step | {:.0f} tokens/s | projected {} for {} steps"
+            .format(per_step, tps, fmt_dur(per_step * args.max_steps), args.max_steps))
+        return 0
+
+    # ------------------------------------------------------------ train loop
+    model.train()
+    opt.zero_grad(set_to_none=True)
+    run_started = time.time()
+    base_wall = stats.get("wall_seconds", 0.0)
+    last_log = time.time()
+    window_tokens = 0
+    best_val_step = start_step
+    stop_reason = "reached max_steps"
+
+    step = start_step
+    try:
+        while step < args.max_steps:
+            lr = lr_at(step, args) * stats["lr_scale"]
+            for g in opt.param_groups:
+                g["lr"] = lr
+
+            accum_loss = 0.0
+            try:
+                for micro in range(args.grad_accum_steps):
+                    x, y = data.get_batch("train", rng)
+                    _, loss = model(x, y)
+                    accum_loss += loss.item()
+                    (loss / args.grad_accum_steps).backward()
+            except (RuntimeError, MemoryError) as e:
+                msg = str(e).lower()
+                if "out of memory" in msg or "cannot allocate" in msg or \
+                        isinstance(e, MemoryError):
+                    stats["oom_events"] += 1
+                    critical("OOM at step {} ({}). Halving batch size.".format(step, e))
+                    opt.zero_grad(set_to_none=True)
+                    if args.batch_size > 1:
+                        args.batch_size = max(1, args.batch_size // 2)
+                        args.grad_accum_steps *= 2
+                    else:
+                        args.block_size = max(64, args.block_size // 2)
+                    data = Data(args.block_size, args.batch_size, device)
+                    tokens_per_step = (args.batch_size * args.grad_accum_steps
+                                       * args.block_size)
+                    warn("Retrying with batch_size={} grad_accum={} block={}".format(
+                        args.batch_size, args.grad_accum_steps, args.block_size))
+                    continue
+                raise
+
+            mean_loss = accum_loss / args.grad_accum_steps
+
+            # NaN/Inf recovery: roll back to the best weights and cut the LR.
+            if not math.isfinite(mean_loss):
+                stats["nan_events"] += 1
+                critical("Non-finite loss ({}) at step {}.".format(mean_loss, step))
+                opt.zero_grad(set_to_none=True)
+                stats["lr_scale"] *= 0.1
+                restored = False
+                for cand in (BEST_PATH, latest_checkpoint()):
+                    if cand and os.path.exists(cand):
+                        ck = load_checkpoint_safely(cand)
+                        if ck:
+                            model.load_state_dict(ck["model"])
+                            if "optimizer" in ck:
+                                opt.load_state_dict(ck["optimizer"])
+                            step = ck.get("step", step)
+                            warn("Reloaded {} and scaled LR by 0.1 (scale now {:.2g})"
+                                 .format(os.path.basename(cand), stats["lr_scale"]))
+                            restored = True
+                            break
+                if not restored:
+                    warn("No checkpoint to roll back to; continuing at reduced LR.")
+                if stats["nan_events"] >= 5:
+                    stop_reason = "too many non-finite losses"
+                    critical(stop_reason)
+                    break
+                continue
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
+            opt.step()
+            opt.zero_grad(set_to_none=True)
+
+            step += 1
+            window_tokens += tokens_per_step
+
+            if step % args.log_interval == 0:
+                now = time.time()
+                tps = window_tokens / max(1e-6, now - last_log)
+                sec_per_step = (now - last_log) / args.log_interval
+                eta = sec_per_step * (args.max_steps - step)
+                log("Step {:05d} | Loss: {:.4f} | Throughput: {:.0f} tokens/s | "
+                    "ETA: {} | LR: {:.6f}".format(step, mean_loss, tps,
+                                                  fmt_dur(eta), lr))
+                last_log, window_tokens = now, 0
+
+            if step % args.eval_interval == 0:
+                eval_rng = np.random.default_rng(args.seed + 99991)
+                losses = estimate_loss(model, data, args, eval_rng)
+                wall = base_wall + (time.time() - run_started)
+                history["step"].append(step)
+                history["train_loss"].append(round(losses["train"], 5))
+                history["val_loss"].append(round(losses["val"], 5))
+                history["lr"].append(lr)
+                history["tokens_seen"].append(step * tokens_per_step)
+                history["wall_seconds"].append(round(wall, 1))
+
+                if losses["val"] < best_val:
+                    improvement = best_val - losses["val"]
+                    best_val = losses["val"]
+                    best_val_step = step
+                    save_model_only(BEST_PATH, model, step, best_val, cfg, history)
+                    log("  -> Val loss: {:.4f} (new best, improved {:.4f}) | "
+                        "train {:.4f} | ppl {:.1f}".format(
+                            losses["val"],
+                            improvement if math.isfinite(improvement) else 0.0,
+                            losses["train"], math.exp(min(20, losses["val"]))))
+                else:
+                    log("  -> Val loss: {:.4f} (no improvement, best: {:.4f} "
+                        "@ step {}) | train {:.4f}".format(
+                            losses["val"], best_val, best_val_step, losses["train"]))
+
+                with open(LOSSES_PATH, "w", encoding="utf-8") as fh:
+                    json.dump(history, fh, indent=2)
+
+                if step - best_val_step >= args.patience_steps:
+                    stop_reason = ("early stop: no val improvement for {} steps"
+                                   .format(step - best_val_step))
+                    log(stop_reason)
+                    break
+
+            if step % args.checkpoint_interval == 0 or _INTERRUPTED["flag"]:
+                stats["wall_seconds"] = base_wall + (time.time() - run_started)
+                path = os.path.join(HERE, "checkpoint_step_{}.pt".format(step))
+                save_checkpoint(path, model, opt, step, best_val, history,
+                                cfg, args, stats)
+                rotate_checkpoints()
+                log("Step {:05d} | Checkpoint saved: {}".format(
+                    step, os.path.basename(path)))
+
+            if _INTERRUPTED["flag"]:
+                stop_reason = "interrupted by user"
+                break
+
+    except KeyboardInterrupt:
+        stop_reason = "interrupted by user (hard)"
+        warn(stop_reason)
+    finally:
+        stats["wall_seconds"] = base_wall + (time.time() - run_started)
+        path = os.path.join(HERE, "checkpoint_step_{}.pt".format(step))
+        save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats)
+        rotate_checkpoints()
+        save_model_only(FINAL_PATH, model, step, best_val, cfg, history)
+        with open(LOSSES_PATH, "w", encoding="utf-8") as fh:
+            json.dump(history, fh, indent=2)
+
+        final_stats = {
+            "steps_completed": step,
+            "max_steps": args.max_steps,
+            "stop_reason": stop_reason,
+            "best_val_loss": None if best_val == float("inf") else round(best_val, 5),
+            "best_val_step": best_val_step,
+            "final_train_loss": history["train_loss"][-1] if history["train_loss"] else None,
+            "final_val_loss": history["val_loss"][-1] if history["val_loss"] else None,
+            "tokens_seen": step * tokens_per_step,
+            "wall_seconds": round(stats["wall_seconds"], 1),
+            "wall_human": fmt_dur(stats["wall_seconds"]),
+            "tokens_per_second": round(
+                step * tokens_per_step / max(1e-6, stats["wall_seconds"]), 1),
+            "nan_events": stats["nan_events"],
+            "oom_events": stats["oom_events"],
+            "lr_scale_final": stats["lr_scale"],
+            "params": model.num_params(),
+            "device": device,
+            "threads": torch.get_num_threads(),
+        }
+        with open(STATS_PATH, "w", encoding="utf-8") as fh:
+            json.dump(final_stats, fh, indent=2)
+        log("Training stopped ({}) at step {} after {}".format(
+            stop_reason, step, fmt_dur(stats["wall_seconds"])))
+        if best_val < float("inf"):
+            log("Best val loss {:.4f} @ step {} -> best_model.pt".format(
+                best_val, best_val_step))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

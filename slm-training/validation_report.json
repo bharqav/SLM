@@ -1,0 +1,117 @@
+{
+  "size_mb": 205.9,
+  "records": 1176607,
+  "total_chars": 187975523,
+  "mean_record_chars": 159.8,
+  "estimated_tokens": 52215423,
+  "duplicate_records": 0,
+  "duplicate_rate": 0.0,
+  "null_byte_records": 0,
+  "too_short_records": 3,
+  "non_ascii_heavy_records": 0,
+  "invalid_rate": 0.0,
+  "sample_size": 2000,
+  "sample_mean_chars": 153.9,
+  "sample_decode_failures": 0,
+  "source_repos": 151,
+  "record_kinds": {
+    "py_comment": 480760,
+    "py_docstring": 370150,
+    "js_comment": 239870,
+    "readme": 3009,
+    "js_docstring": 82817
+  },
+  "dominant_kind_share": 0.4086,
+  "top_repeated_content_heads": [
+    {
+      "text": "async def async_setup_entry(hass: HomeAssistant, config_entr",
+      "count": 1041,
+      "share": 0.00088
+    },
+    {
+      "text": "async def async_get_config_entry_diagnostics(hass: HomeAssis",
+      "count": 306,
+      "share": 0.00026
+    },
+    {
+      "text": "@import {",
+      "count": 288,
+      "share": 0.00024
+    },
+    {
+      "text": "async def async_setup(hass: HomeAssistant, config: ConfigTyp",
+      "count": 283,
+      "share": 0.00024
+    },
+    {
+      "text": "async def async_added_to_hass(self) -> None:",
+      "count": 252,
+      "share": 0.00021
+    },
+    {
+      "text": "def is_on(self) -> bool:",
+      "count": 236,
+      "share": 0.0002
+    },
+    {
+      "text": "def __init__(self) -> None:",
+      "count": 211,
+      "share": 0.00018
+    },
+    {
+      "text": "* @private",
+      "count": 207,
+      "share": 0.00018
+    },
+    {
+      "text": "def available(self) -> bool:",
+      "count": 185,
+      "share": 0.00016
+    },
+    {
+      "text": "def setup_platform(hass: HomeAssistant, config: ConfigType, ",
+      "count": 178,
+      "share": 0.00015
+    }
+  ],
+  "top_raw_first_lines": [
+    {
+      "text": "/**",
+      "count": 33474,
+      "share": 0.02845
+    },
+    {
+      "text": "%%",
+      "count": 1286,
+      "share": 0.00109
+    },
+    {
+      "text": "async def async_setup_entry(hass: HomeAssistant, config_entr",
+      "count": 1041,
+      "share": 0.00088
+    },
+    {
+      "text": "------------------------------------------------------------",
+      "count": 614,
+      "share": 0.00052
+    },
+    {
+      "text": "async def async_get_config_entry_diagnostics(hass: HomeAssis",
+      "count": 306,
+      "share": 0.00026
+    }
+  ],
+  "checks": {
+    "size_within_bounds": false,
+    "mean_record_length_ok": true,
+    "invalid_rate_under_5pct": true,
+    "no_null_bytes": true,
+    "low_duplication": true,
+    "utf8_decodable": true,
+    "many_source_repos": true,
+    "mixed_record_kinds": true,
+    "no_single_kind_dominates": true,
+    "no_dominant_repeated_line": true
+  },
+  "passed": false
+}

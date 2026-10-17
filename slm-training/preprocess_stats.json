@@ -1,0 +1,30 @@
+{
+  "tokenizer": "tiktoken",
+  "vocab_size": 50257,
+  "eos_id": 50256,
+  "records": 51902,
+  "failed_records": 0,
+  "failure_rate": 0.0,
+  "total_tokens": 2567611,
+  "train_tokens": 2310850,
+  "val_tokens": 256761,
+  "val_split": 0.1,
+  "mean_tokens_per_record": 49.47,
+  "median_tokens_per_record": 21,
+  "p95_tokens_per_record": 162,
+  "max_tokens_per_record": 6617,
+  "length_histogram": {
+    "0-8": 6304,
+    "8-16": 14262,
+    "16-32": 12957,
+    "32-64": 10036,
+    "64-128": 4830,
+    "128-256": 2075,
+    "256-512": 953,
+    "512-1024": 296,
+    "1024-inf": 189
+  },
+  "raw_bytes": 9466976,
+  "chars_per_token": 3.687,
+  "elapsed_seconds": 2.2
+}

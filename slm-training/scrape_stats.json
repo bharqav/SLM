@@ -1,0 +1,16 @@
+{
+  "repos_ok": 10,
+  "repos_failed": 0,
+  "records": 22774,
+  "chars": 3368608,
+  "estimated_tokens": 935724,
+  "by_kind": {
+    "py_comment": 428,
+    "py_docstring": 344,
+    "js_comment": 18501,
+    "readme": 214,
+    "js_docstring": 3287
+  },
+  "raw_bytes": 3719291,
+  "elapsed_seconds": 0.0
+}

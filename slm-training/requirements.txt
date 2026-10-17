@@ -1,0 +1,10 @@
+# Core training stack
+torch>=2.0.0
+numpy>=1.24.0
+tiktoken>=0.5.0
+
+# Data collection
+requests>=2.31.0
+
+# Evaluation plots
+matplotlib>=3.7.0
