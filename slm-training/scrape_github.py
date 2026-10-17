@@ -590,6 +590,7 @@ def main():
     by_kind = state["by_kind"]
     started = time.time()
     processed_this_run = 0
+    start_chars = chars          # baseline so ETA reflects this run's rate
 
     out = open(RAW_PATH, "a", encoding="utf-8", newline="\n")
     try:
@@ -647,7 +648,22 @@ def main():
             est_tokens = chars / CHARS_PER_TOKEN
             frac = min(1.0, chars / target_chars) if target_chars else 1.0
             elapsed = time.time() - started
-            eta = (elapsed / frac - elapsed) if frac > 0.001 else 0
+
+            # ETA from the rate observed in *this* run only. Deriving it from
+            # the overall completion fraction is wrong after a resume, because
+            # the corpus is already partly built while elapsed starts at zero.
+            gained = chars - start_chars
+            remaining = max(0, target_chars - chars)
+            if gained > 0 and elapsed > 0:
+                eta = remaining / (gained / elapsed)
+            else:
+                eta = 0
+            # The queue can run out before the token target is met, so bound
+            # the estimate by how many repos are actually left.
+            repos_left = len(repos) - i
+            if processed_this_run > 0:
+                per_repo = elapsed / processed_this_run
+                eta = min(eta, repos_left * per_repo) if eta else repos_left * per_repo
             log("[{}/{}] {} ({} stars, {}) - {} files, {} records, "
                 "{} tok | total {} tok ({:.1f}%) | {:.0f}s | ETA {}".format(
                     i, len(repos), name, human(repo["stars"]), repo["language"],
