@@ -67,7 +67,11 @@ def build_args():
     ap.add_argument("--grad-clip", type=float, default=1.0)
     ap.add_argument("--eval-interval", type=int, default=500)
     ap.add_argument("--eval-iters", type=int, default=40)
-    ap.add_argument("--checkpoint-interval", type=int, default=1000)
+    # 200, not the 1000 originally specified: a step takes 50-100s on this CPU,
+    # so 1000 steps is 14-28 hours of unsaved work on a machine that will be
+    # interrupted. At ~20s to write a checkpoint this costs well under 1% of
+    # throughput and bounds worst-case loss to a few hours.
+    ap.add_argument("--checkpoint-interval", type=int, default=200)
     ap.add_argument("--log-interval", type=int, default=100)
     ap.add_argument("--patience-steps", type=int, default=5000,
                     help="stop if val loss has not improved for this many steps")

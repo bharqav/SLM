@@ -108,7 +108,7 @@ opt, n_decay, n_nodecay = model.configure_optimizers(0.1, 6e-4, (0.9, 0.95))
 | `--grad-clip` | `1.0` | Max gradient norm. |
 | `--eval-interval` | `500` | Steps between validation passes. |
 | `--eval-iters` | `40` | Batches averaged per validation pass. |
-| `--checkpoint-interval` | `1000` | Steps between full checkpoints. |
+| `--checkpoint-interval` | `200` | Steps between full checkpoints. |
 | `--log-interval` | `100` | Steps between progress lines. |
 | `--patience-steps` | `5000` | Early stop if val loss stalls this long. |
 | `--threads` | `0` | Torch threads; `0` means physical core count. |

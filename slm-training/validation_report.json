@@ -1,9 +1,9 @@
 {
-  "size_mb": 205.9,
-  "records": 1176607,
-  "total_chars": 187975523,
-  "mean_record_chars": 159.8,
-  "estimated_tokens": 52215423,
+  "size_mb": 473.1,
+  "records": 2539694,
+  "total_chars": 434435686,
+  "mean_record_chars": 171.1,
+  "estimated_tokens": 120676579,
   "duplicate_records": 0,
   "duplicate_rate": 0.0,
   "null_byte_records": 0,
@@ -11,98 +11,98 @@
   "non_ascii_heavy_records": 0,
   "invalid_rate": 0.0,
   "sample_size": 2000,
-  "sample_mean_chars": 153.9,
+  "sample_mean_chars": 176.2,
   "sample_decode_failures": 0,
-  "source_repos": 151,
+  "source_repos": 619,
   "record_kinds": {
-    "py_comment": 480760,
-    "py_docstring": 370150,
-    "js_comment": 239870,
-    "readme": 3009,
-    "js_docstring": 82817
+    "py_comment": 1028319,
+    "py_docstring": 822946,
+    "js_comment": 468749,
+    "readme": 7504,
+    "js_docstring": 212175
   },
-  "dominant_kind_share": 0.4086,
+  "dominant_kind_share": 0.4049,
   "top_repeated_content_heads": [
+    {
+      "text": "* @method",
+      "count": 4158,
+      "share": 0.00164
+    },
+    {
+      "text": "@method",
+      "count": 4091,
+      "share": 0.00161
+    },
+    {
+      "text": "{",
+      "count": 2520,
+      "share": 0.00099
+    },
     {
       "text": "async def async_setup_entry(hass: HomeAssistant, config_entr",
       "count": 1041,
-      "share": 0.00088
+      "share": 0.00041
     },
     {
-      "text": "async def async_get_config_entry_diagnostics(hass: HomeAssis",
-      "count": 306,
+      "text": "![color visualization](data:image/svg+xml;base64,PHN2ZyB4bWx",
+      "count": 665,
       "share": 0.00026
     },
     {
-      "text": "@import {",
-      "count": 288,
-      "share": 0.00024
-    },
-    {
-      "text": "async def async_setup(hass: HomeAssistant, config: ConfigTyp",
-      "count": 283,
-      "share": 0.00024
-    },
-    {
-      "text": "async def async_added_to_hass(self) -> None:",
-      "count": 252,
-      "share": 0.00021
-    },
-    {
-      "text": "def is_on(self) -> bool:",
-      "count": 236,
-      "share": 0.0002
-    },
-    {
-      "text": "def __init__(self) -> None:",
-      "count": 211,
-      "share": 0.00018
-    },
-    {
       "text": "* @private",
-      "count": 207,
+      "count": 459,
       "share": 0.00018
     },
     {
-      "text": "def available(self) -> bool:",
-      "count": 185,
+      "text": "!",
+      "count": 440,
+      "share": 0.00017
+    },
+    {
+      "text": "[",
+      "count": 415,
       "share": 0.00016
     },
     {
-      "text": "def setup_platform(hass: HomeAssistant, config: ConfigType, ",
-      "count": 178,
+      "text": "def main():",
+      "count": 385,
       "share": 0.00015
+    },
+    {
+      "text": "@classdesc",
+      "count": 335,
+      "share": 0.00013
     }
   ],
   "top_raw_first_lines": [
     {
       "text": "/**",
-      "count": 33474,
-      "share": 0.02845
+      "count": 76822,
+      "share": 0.03025
     },
     {
-      "text": "%%",
-      "count": 1286,
-      "share": 0.00109
+      "text": "@method",
+      "count": 4091,
+      "share": 0.00161
     },
     {
-      "text": "async def async_setup_entry(hass: HomeAssistant, config_entr",
-      "count": 1041,
-      "share": 0.00088
+      "text": "{",
+      "count": 2102,
+      "share": 0.00083
     },
     {
       "text": "------------------------------------------------------------",
-      "count": 614,
-      "share": 0.00052
+      "count": 1780,
+      "share": 0.0007
     },
     {
-      "text": "async def async_get_config_entry_diagnostics(hass: HomeAssis",
-      "count": 306,
-      "share": 0.00026
+      "text": "%%",
+      "count": 1287,
+      "share": 0.00051
     }
   ],
   "checks": {
-    "size_within_bounds": false,
+    "size_within_bounds": true,
     "mean_record_length_ok": true,
     "invalid_rate_under_5pct": true,
     "no_null_bytes": true,
@@ -113,5 +113,5 @@
     "no_single_kind_dominates": true,
     "no_dominant_repeated_line": true
   },
-  "passed": false
+  "passed": true
 }

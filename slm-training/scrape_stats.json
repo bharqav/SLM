@@ -1,16 +1,16 @@
 {
-  "repos_ok": 10,
-  "repos_failed": 0,
-  "records": 22774,
-  "chars": 3368608,
-  "estimated_tokens": 935724,
+  "repos_ok": 600,
+  "repos_failed": 19,
+  "records": 2539693,
+  "chars": 434435757,
+  "estimated_tokens": 120676599,
   "by_kind": {
-    "py_comment": 428,
-    "py_docstring": 344,
-    "js_comment": 18501,
-    "readme": 214,
-    "js_docstring": 3287
+    "py_comment": 1028319,
+    "py_docstring": 822946,
+    "js_comment": 468749,
+    "readme": 7504,
+    "js_docstring": 212175
   },
-  "raw_bytes": 3719291,
-  "elapsed_seconds": 0.0
+  "raw_bytes": 473136612,
+  "elapsed_seconds": 7917.2
 }
