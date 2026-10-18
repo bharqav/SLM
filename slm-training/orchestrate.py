@@ -12,6 +12,7 @@ Usage
 """
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -32,6 +33,46 @@ def run(script, *cli_args, check=True):
     if check and proc.returncode != 0:
         error("{} exited {}".format(script, proc.returncode))
     return proc.returncode
+
+
+SEC_PER_STEP_RE = re.compile(r"Benchmark:\s*([\d.]+)s/step")
+
+
+def benchmark_threads(steps, candidates):
+    """Time a few optimizer steps at each thread count; return the fastest.
+
+    Worth doing once: this box has 4 physical / 8 logical cores, and torch's
+    default is not reliably the best of those on a memory-bound workload. The
+    sweep runs after scraping, so nothing else is competing for the CPU.
+    """
+    results = {}
+    for n in candidates:
+        cmd = [PY, os.path.join(HERE, "train.py"),
+               "--benchmark", str(steps), "--threads", str(n)]
+        log("$ train.py --benchmark {} --threads {}".format(steps, n))
+        try:
+            proc = subprocess.run(cmd, cwd=HERE, capture_output=True,
+                                  text=True, timeout=1800)
+        except subprocess.TimeoutExpired:
+            warn("thread sweep at {} threads timed out".format(n))
+            continue
+        out = (proc.stdout or "") + (proc.stderr or "")
+        m = SEC_PER_STEP_RE.search(out)
+        if not m:
+            warn("no benchmark line for {} threads (exit {})".format(
+                n, proc.returncode))
+            continue
+        results[n] = float(m.group(1))
+        log("  {} threads -> {:.1f}s/step".format(n, results[n]))
+
+    if not results:
+        warn("thread sweep produced no usable result; using default")
+        return None
+    best = min(results, key=results.get)
+    worst = max(results.values())
+    log("Best: {} threads at {:.1f}s/step ({:.0%} faster than worst)".format(
+        best, results[best], 1 - results[best] / worst if worst else 0))
+    return best
 
 
 def wait_for_scrape(offset, poll=30, timeout=6 * 3600):
@@ -59,7 +100,9 @@ def main():
     ap.add_argument("--skip-wait", action="store_true")
     ap.add_argument("--offset", type=int, default=0,
                     help="byte offset in scrape_run.log to search past")
-    ap.add_argument("--benchmark-steps", type=int, default=10)
+    ap.add_argument("--benchmark-steps", type=int, default=3)
+    ap.add_argument("--threads", default="4,6,8",
+                    help="comma-separated thread counts to sweep; empty to skip")
     ap.add_argument("--no-train", action="store_true",
                     help="stop after the benchmark instead of launching training")
     args = ap.parse_args()
@@ -77,7 +120,10 @@ def main():
         return 1
 
     log("Running a clean throughput benchmark (nothing else should be running)")
-    run("train.py", "--benchmark", str(args.benchmark_steps), check=False)
+    candidates = [int(x) for x in args.threads.split(",") if x.strip()]
+    best_threads = None
+    if candidates:
+        best_threads = benchmark_threads(args.benchmark_steps, candidates)
 
     if args.no_train:
         log("--no-train set; stopping before training.")
@@ -89,7 +135,11 @@ def main():
     if os.name == "nt":
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | \
                         getattr(subprocess, "DETACHED_PROCESS", 0)
-    proc = subprocess.Popen([PY, os.path.join(HERE, "train.py")],
+    train_cmd = [PY, os.path.join(HERE, "train.py")]
+    if best_threads:
+        train_cmd += ["--threads", str(best_threads)]
+    log("$ {}".format(" ".join(os.path.basename(c) for c in train_cmd[1:])))
+    proc = subprocess.Popen(train_cmd,
                             cwd=HERE, stdout=out, stderr=subprocess.STDOUT,
                             stdin=subprocess.DEVNULL,
                             creationflags=creationflags)
