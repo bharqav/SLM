@@ -111,7 +111,10 @@ opt, n_decay, n_nodecay = model.configure_optimizers(0.1, 6e-4, (0.9, 0.95))
 | `--checkpoint-interval` | `200` | Steps between full checkpoints. |
 | `--log-interval` | `100` | Steps between progress lines. |
 | `--patience-steps` | `5000` | Early stop if val loss stalls this long. |
-| `--threads` | `0` | Torch threads; `0` means physical core count. |
+| `--threads` | `0` | Torch threads; `0` means physical core count (CPU only). |
+| `--device` | `auto` | `auto` picks CUDA when available, else CPU. |
+| `--dtype` | `auto` | `auto` = bfloat16 on CUDA if supported, float16 on older CUDA, float32 on CPU. |
+| `--compile` | off | Wrap in `torch.compile`. Needs a C++ compiler; unavailable on stock Windows. |
 | `--resume` | off | Force resume (a checkpoint is auto-detected anyway). |
 | `--benchmark N` | `0` | Time N optimizer steps, print throughput, exit. |
 
@@ -130,6 +133,23 @@ checkpoints and exits cleanly.
 python train.py --benchmark 20      # measure throughput first
 python train.py                     # start or resume
 ```
+
+**On a CUDA GPU.** The defaults are sized for a CPU, where a micro-batch of 4
+sequences is all the memory bandwidth will carry. A discrete GPU is starved by
+that -- it goes latency-bound rather than compute-bound -- so raise the batch
+and drop the accumulation to keep the same effective batch:
+
+```bash
+python train.py --batch-size 32 --grad-accum-steps 1   # 8192 tokens/step
+```
+
+With 24 GB of VRAM there is room for far more. The model, gradients and AdamW
+state together are only ~1.3 GB in fp32, so the remaining headroom is all
+activations: `--batch-size 64 --grad-accum-steps 2` gives a 32768-token step and
+still fits comfortably.
+
+`--dtype auto` selects bfloat16 on Ampere and newer, which needs no loss scaler
+and keeps fp32 range. TF32 matmuls are enabled automatically on CUDA.
 
 ---
 

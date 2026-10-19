@@ -77,6 +77,13 @@ def build_args():
                     help="stop if val loss has not improved for this many steps")
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--threads", type=int, default=0, help="0 = physical cores")
+    ap.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
+    ap.add_argument("--dtype", default="auto",
+                    choices=["auto", "float32", "bfloat16", "float16"],
+                    help="auto = bfloat16 on CUDA if supported, else float32")
+    ap.add_argument("--compile", action="store_true",
+                    help="wrap the model in torch.compile (CUDA/Linux; needs a "
+                         "C++ compiler, unavailable on stock Windows)")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--benchmark", type=int, default=0)
     return ap.parse_args()
@@ -92,6 +99,7 @@ class Data:
         self.block_size = block_size
         self.batch_size = batch_size
         self.device = device
+        self.cuda = str(device).startswith("cuda")
         log("Data: train {} tokens | val {} tokens".format(
             human(len(self.train)), human(len(self.val))))
 
@@ -101,8 +109,12 @@ class Data:
         ix = rng.integers(0, hi, size=self.batch_size)
         x = np.stack([arr[i:i + self.block_size] for i in ix]).astype(np.int64)
         y = np.stack([arr[i + 1:i + 1 + self.block_size] for i in ix]).astype(np.int64)
-        return (torch.from_numpy(x).to(self.device),
-                torch.from_numpy(y).to(self.device))
+        x, y = torch.from_numpy(x), torch.from_numpy(y)
+        if self.cuda:
+            # Staging through pinned memory lets the copy overlap compute.
+            return (x.pin_memory().to(self.device, non_blocking=True),
+                    y.pin_memory().to(self.device, non_blocking=True))
+        return x.to(self.device), y.to(self.device)
 
 
 def lr_at(step, args):
@@ -117,14 +129,17 @@ def lr_at(step, args):
 
 
 @torch.no_grad()
-def estimate_loss(model, data, args, rng):
+def estimate_loss(model, data, args, rng, ctx=None):
+    import contextlib
+    ctx = ctx or contextlib.nullcontext()
     model.eval()
     out = {}
     for split in ("train", "val"):
         losses = torch.zeros(args.eval_iters)
         for i in range(args.eval_iters):
             x, y = data.get_batch(split, rng)
-            _, loss = model(x, y)
+            with ctx:
+                _, loss = model(x, y)
             losses[i] = loss.item()
         out[split] = losses.mean().item()
     model.train()
@@ -135,7 +150,8 @@ def estimate_loss(model, data, args, rng):
 def save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats):
     tmp = path + ".tmp"
     torch.save({
-        "model": model.state_dict(),
+        "model": (model._orig_mod if hasattr(model, "_orig_mod") else model
+                  ).state_dict(),
         "optimizer": opt.state_dict(),
         "step": step,
         "best_val_loss": best_val,
@@ -150,7 +166,8 @@ def save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats)
 def save_model_only(path, model, step, best_val, cfg, history):
     tmp = path + ".tmp"
     torch.save({
-        "model": model.state_dict(),
+        "model": (model._orig_mod if hasattr(model, "_orig_mod") else model
+                  ).state_dict(),
         "step": step,
         "best_val_loss": best_val,
         "model_config": cfg.to_dict(),
@@ -192,18 +209,54 @@ def main():
     torch.manual_seed(args.seed)
     threads = args.threads or (os.cpu_count() or 4) // 2
     torch.set_num_threads(max(1, threads))
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if args.device == "auto":
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    else:
+        device = args.device
+    if device == "cuda" and not torch.cuda.is_available():
+        error("--device cuda requested but no CUDA device is available.")
+        return 1
+
+    # Resolve autocast dtype. bf16 needs no loss scaler and has fp32 range,
+    # so it is the right default on Ampere and newer; fp16 falls back to a
+    # GradScaler. CPU stays in fp32 -- Ice Lake has no AVX512-BF16, so bf16
+    # there is emulated and slower.
+    if args.dtype == "auto":
+        if device == "cuda" and torch.cuda.is_bf16_supported():
+            dtype = "bfloat16"
+        elif device == "cuda":
+            dtype = "float16"
+        else:
+            dtype = "float32"
+    else:
+        dtype = args.dtype
+    amp_enabled = device == "cuda" and dtype != "float32"
+    torch_dtype = {"float32": torch.float32, "bfloat16": torch.bfloat16,
+                   "float16": torch.float16}[dtype]
+    scaler = torch.amp.GradScaler("cuda", enabled=(dtype == "float16"))
+
+    if device == "cuda":
+        # TF32 costs a little mantissa and buys a large matmul speedup.
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
 
     phase("Phase 3: Training Started")
-    log("Device: {} | torch {} | threads {}".format(
-        device, torch.__version__, torch.get_num_threads()))
+    log("Device: {} | torch {} | dtype {} | threads {}".format(
+        device, torch.__version__, dtype, torch.get_num_threads()))
     if device == "cuda":
-        log("GPU: {}".format(torch.cuda.get_device_name(0)))
+        props = torch.cuda.get_device_properties(0)
+        log("GPU: {} ({:.1f} GB VRAM, capability {}.{})".format(
+            props.name, props.total_memory / 1e9, props.major, props.minor))
 
     cfg = GPTConfig(vocab_size=50257, block_size=args.block_size,
                     n_layer=args.n_layer, n_head=args.n_head,
                     n_embd=args.n_embd, dropout=args.dropout)
     model = GPT(cfg).to(device)
+
+    import contextlib
+    ctx = (torch.autocast(device_type="cuda", dtype=torch_dtype)
+           if amp_enabled else contextlib.nullcontext())
     opt, n_decay, n_nodecay = model.configure_optimizers(
         args.weight_decay, args.learning_rate, (args.beta1, args.beta2))
 
@@ -212,6 +265,14 @@ def main():
     for k, v in model.param_breakdown().items():
         log("  {:<40} {:>12,}".format(k, v))
     log("Optimizer: AdamW | decayed {:,} | undecayed {:,}".format(n_decay, n_nodecay))
+
+    if args.compile:
+        try:
+            model = torch.compile(model)
+            log("torch.compile enabled")
+        except Exception as e:
+            warn("torch.compile unavailable ({}); continuing eager".format(
+                str(e)[:120]))
 
     tokens_per_step = args.batch_size * args.grad_accum_steps * args.block_size
     log("Effective batch: {} seqs x {} tokens = {} tokens/step".format(
@@ -265,11 +326,16 @@ def main():
         for _ in range(args.benchmark):
             for _ in range(args.grad_accum_steps):
                 x, y = data.get_batch("train", rng)
-                _, loss = model(x, y)
-                (loss / args.grad_accum_steps).backward()
+                with ctx:
+                    _, loss = model(x, y)
+                scaler.scale(loss / args.grad_accum_steps).backward()
+            scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
             opt.zero_grad(set_to_none=True)
+        if device == "cuda":
+            torch.cuda.synchronize()
         dt = time.time() - t0
         per_step = dt / args.benchmark
         tps = tokens_per_step / per_step
@@ -298,9 +364,10 @@ def main():
             try:
                 for micro in range(args.grad_accum_steps):
                     x, y = data.get_batch("train", rng)
-                    _, loss = model(x, y)
+                    with ctx:
+                        _, loss = model(x, y)
                     accum_loss += loss.item()
-                    (loss / args.grad_accum_steps).backward()
+                    scaler.scale(loss / args.grad_accum_steps).backward()
             except (RuntimeError, MemoryError) as e:
                 msg = str(e).lower()
                 if "out of memory" in msg or "cannot allocate" in msg or \
@@ -350,8 +417,10 @@ def main():
                     break
                 continue
 
+            scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
             opt.zero_grad(set_to_none=True)
 
             step += 1
@@ -369,7 +438,7 @@ def main():
 
             if step % args.eval_interval == 0:
                 eval_rng = np.random.default_rng(args.seed + 99991)
-                losses = estimate_loss(model, data, args, eval_rng)
+                losses = estimate_loss(model, data, args, eval_rng, ctx)
                 wall = base_wall + (time.time() - run_started)
                 history["step"].append(step)
                 history["train_loss"].append(round(losses["train"], 5))

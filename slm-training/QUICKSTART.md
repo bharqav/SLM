@@ -61,6 +61,39 @@ python train.py --benchmark 20 --n-embd 384 --n-layer 6 --n-head 6
 
 ---
 
+## 3b. On a CUDA GPU
+
+Everything above is identical; only the training step changes. `train.py`
+detects CUDA automatically and selects bfloat16 on Ampere or newer.
+
+The CPU defaults will *underuse* a discrete GPU -- a 4-sequence micro-batch
+leaves it latency-bound. Raise the batch instead:
+
+```bash
+python train.py --batch-size 32 --grad-accum-steps 1
+```
+
+Rough expectation for the full 10,000-step run (82M tokens, 41.6 PFLOPs):
+
+| Hardware | Time |
+| --- | --- |
+| This laptop CPU (4 cores, AC power) | ~6 days |
+| RTX 3090, defaults as-is | ~2.3 hours |
+| RTX 3090, batch raised + bf16 | **~30 minutes** |
+
+If you have a GPU, the 10,000-step budget is the wrong target. An 81.6M model
+wants roughly 20 tokens per parameter -- about **1.6B tokens**, some 20x what
+this run uses. That was a concession to CPU speed, not a modelling choice. On a
+3090 you could train the Chinchilla-optimal budget in 10-12 hours:
+
+```bash
+python scrape_github.py --target-tokens 1600000000 --min-stars 200
+python preprocess.py
+python train.py --batch-size 32 --grad-accum-steps 1 --max-steps 200000
+```
+
+---
+
 ## 4. Train (hours to days)
 
 ```bash
