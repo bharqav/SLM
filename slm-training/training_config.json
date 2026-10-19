@@ -26,13 +26,13 @@
     "grad_clip": 1.0,
     "eval_interval": 500,
     "eval_iters": 40,
-    "checkpoint_interval": 1000,
+    "checkpoint_interval": 200,
     "log_interval": 100,
     "patience_steps": 5000,
     "seed": 1337,
-    "threads": 8,
+    "threads": 6,
     "resume": false,
-    "benchmark": 3
+    "benchmark": 0
   },
   "tokens_per_step": 8192,
   "total_training_tokens": 81920000

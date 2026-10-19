@@ -94,6 +94,51 @@ training path. A few things that mattered:
   and `train.py` resumes from the newest one with no flag.
 - **Don't run anything else.** Scraping while benchmarking made each step ~30%
   slower and produced a misleading projection.
+- **Check the power cable before you measure anything.** On battery, Windows
+  capped this CPU to 998 MHz — below its 1498 MHz base — and a step took
+  102.8 s. On AC with a warm page cache the same step took 54.5 s. That single
+  factor was worth more than every other optimisation combined: 11.9 days
+  versus 6.3.
+- **Thread count barely matters here.** 4, 6 and 8 threads span 4%
+  (56.8 / 54.5 / 54.9 s per step). The workload is bound by memory bandwidth,
+  not core count.
+
+### The integrated GPU does not help
+
+Worth documenting, because it looks promising until you measure it. The Iris
+Plus is reachable from PyTorch through `torch-directml`, and it does run this
+model's forward and backward passes correctly. It fails on the first optimizer
+step:
+
+```
+RuntimeError: Not enough memory resources are available to complete this operation.
+```
+
+The GPU exposes about 1024 MB. In fp32 this model needs:
+
+| Allocation | Size |
+| --- | --- |
+| Weights | 326 MB |
+| Gradients | 326 MB |
+| AdamW `exp_avg` + `exp_avg_sq` | 653 MB |
+| **Total, before activations** | **1305 MB** |
+
+Warmup survives because AdamW's state tensors are not allocated until the first
+`opt.step()`. The 281 MB shortfall is a fixed cost — it does not shrink with
+batch size, so there is nothing to tune.
+
+Even with enough memory it would be the wrong choice. Synchronised fp32 matmul
+measures **115.6 GFLOPS on the iGPU against 89.3 GFLOPS on the CPU** — only
+1.29x, because both share the same ~58 GB/s LPDDR4x bus. The FLOPS advantage
+never materialises.
+
+One trap worth naming: DirectML dispatches asynchronously, so a naive timing
+loop measures queue submission rather than execution. Unsynchronised, that same
+matmul reported **933 GFLOPS** — about eight times the real number, and exactly
+the figure that would talk you into a rewrite. Force a sync (pull a value back
+with `.cpu()`) before timing anything.
+
+`torch.compile` is also unavailable here: inductor needs MSVC's `cl.exe`.
 
 ---
 
