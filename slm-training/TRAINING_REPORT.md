@@ -2,46 +2,46 @@
 
 ## Summary
 
-An n/a parameter GPT-2 style transformer is being trained from scratch on 2.6M tokens of docstrings, code comments and README prose scraped from 10 top-starred GitHub repositories. **Training is still in progress** -- the figures below reflect the run so far.
+An n/a parameter GPT-2 style transformer is being trained from scratch on 132.3M tokens of docstrings, code comments and README prose scraped from 600 top-starred GitHub repositories. **Training is still in progress** -- the figures below reflect the run so far.
 
 ## Data
 
 | Metric | Value |
 | --- | --- |
-| Repositories scraped | 10 succeeded, 0 skipped |
+| Repositories scraped | 600 succeeded, 19 skipped |
 | Languages | Python, JavaScript/TypeScript |
 | Minimum stars | 1,000 |
-| Records extracted | 22,774 |
-| Raw corpus size | 3.7 MB |
-| Total tokens | 2.6M |
-| Train / validation | 2.3M / 256.8K |
-| Characters per token | 3.687 |
-| Mean record length | 49.47 tokens |
-| Median record length | 21 tokens |
+| Records extracted | 2,539,693 |
+| Raw corpus size | 473.1 MB |
+| Total tokens | 132.3M |
+| Train / validation | 119.1M / 13.2M |
+| Characters per token | 3.576 |
+| Mean record length | 52.1 tokens |
+| Median record length | 25 tokens |
 
 ### Record composition
 
 | Source | Records |
 | --- | --- |
-| JavaScript/TypeScript comments | 18,501 (81.2%) |
-| JSDoc blocks (with declaration) | 3,287 (14.4%) |
-| Python comments | 428 (1.9%) |
-| Python docstrings (with signature) | 344 (1.5%) |
-| README prose | 214 (0.9%) |
+| Python comments | 1,028,319 (40.5%) |
+| Python docstrings (with signature) | 822,946 (32.4%) |
+| JavaScript/TypeScript comments | 468,749 (18.5%) |
+| JSDoc blocks (with declaration) | 212,175 (8.4%) |
+| README prose | 7,504 (0.3%) |
 
 ### Record length distribution
 
 | Bucket | Records |
 | --- | --- |
-| 0-8 tokens | 6,304 |
-| 8-16 tokens | 14,262 |
-| 16-32 tokens | 12,957 |
-| 32-64 tokens | 10,036 |
-| 64-128 tokens | 4,830 |
-| 128-256 tokens | 2,075 |
-| 256-512 tokens | 953 |
-| 512-1024 tokens | 296 |
-| 1024-inf tokens | 189 |
+| 0-8 tokens | 316,114 |
+| 8-16 tokens | 582,403 |
+| 16-32 tokens | 563,774 |
+| 32-64 tokens | 593,324 |
+| 64-128 tokens | 288,915 |
+| 128-256 tokens | 130,527 |
+| 256-512 tokens | 43,338 |
+| 512-1024 tokens | 14,234 |
+| 1024-inf tokens | 7,065 |
 
 ## Model
 

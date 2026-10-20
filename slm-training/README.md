@@ -68,9 +68,23 @@ a large memory saving and a real regulariser.
 
 ---
 
-## Results
+## Status
 
-Training results, loss curves and generated samples are in
+**The corpus is collected and validated; the model is not trained yet.**
+
+Data collection ran to completion on 23 Aug 2026 — 120.7M tokens from 600
+repositories, all ten validation checks passed, tokenized to 119.1M training and
+13.2M validation tokens. Those artifacts are on disk and ready.
+
+Training was started on CPU and deliberately stopped at step ~200. It was
+projected to take **six days** at 52.5 s/step, and the run will instead be done
+on a CUDA GPU where the same 10,000 steps take roughly **30 minutes**. The loss
+was falling correctly when it was stopped — 10.82 to 6.79 over the first 100
+steps, with the learning-rate warmup tracking exactly — so the recipe is sound;
+only the hardware changed.
+
+To run it, see the CUDA section of [QUICKSTART.md](QUICKSTART.md). Results, loss
+curves and generated samples land in
 **[TRAINING_REPORT.md](TRAINING_REPORT.md)**, regenerated from the run's JSON
 artifacts with `python make_report.py`.
 
