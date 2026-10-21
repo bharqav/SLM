@@ -1,0 +1,29 @@
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: local
+    hooks:
+      - id: backend-syntax-check
+        name: backend syntax check
+        entry: python -m compileall backend scripts tests
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [pre-commit]
+
+      - id: frontend-lint
+        name: frontend lint
+        entry: npm --prefix frontend run lint
+        language: system
+        pass_filenames: false
+        files: ^frontend/
+        stages: [pre-push]
+
+      - id: backend-tests
+        name: backend tests
+        entry: python -m pytest -q
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

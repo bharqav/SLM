@@ -1,0 +1,33 @@
+# Normalize line endings in the object store; keep platform defaults in the
+# working tree. Shell scripts and Docker/CI files must stay LF everywhere.
+* text=auto
+
+*.py      text diff=python
+*.md      text diff=markdown
+*.ts      text
+*.tsx     text
+*.js      text
+*.mjs     text
+*.json    text
+*.yml     text
+*.yaml    text
+*.toml    text
+*.ini     text
+*.cfg     text
+*.css     text
+*.html    text
+
+*.sh      text eol=lf
+Dockerfile text eol=lf
+
+# Binary artifacts that must never be line-ending translated.
+*.pt      binary
+*.bin     binary
+*.safetensors binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.ico     binary
+*.gif     binary
+*.pdf     binary
+*.zip     binary
