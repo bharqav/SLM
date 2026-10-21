@@ -70,11 +70,26 @@ a large memory saving and a real regulariser.
 
 ## Status
 
-**The corpus is collected and validated; the model is not trained yet.**
+**Full 10,000-step training run launched 19 Oct 2026 on CUDA** (NVIDIA RTX 5060
+Laptop GPU, bf16, ~23k tokens/s, 0.4 s/step, ETA ≈ 60 minutes — 90× faster than
+the CPU projection). Live progress: `slm-training/train_cuda_run.log`, earlier
+checkpoints rotate at `checkpoint_step_*.pt`, best weights land in
+`best_model.pt` (val-loss tracked), and a monitor-friendly log line appears
+every 100 steps. Follow-up after completion: `python evaluate.py`, then
+`python make_report.py` to regenerate TRAINING_REPORT.md from the run artifacts.
 
-Data collection ran to completion on 23 Aug 2026 — 120.7M tokens from 600
-repositories, all ten validation checks passed, tokenized to 119.1M training and
-13.2M validation tokens. Those artifacts are on disk and ready.
+Setup used on this machine (Blackwell sm_120 needs cu128+ wheels):
+
+    py -V:Astral/CPython3.12.14 -m venv .venv
+    .venv\Scripts\pip install numpy tiktoken
+    .venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu128
+    .venv\Scripts\python train.py            # auto-detects CUDA + bf16
+
+Previous status (for the record): the corpus was collected and validated
+23 Aug 2026 — 120.7M tokens from 600 repositories, all ten validation checks
+passed, tokenized to 119.1M train / 13.2M val tokens. The first CPU attempt was
+stopped at step ~200 (loss 10.82 → 6.79, warmup tracking exactly); the recipe
+was sound, only the hardware changed.
 
 Training was started on CPU and deliberately stopped at step ~200. It was
 projected to take **six days** at 52.5 s/step, and the run will instead be done
