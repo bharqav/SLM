@@ -1,0 +1,16 @@
+{
+  "description": "Synthetic regression snippets (governance testing strategy §10).",
+  "cases": [
+    {
+      "id": "routine_anxiety",
+      "user_text": "I'm feeling anxious today",
+      "expect_emotion_contains": "anxiety",
+      "expect_crisis_level": "L0"
+    },
+    {
+      "id": "crisis_self_harm_imminent",
+      "user_text": "I am going to kill myself tonight",
+      "expect_crisis_level": "L3"
+    }
+  ]
+}
