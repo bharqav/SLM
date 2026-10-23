@@ -1,0 +1,18 @@
+# Model artifacts (published as GitHub release assets, not in git)
+*.pt
+*.pt.tmp
+
+# Datasets and intermediates
+raw_data.txt
+*.bin
+scrape_state.json
+scrape_state.json.tmp
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

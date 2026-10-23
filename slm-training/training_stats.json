@@ -1,0 +1,19 @@
+{
+  "steps_completed": 10000,
+  "max_steps": 10000,
+  "stop_reason": "reached max_steps",
+  "best_val_loss": 2.9816,
+  "best_val_step": 10000,
+  "final_train_loss": 2.53131,
+  "final_val_loss": 2.9816,
+  "tokens_seen": 81920000,
+  "wall_seconds": 3657.6,
+  "wall_human": "1h00m",
+  "tokens_per_second": 22397.1,
+  "nan_events": 0,
+  "oom_events": 0,
+  "lr_scale_final": 1.0,
+  "params": 81564800,
+  "device": "cuda",
+  "threads": 8
+}

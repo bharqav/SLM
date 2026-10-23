@@ -1,0 +1,43 @@
+{
+  "steps_evaluated": 20,
+  "last_step": 10000,
+  "final_train_loss": 2.5313,
+  "final_val_loss": 2.9816,
+  "final_train_perplexity": 12.57,
+  "final_val_perplexity": 19.72,
+  "best_val_loss": 2.9816,
+  "best_val_step": 10000,
+  "best_val_perplexity": 19.72,
+  "first_train_loss": 4.4914,
+  "total_loss_reduction": 1.9601,
+  "monotonic_fraction": 1.0,
+  "plateau_delta_last_1000_steps": 0.004,
+  "divergence_spikes": [],
+  "checks": {
+    "train_loss_below_3.0": true,
+    "val_loss_below_3.5": true,
+    "no_divergence": true,
+    "loss_plateaued": true,
+    "generally_decreasing": true
+  },
+  "converged": true,
+  "training_stats": {
+    "steps_completed": 10000,
+    "max_steps": 10000,
+    "stop_reason": "reached max_steps",
+    "best_val_loss": 2.9816,
+    "best_val_step": 10000,
+    "final_train_loss": 2.53131,
+    "final_val_loss": 2.9816,
+    "tokens_seen": 81920000,
+    "wall_seconds": 3657.6,
+    "wall_human": "1h00m",
+    "tokens_per_second": 22397.1,
+    "nan_events": 0,
+    "oom_events": 0,
+    "lr_scale_final": 1.0,
+    "params": 81564800,
+    "device": "cuda",
+    "threads": 8
+  }
+}
