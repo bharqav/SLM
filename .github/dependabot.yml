@@ -1,20 +1,38 @@
 version: 2
 updates:
   # Backend Python dependencies (requirements.txt).
+  #
+  # Major version bumps are ignored: majors are breaking changes that need a
+  # deliberate upgrade (e.g. bcrypt 4 -> 5 breaks the passlib integration), so
+  # they are handled by a human rather than auto-proposed as a failing PR.
+  # Dependabot still proposes every patch and minor within the current major.
   - package-ecosystem: pip
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-type: version-update:semver-major
 
   # Frontend dependencies (frontend/package-lock.json).
+  #
+  # Same major-version policy as pip: Next 15 -> 16 additionally requires the
+  # ESLint 9 flat-config migration, which is a project decision, not an
+  # automated one.
   - package-ecosystem: npm
     directory: "/frontend"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-type: version-update:semver-major
 
-  # GitHub Actions used by .github/workflows.
+  # GitHub Actions (.github/workflows).
+  #
+  # Majors ARE allowed here: action version bumps are cheap to verify because
+  # every PR runs the full workflow, so CI proves compatibility immediately.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
