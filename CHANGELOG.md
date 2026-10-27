@@ -14,4 +14,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Training track `slm-training/`: from-scratch 81.6M-param GPT trained on code prose (val ppl 19.7) and on empathetic dialogues (val ppl 7.0).
 - Next.js frontend: login and chat UI with React Query + Zustand state layer.
 - Governance, incident-response, AI architecture, deployment, and training runbook docs.
-- CI: pytest matrix (3.11/3.12), pip-audit, bandit, frontend lint/build, npm audit.
+- CI: pytest matrix (3.11/3.12), pip-audit, bandit, frontend lint/build, npm audit, and a documentation link check. Dependabot proposes non-breaking pip, npm and Actions updates; secret scanning and push protection are enabled.

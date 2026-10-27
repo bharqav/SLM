@@ -10,7 +10,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-compose-ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/pytest-63%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/pytest-65%20passing-brightgreen)](tests/)
 
 </div>
 
@@ -116,7 +116,7 @@ sequenceDiagram
 
 ## Project Status
 
-> **Beta** — feature-complete at v0.1.0 and fully covered by its test suite (63 backend tests, security audits) — but single-node by design and not production-hardened. The Roadmap below states exactly what that would take.
+> **Beta** — feature-complete at v0.1.0 and fully covered by its test suite (65 backend tests, security audits) — but single-node by design and not production-hardened. The Roadmap below states exactly what that would take.
 
 ## Quick Start
 
@@ -203,7 +203,7 @@ slm-ft/                     # QLoRA track: Qwen2.5-3B empathetic fine-tune
 slm-training/               # from-scratch GPT track (code-prose + empathetic)
 alembic/                    # migrations
 scripts/                    # load smoke, demo seeding, training utilities
-tests/                      # 63 tests: API, security hardening, governance, data
+tests/                      # 65 tests: API, security, governance, migrations, data
 ```
 
 ## Configuration Reference
@@ -235,7 +235,7 @@ Never commit secrets — configure via environment only.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                                        # 63 tests, SQLite-backed, no Docker needed
+pytest -q                                        # 65 tests, SQLite-backed, no Docker needed
 
 pip install -r requirements-dev.txt
 bandit -q -ll -r backend -x tests                # static security scan
