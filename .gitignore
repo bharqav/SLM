@@ -1,64 +1,66 @@
-# --- secrets / environment -------------------------------------------
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
 .env
-.env.*
-!.env.example
-!frontend/.env.example
+.private/
+*.manifest
+*.spec
 
-# --- workspace / editor / OS -----------------------------------------
-.freebuff/
-.idea/
+# IDE
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
 .DS_Store
 Thumbs.db
 
-# --- Python ------------------------------------------------------------
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Model artifacts (large binary files)
+*.pt
+*.bin
+*.safetensors
+*.ckpt
+*.pth
+!slm-training/empathetic_model.pt
+!requirements.txt
+
+# Data
+raw_data.txt
+*.csv
+*.jsonl
+*.parquet
+!preprocess_stats.json
+!scrape_stats.json
+!verified_perplexity.json
+!behavioral_eval.json
+
+# Test artifacts
 .pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Tooling
 .mypy_cache/
 .ruff_cache/
 .pre-commit-cache/
-coverage/
-htmlcov/
-*.db
-*.sqlite3
+.mypy/
+.pytest_cache/
 
-# --- Node / frontend ---------------------------------------------------
-node_modules/
-frontend/.next/
-frontend/out/
-.npm/
-
-# --- training / serving artifacts (weights stay local or release as GitHub Release assets)
-*.pt
-*.safetensors
-*.bin
-tokenizer.json.orig
-slm-ft/merged_fp16/
-slm-ft/adapter/
-slm-ft/adapter_stage2/
-slm-ft/data/
-# evaluate_ft.py writes to Path(--out_dir or --adapter); a baseline run with
-# --adapter none recreates this directory. Keep it out of the repo.
-slm-ft/none/
-slm-training/samples/
-slm-training/evaluation_output/
-# slm-training/empathetic_run/ is intentionally NOT ignored: *.pt, *.bin and
-# *.log above already exclude its heavy artifacts, and its small run records
-# (training_stats.json, losses.json, training_config.json) are the evidence
-# behind the documented validation perplexity.
-
-# --- logs ----------------------------------------------------------------
-*.log
-logs/
-
-# --- misc build/test artifacts -------------------------------------------
-coverage/
-dist/
-build/
-pgdata/
+# OS
+*.lnk
+desktop.ini

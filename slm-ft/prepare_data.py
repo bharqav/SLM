@@ -17,7 +17,6 @@ import argparse
 import csv
 import hashlib
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -25,8 +24,8 @@ REPO = Path(__file__).resolve().parents[1]
 ESCONV_HF = "thu-coai/esconv"
 ED_URL = "https://dl.fbaipublicfiles.com/parlai/empatheticdialogues/empatheticdialogues.tar.gz"
 
-MAX_TURNS = 24          # keep dialogues manageable
-MIN_USER_TURNS = 2      # need at least one user+assistant exchange pair
+MAX_TURNS = 24  # keep dialogues manageable
+MIN_USER_TURNS = 2  # need at least one user+assistant exchange pair
 VAL_FRACTION = 0.02
 
 
@@ -90,13 +89,21 @@ def build_ed(csv_dir: Path) -> list[list[dict]]:
     """ED CSVs grouped by conv_id, roles from speaker_idx (0=user, 1=assistant)."""
     dialogs = []
     base_header = [
-        "conv_id", "utterance_idx", "context", "prompt",
-        "speaker_idx", "utterance", "selfeval", "tags",
+        "conv_id",
+        "utterance_idx",
+        "context",
+        "prompt",
+        "speaker_idx",
+        "utterance",
+        "selfeval",
+        "tags",
     ]
     for name in ("train", "valid", "test"):
         path = csv_dir / f"{name}.csv"
         if not path.exists():
-            sys.exit(f"missing EmpatheticDialogues CSV at {path}; run download step in README")
+            sys.exit(
+                f"missing EmpatheticDialogues CSV at {path}; run download step in README"
+            )
         by_conv: dict[str, dict] = {}
         with open(path, encoding="utf-8", newline="") as fh:
             first_line = fh.readline()
@@ -120,11 +127,11 @@ def build_ed(csv_dir: Path) -> list[list[dict]]:
                 text = clean(row["utterance"])
                 if not text or len(text) < 2:
                     continue
-                conv = by_conv.setdefault(
-                    row["conv_id"], {"prompt": "", "turns": []}
-                )
+                conv = by_conv.setdefault(row["conv_id"], {"prompt": "", "turns": []})
                 conv["prompt"] = conv["prompt"] or row.get("prompt", "")
-                conv["turns"].append((int(row["speaker_idx"]), int(row["utterance_idx"]), text))
+                conv["turns"].append(
+                    (int(row["speaker_idx"]), int(row["utterance_idx"]), text)
+                )
         for conv in by_conv.values():
             conv["turns"].sort(key=lambda x: x[1])
             first_speaker = conv["turns"][0][0]
@@ -150,14 +157,20 @@ def build_ed(csv_dir: Path) -> list[list[dict]]:
 def hash_split(dialogs: list[list[dict]], val_fraction: float = VAL_FRACTION):
     train, val = [], []
     for d in dialogs:
-        h = int(hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()[:8], 16)
+        h = int(
+            hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()[:8], 16
+        )
         (val if (h % 100) < val_fraction * 100 else train).append(d)
     return train, val
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ed-csv-dir", required=True, help="dir with train/valid/test.csv (EmpatheticDialogues)")
+    ap.add_argument(
+        "--ed-csv-dir",
+        required=True,
+        help="dir with train/valid/test.csv (EmpatheticDialogues)",
+    )
     ap.add_argument("--out-dir", default=str(Path(__file__).parent / "data"))
     args = ap.parse_args()
 
@@ -179,7 +192,12 @@ def main() -> None:
 
     with open(out / "corpus_stats.json", "w", encoding="utf-8") as fh:
         json.dump(
-            {"esconv": len(es), "empathetic_dialogues": len(ed), "train": len(train), "val": len(val)},
+            {
+                "esconv": len(es),
+                "empathetic_dialogues": len(ed),
+                "train": len(train),
+                "val": len(val),
+            },
             fh,
             indent=2,
         )

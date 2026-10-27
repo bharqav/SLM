@@ -1,0 +1,222 @@
+{
+  "generated_at": "2026-10-24T15:54:29.138493+00:00",
+  "config": {
+    "max_new_tokens": 24,
+    "temperature": 0.7,
+    "top_k": 20,
+    "prompts": [
+      "I have been feeling really down lately",
+      "The best way to handle stress is",
+      "I do not think I can keep going",
+      "Here is how the model works:",
+      "def preprocess(text):",
+      "return {",
+      "async function fetchUserData(",
+      "class ChatMessage:",
+      "const response = await fetch("
+    ]
+  },
+  "slm_code": {
+    "loaded": true,
+    "device": "cuda",
+    "load_latency_ms": 3122.7,
+    "tokenizer": "tiktoken gpt2",
+    "peak_memory_bytes": 646488064,
+    "peak_memory_mb": 646.49,
+    "model_config": {
+      "vocab_size": 50257,
+      "d_model": 1024,
+      "n_heads": 4,
+      "n_layers": 8,
+      "ctx_len": 1024,
+      "mlp_ratio": 4.0,
+      "dropout": 0.0,
+      "use_pos_embed": true,
+      "note": "constructed from model.py constructor shapes; no GPTConfig class exists in model.py"
+    },
+    "step": -1,
+    "best_val_loss": null
+  },
+  "slm_empathetic": {
+    "loaded": true,
+    "device": "cuda",
+    "load_latency_ms": 1841.9,
+    "tokenizer": "tiktoken gpt2",
+    "peak_memory_bytes": 1292976128,
+    "peak_memory_mb": 1292.98,
+    "model_config": {
+      "vocab_size": 50257,
+      "d_model": 1024,
+      "n_heads": 4,
+      "n_layers": 8,
+      "ctx_len": 1024,
+      "mlp_ratio": 4.0,
+      "dropout": 0.0,
+      "use_pos_embed": true,
+      "note": "constructed from model.py constructor shapes; no GPTConfig class exists in model.py"
+    },
+    "step": -1,
+    "best_val_loss": null
+  },
+  "qwen": {
+    "loaded": false,
+    "error": "transformers import failed: No module named 'transformers'",
+    "load_latency_ms": 0.0
+  },
+  "samples": [
+    {
+      "model": "slm-scratch-code",
+      "generations": [
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " disembark GarimbleMost Broncos Podestaiver Idol Broncos adaptations adjustment correction awaitsuto lux systematicallymort sticker sticker784aval Idol murky Never",
+          "latency_s": 0.4141,
+          "tokens_per_second": 58.0
+        },
+        {
+          "prompt": "The best way to handle stress is",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "aval\u3044\u3044 SterARE SK recourse Barry\u3044imble\u3044 Lakers DEAD prem Arch Barryaltern Archaval stickermort dispelmr conceived",
+          "latency_s": 0.1429,
+          "tokens_per_second": 167.9
+        },
+        {
+          "prompt": "I do not think I can keep going",
+          "prompt_tokens": 8,
+          "completion_tokens": 24,
+          "completion": " mag Johns paddleflows externalToEVAOnly disembark administrators fucking dispel seategal Barry stranger celebuto>[ Idolgence Feedback\ufffd Thick\ufffdraughtvertisements",
+          "latency_s": 0.1438,
+          "tokens_per_second": 166.8
+        },
+        {
+          "prompt": "Here is how the model works:",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "aval SterTE Broncosoul sax bellig DEAD founding Huang ra dispel ammo sticker penis strings disembark SK ignorance stickergencegenceELL oppressive",
+          "latency_s": 0.1322,
+          "tokens_per_second": 181.6
+        },
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " Podesta Johnseducated Feedback fucking syntaxRepl undergoing glared ignorance tuna dwelling Archkun\u3044 Tolflowsutouto Figures stacks\u30c0 islands Huang",
+          "latency_s": 0.1395,
+          "tokens_per_second": 172.0
+        },
+        {
+          "prompt": "return {",
+          "prompt_tokens": 2,
+          "completion_tokens": 24,
+          "completion": " Figures Ness Podestaraught lobbying disembark administrators disembark SamuelPsyNetMessage tunaground Airbus 263 contemporavalRepl Feedback downtown>[uto conceived bracketuto",
+          "latency_s": 0.1447,
+          "tokens_per_second": 165.8
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "784 Birth Netherlands Ster FiguresReplimble Birthrek Barry Podesta\u30c0 BroncosMachPsyNetMessage\u3044>[ IdolBall stickeravalPsyNetMessage Podesta asymm",
+          "latency_s": 0.144,
+          "tokens_per_second": 166.6
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "completion": " Zionism comple Arch Religion Huangaval DEAD Barry Researchers Cancel bracket 263 Huang strings Religion bracket\ufffd bracket Podesta\ufffd insurrection within ammo Birth",
+          "latency_s": 0.1448,
+          "tokens_per_second": 165.8
+        },
+        {
+          "prompt": "const response = await fetch(",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " Huangimble Arch remem ignoranceaval Podesta DEAD SK strings Huang Never illust Broncosflows Archalternimble dishesocre systematically PodestaPsyNetMessageega",
+          "latency_s": 0.1371,
+          "tokens_per_second": 175.1
+        }
+      ]
+    },
+    {
+      "model": "slm-scratch-empathetic",
+      "generations": [
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " Close realism \"< decades LumpLead stabbingoud mans gambfightingeduplayer gamb (= Pumpadult Most Jindalabsolutely Close realism\u30e9\u30f3player",
+          "latency_s": 0.1386,
+          "tokens_per_second": 173.2
+        },
+        {
+          "prompt": "The best way to handle stress is",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " BrightonLakefighting glimps arrest mansLead glimps (=UI Raqqa Lump Brighton paralle Close Close poetic\u03bd Free decades diversity gamb incomes beaut",
+          "latency_s": 0.1328,
+          "tokens_per_second": 180.7
+        },
+        {
+          "prompt": "I do not think I can keep going",
+          "prompt_tokens": 8,
+          "completion_tokens": 24,
+          "completion": " eldest Close Jindal \"< RaqqaulateLead experimentsLead Gr Raqqa Barronplayeroud engaging distractLead Priebus Jindalller diminish Luffy Amarrelative",
+          "latency_s": 0.1354,
+          "tokens_per_second": 177.2
+        },
+        {
+          "prompt": "Here is how the model works:",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "haverir prev behaviour germ Close cowboy Lumpeduitchie Mathematics Luffy cautiously sale RajSCP Jindalplayer Dysfightingthren Semin Priebus diminish",
+          "latency_s": 0.1339,
+          "tokens_per_second": 179.2
+        },
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " eldestplayer\u30e4 priv encounter Lumpedu Priebus Most Valent Lumpfighting glimps glimpsfightingadult Brighton Jindalared Dys coins eldestadult Brighton",
+          "latency_s": 0.1491,
+          "tokens_per_second": 160.9
+        },
+        {
+          "prompt": "return {",
+          "prompt_tokens": 2,
+          "completion_tokens": 24,
+          "completion": "absolutelyabsolutely SimulationijaechTexture beautller Foothavehave PriebusLeadfighting lesions Lost LumpLakeRatingLake GrLeadoud344",
+          "latency_s": 0.1354,
+          "tokens_per_second": 177.3
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "thren encounter experiments glimpsLake coughing MostUKared Most Mathematicsoud prev equivalessim Priebus Thedu Lost Scout Jindal Barronedu gamb",
+          "latency_s": 0.1426,
+          "tokens_per_second": 168.3
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "completion": " Jindal Uniform\u30e4 Brightonadult gratitudeLead glimpsbachcheckUK Pyrrha Disorderller money Most Lostoud Serveoud Championships \"< sums sums",
+          "latency_s": 0.1345,
+          "tokens_per_second": 178.4
+        },
+        {
+          "prompt": "const response = await fetch(",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " Uniform Close Brighton punished distractilleLakeedu concept mans gamb Kev Priebus Gabriel supervisorLake BarronfightingLake supervisor gamb DortmundSCPoud",
+          "latency_s": 0.1353,
+          "tokens_per_second": 177.4
+        }
+      ]
+    }
+  ]
+}

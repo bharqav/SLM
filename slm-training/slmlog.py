@@ -1,5 +1,9 @@
 """Shared logging: timestamped lines to stdout and to train.log."""
-import sys, os, time, threading
+
+import os
+import sys
+import threading
+import time
 
 # Windows consoles default to cp1252, which cannot encode most of what a
 # language model generates. Every script in the pipeline imports this module,

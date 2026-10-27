@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-10-24T15:56:17.753543+00:00",
+  "config": {
+    "max_new_tokens": 24,
+    "temperature": 0.7,
+    "top_k": 20,
+    "prompts": [
+      "I have been feeling really down lately",
+      "The best way to handle stress is",
+      "I do not think I can keep going",
+      "Here is how the model works:",
+      "def preprocess(text):",
+      "return {",
+      "async function fetchUserData(",
+      "class ChatMessage:",
+      "const response = await fetch("
+    ]
+  },
+  "slm_code": {
+    "loaded": false,
+    "error": "tiktoken unavailable: No module named 'tiktoken'",
+    "load_latency_ms": 1885.7
+  },
+  "slm_empathetic": {
+    "loaded": false,
+    "error": "tiktoken unavailable: No module named 'tiktoken'",
+    "load_latency_ms": 0.3
+  },
+  "qwen": {
+    "loaded": false,
+    "error": "qwen load failed: Error while deserializing header: header too large",
+    "load_latency_ms": 10098.3
+  },
+  "samples": []
+}

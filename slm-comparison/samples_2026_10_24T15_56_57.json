@@ -1,0 +1,222 @@
+{
+  "generated_at": "2026-10-24T15:56:57.515382+00:00",
+  "config": {
+    "max_new_tokens": 24,
+    "temperature": 0.7,
+    "top_k": 20,
+    "prompts": [
+      "I have been feeling really down lately",
+      "The best way to handle stress is",
+      "I do not think I can keep going",
+      "Here is how the model works:",
+      "def preprocess(text):",
+      "return {",
+      "async function fetchUserData(",
+      "class ChatMessage:",
+      "const response = await fetch("
+    ]
+  },
+  "slm_code": {
+    "loaded": true,
+    "device": "cuda",
+    "load_latency_ms": 3560.5,
+    "tokenizer": "tiktoken gpt2",
+    "peak_memory_bytes": 646488064,
+    "peak_memory_mb": 646.49,
+    "model_config": {
+      "vocab_size": 50257,
+      "d_model": 1024,
+      "n_heads": 4,
+      "n_layers": 8,
+      "ctx_len": 1024,
+      "mlp_ratio": 4.0,
+      "dropout": 0.0,
+      "use_pos_embed": true,
+      "note": "constructed from model.py constructor shapes; no GPTConfig class exists in model.py"
+    },
+    "step": -1,
+    "best_val_loss": null
+  },
+  "slm_empathetic": {
+    "loaded": true,
+    "device": "cuda",
+    "load_latency_ms": 1797.1,
+    "tokenizer": "tiktoken gpt2",
+    "peak_memory_bytes": 1292976128,
+    "peak_memory_mb": 1292.98,
+    "model_config": {
+      "vocab_size": 50257,
+      "d_model": 1024,
+      "n_heads": 4,
+      "n_layers": 8,
+      "ctx_len": 1024,
+      "mlp_ratio": 4.0,
+      "dropout": 0.0,
+      "use_pos_embed": true,
+      "note": "constructed from model.py constructor shapes; no GPTConfig class exists in model.py"
+    },
+    "step": -1,
+    "best_val_loss": null
+  },
+  "qwen": {
+    "loaded": false,
+    "error": "transformers import failed: No module named 'transformers'",
+    "load_latency_ms": 1.2
+  },
+  "samples": [
+    {
+      "model": "slm-scratch-code",
+      "generations": [
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " possess cord protagonists Chains biggest Winnipeg thicker Checking217 Chains biggestottonypeslicted Hobby Checking grat reefs closely grat maximizing DELstownree",
+          "latency_s": 0.4281,
+          "tokens_per_second": 56.1
+        },
+        {
+          "prompt": "The best way to handle stress is",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " delivering Torah possess strat possessmania poorlyiftnergy maximizingowship Torah Winnipeg afarippyarranted Towards fro hobby value flashback blot Armageddonippy",
+          "latency_s": 0.1608,
+          "tokens_per_second": 149.3
+        },
+        {
+          "prompt": "I do not think I can keep going",
+          "prompt_tokens": 8,
+          "completion_tokens": 24,
+          "completion": " possess escalated biggest setup possessificate Winnipegminsiol rouagine apost Chains Filrememberaginearranted Chainsmania poorly\u001c 41 Chromebook 41",
+          "latency_s": 0.1787,
+          "tokens_per_second": 134.3
+        },
+        {
+          "prompt": "Here is how the model works:",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " Chainsagersagine afar Rite hobby maximizing Towards gratmaniaippy mathematics tooltip Winnipeg GB maximizing unloaded disarmagersrien Chainsmania Chainsidae",
+          "latency_s": 0.1896,
+          "tokens_per_second": 126.6
+        },
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " Chains Yel biggest cooler217oths Sad apost Towards list froMagazineippyypesowship buffsidae Hobby biggest Partnership unloaded maximizing unloaded maximizing",
+          "latency_s": 0.1792,
+          "tokens_per_second": 133.9
+        },
+        {
+          "prompt": "return {",
+          "prompt_tokens": 2,
+          "completion_tokens": 24,
+          "completion": " Bour197 transient Chains217 hectremember gratmania Armageddon deliveringcomplete maximizingippy incurred average disarm possess Memorial GB hobby Towards Chains reefs",
+          "latency_s": 0.198,
+          "tokens_per_second": 121.2
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " cordagersagine denominefficient denomin gratrememberidae Fil grit maximizingippy059ieg Ritegovernmentippy afar unloadedidae maximizing hobby Towards",
+          "latency_s": 0.195,
+          "tokens_per_second": 123.1
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "completion": "stown deliveringuce cord Malagine afarippy humanippy Towards Torah gratapped biggestagine Partnership Cryarranted maximizing Riteremember Sad Sony",
+          "latency_s": 0.1644,
+          "tokens_per_second": 146.0
+        },
+        {
+          "prompt": "const response = await fetch(",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": "agineagers reefs Rite denominefficient biggestHum adherence maximizingidaeub Memorialagers average denominihu biggestBritishuceagine denominippy217",
+          "latency_s": 0.1682,
+          "tokens_per_second": 142.7
+        }
+      ]
+    },
+    {
+      "model": "slm-scratch-empathetic",
+      "generations": [
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " Recipesriers 347 subjected ND orphanituresaimon anonymouslyographers snapped shortfallMiriamXM 18 Oakland Mom315156di orphanOSS cake",
+          "latency_s": 0.1611,
+          "tokens_per_second": 149.0
+        },
+        {
+          "prompt": "The best way to handle stress is",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " feeds Inspector faux downhill kissedatcher faux exceptional FreshthiaOSS orphan Mergeographers Recipes Oakland passer resolvesElse cake Oakland Oakland unparalleled resolves",
+          "latency_s": 0.1559,
+          "tokens_per_second": 154.0
+        },
+        {
+          "prompt": "I do not think I can keep going",
+          "prompt_tokens": 8,
+          "completion_tokens": 24,
+          "completion": " delays315ographersfingPremiumarticle exceptional Lang Offensivetrust POLIT Alone delaysOP Fresh Rudd feedsiam Oakland Conversfeature smallestconsiderShin",
+          "latency_s": 0.167,
+          "tokens_per_second": 143.7
+        },
+        {
+          "prompt": "Here is how the model works:",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " Koh Institutesico315icoiam orphanriersOSSentity abnorm believesarth orphanfing fountain Frenchman Inspector 58 dazz315Premium explains Billy",
+          "latency_s": 0.1644,
+          "tokens_per_second": 146.0
+        },
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " benign orphanOSS315PremiumHeader passer orphan exceptionalfingdiOSS Convers 58 ammo Oakland subjectedClintonicoCon Drill Convers faux Aboriginal",
+          "latency_s": 0.1527,
+          "tokens_per_second": 157.2
+        },
+        {
+          "prompt": "return {",
+          "prompt_tokens": 2,
+          "completion_tokens": 24,
+          "completion": " Hel subjected Convers Inspector delivers Frenchmanputers aimsfing Thurs 58sac detractors aimsarticle rulings empoweredico faux HFSteamHeader Madison Convers",
+          "latency_s": 0.1332,
+          "tokens_per_second": 180.2
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "Header Institutes aims faux Oakland315OSSfingfingsac believes benign fauxarticle 58Premium empowered Bust freshmen315315di ionOSS",
+          "latency_s": 0.1537,
+          "tokens_per_second": 156.1
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "completion": " Oaklanddiarthcise Oakland 58rierstrust Rudd271 passer faux faux contributionsarth OaklandElse exceptional fountainsac resolves Oakland Convers beginners",
+          "latency_s": 0.1507,
+          "tokens_per_second": 159.2
+        },
+        {
+          "prompt": "const response = await fetch(",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": "\ufffd315 58 plainlyExport fauxophys privacy 58 Cultural ConversOSSiam aims Oakland OaklandSteamHeader benign ledge Culturalconsider 347 aims",
+          "latency_s": 0.1564,
+          "tokens_per_second": 153.4
+        }
+      ]
+    }
+  ]
+}

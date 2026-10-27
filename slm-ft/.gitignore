@@ -1,0 +1,51 @@
+# large model artifacts
+*.safetensors
+merged_fp16/model.safetensors
+adapter/adapter_model.safetensors
+adapter_stage2/adapter_model.safetensors
+
+# merged deployment folder is the real output but is large; keep the config out, keep the weights out of git
+merged_fp16/model.safetensors
+merged_fp16/*.safetensors
+
+# training state / logs
+*.log
+train_log.json
+guard.log
+*.out.log
+
+# raw and derived data
+data/*.csv
+data/*.jsonl
+data/*.json
+data/ed_docraw/
+data/sft_train.jsonl
+data/sft_val.jsonl
+data/corpus_stats.json
+
+# local env
+.venv/
+venv/
+.env
+.env.*
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# tooling cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/

@@ -11,12 +11,14 @@ Usage
     python train.py --resume             # force resume from latest checkpoint
     python train.py --benchmark 20       # measure throughput, then exit
 """
+
 import argparse
 import glob
 import json
 import math
 import os
 import signal
+import subprocess
 import sys
 import time
 
@@ -24,8 +26,8 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from slmlog import log, warn, error, critical, phase, human, fmt_dur
 from model import GPT, GPTConfig
+from slmlog import critical, error, fmt_dur, human, log, phase, warn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TRAIN_BIN = os.path.join(HERE, "train.bin")
@@ -39,6 +41,27 @@ CKPT_GLOB = os.path.join(HERE, "checkpoint_step_*.pt")
 KEEP_CHECKPOINTS = 3
 
 _INTERRUPTED = {"flag": False}
+
+
+def _record_experiment(name: str, config: str, metrics: list[str]) -> None:
+    """Best-effort append to experiments.jsonl via the experiment tracker."""
+    script = os.path.join(HERE, "..", "scripts", "experiment_tracker.py")
+    cmd = [
+        sys.executable,
+        script,
+        "--name",
+        name,
+        "--config",
+        config,
+        "--output",
+        os.path.join(HERE, "experiments.jsonl"),
+    ]
+    for m in metrics:
+        cmd.extend(["--metric", m])
+    try:
+        subprocess.run(cmd, cwd=HERE, capture_output=True, check=True)
+    except Exception:
+        pass
 
 
 def _handle_sigint(signum, frame):
@@ -73,17 +96,27 @@ def build_args():
     # throughput and bounds worst-case loss to a few hours.
     ap.add_argument("--checkpoint-interval", type=int, default=200)
     ap.add_argument("--log-interval", type=int, default=100)
-    ap.add_argument("--patience-steps", type=int, default=5000,
-                    help="stop if val loss has not improved for this many steps")
+    ap.add_argument(
+        "--patience-steps",
+        type=int,
+        default=5000,
+        help="stop if val loss has not improved for this many steps",
+    )
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--threads", type=int, default=0, help="0 = physical cores")
     ap.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
-    ap.add_argument("--dtype", default="auto",
-                    choices=["auto", "float32", "bfloat16", "float16"],
-                    help="auto = bfloat16 on CUDA if supported, else float32")
-    ap.add_argument("--compile", action="store_true",
-                    help="wrap the model in torch.compile (CUDA/Linux; needs a "
-                         "C++ compiler, unavailable on stock Windows)")
+    ap.add_argument(
+        "--dtype",
+        default="auto",
+        choices=["auto", "float32", "bfloat16", "float16"],
+        help="auto = bfloat16 on CUDA if supported, else float32",
+    )
+    ap.add_argument(
+        "--compile",
+        action="store_true",
+        help="wrap the model in torch.compile (CUDA/Linux; needs a "
+        "C++ compiler, unavailable on stock Windows)",
+    )
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--benchmark", type=int, default=0)
     return ap.parse_args()
@@ -100,20 +133,25 @@ class Data:
         self.batch_size = batch_size
         self.device = device
         self.cuda = str(device).startswith("cuda")
-        log("Data: train {} tokens | val {} tokens".format(
-            human(len(self.train)), human(len(self.val))))
+        log(
+            f"Data: train {human(len(self.train))} tokens | val {human(len(self.val))} tokens"
+        )
 
     def get_batch(self, split, rng):
         arr = self.train if split == "train" else self.val
         hi = len(arr) - self.block_size - 1
         ix = rng.integers(0, hi, size=self.batch_size)
-        x = np.stack([arr[i:i + self.block_size] for i in ix]).astype(np.int64)
-        y = np.stack([arr[i + 1:i + 1 + self.block_size] for i in ix]).astype(np.int64)
+        x = np.stack([arr[i : i + self.block_size] for i in ix]).astype(np.int64)
+        y = np.stack([arr[i + 1 : i + 1 + self.block_size] for i in ix]).astype(
+            np.int64
+        )
         x, y = torch.from_numpy(x), torch.from_numpy(y)
         if self.cuda:
             # Staging through pinned memory lets the copy overlap compute.
-            return (x.pin_memory().to(self.device, non_blocking=True),
-                    y.pin_memory().to(self.device, non_blocking=True))
+            return (
+                x.pin_memory().to(self.device, non_blocking=True),
+                y.pin_memory().to(self.device, non_blocking=True),
+            )
         return x.to(self.device), y.to(self.device)
 
 
@@ -131,6 +169,7 @@ def lr_at(step, args):
 @torch.no_grad()
 def estimate_loss(model, data, args, rng, ctx=None):
     import contextlib
+
     ctx = ctx or contextlib.nullcontext()
     model.eval()
     out = {}
@@ -149,41 +188,50 @@ def estimate_loss(model, data, args, rng, ctx=None):
 # ------------------------------------------------------------- checkpointing
 def save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats):
     tmp = path + ".tmp"
-    torch.save({
-        "model": (model._orig_mod if hasattr(model, "_orig_mod") else model
-                  ).state_dict(),
-        "optimizer": opt.state_dict(),
-        "step": step,
-        "best_val_loss": best_val,
-        "history": history,
-        "model_config": cfg.to_dict(),
-        "train_args": vars(args),
-        "stats": stats,
-    }, tmp)
+    torch.save(
+        {
+            "model": (
+                model._orig_mod if hasattr(model, "_orig_mod") else model
+            ).state_dict(),
+            "optimizer": opt.state_dict(),
+            "step": step,
+            "best_val_loss": best_val,
+            "history": history,
+            "model_config": cfg.to_dict(),
+            "train_args": vars(args),
+            "stats": stats,
+        },
+        tmp,
+    )
     os.replace(tmp, path)
 
 
 def save_model_only(path, model, step, best_val, cfg, history):
     tmp = path + ".tmp"
-    torch.save({
-        "model": (model._orig_mod if hasattr(model, "_orig_mod") else model
-                  ).state_dict(),
-        "step": step,
-        "best_val_loss": best_val,
-        "model_config": cfg.to_dict(),
-        "history": history,
-    }, tmp)
+    torch.save(
+        {
+            "model": (
+                model._orig_mod if hasattr(model, "_orig_mod") else model
+            ).state_dict(),
+            "step": step,
+            "best_val_loss": best_val,
+            "model_config": cfg.to_dict(),
+            "history": history,
+        },
+        tmp,
+    )
     os.replace(tmp, path)
 
 
 def rotate_checkpoints(keep=KEEP_CHECKPOINTS):
-    files = sorted(glob.glob(CKPT_GLOB),
-                   key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0]))
+    files = sorted(
+        glob.glob(CKPT_GLOB), key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0])
+    )
     for old in files[:-keep]:
         try:
             os.remove(old)
         except OSError as e:
-            warn("could not delete {}: {}".format(old, e))
+            warn(f"could not delete {old}: {e}")
 
 
 def latest_checkpoint():
@@ -198,7 +246,7 @@ def load_checkpoint_safely(path):
     try:
         return torch.load(path, map_location="cpu", weights_only=False)
     except Exception as e:
-        error("Checkpoint {} is corrupt ({}).".format(os.path.basename(path), e))
+        error(f"Checkpoint {os.path.basename(path)} is corrupt ({e}).")
         return None
 
 
@@ -232,8 +280,11 @@ def main():
     else:
         dtype = args.dtype
     amp_enabled = device == "cuda" and dtype != "float32"
-    torch_dtype = {"float32": torch.float32, "bfloat16": torch.bfloat16,
-                   "float16": torch.float16}[dtype]
+    torch_dtype = {
+        "float32": torch.float32,
+        "bfloat16": torch.bfloat16,
+        "float16": torch.float16,
+    }[dtype]
     scaler = torch.amp.GradScaler("cuda", enabled=(dtype == "float16"))
 
     if device == "cuda":
@@ -242,64 +293,90 @@ def main():
         torch.backends.cudnn.allow_tf32 = True
 
     phase("Phase 3: Training Started")
-    log("Device: {} | torch {} | dtype {} | threads {}".format(
-        device, torch.__version__, dtype, torch.get_num_threads()))
+    log(
+        f"Device: {device} | torch {torch.__version__} | dtype {dtype} | threads {torch.get_num_threads()}"
+    )
     if device == "cuda":
         props = torch.cuda.get_device_properties(0)
-        log("GPU: {} ({:.1f} GB VRAM, capability {}.{})".format(
-            props.name, props.total_memory / 1e9, props.major, props.minor))
+        log(
+            f"GPU: {props.name} ({props.total_memory / 1e9:.1f} GB VRAM, capability {props.major}.{props.minor})"
+        )
 
-    cfg = GPTConfig(vocab_size=50257, block_size=args.block_size,
-                    n_layer=args.n_layer, n_head=args.n_head,
-                    n_embd=args.n_embd, dropout=args.dropout)
-    model = GPT(cfg).to(device)
+    cfg = GPTConfig(
+        vocab_size=50257,
+        block_size=args.block_size,
+        n_layer=args.n_layer,
+        n_head=args.n_head,
+        n_embd=args.n_embd,
+        dropout=args.dropout,
+    )
+    model = GPT.from_config(cfg).to(device)
 
     import contextlib
-    ctx = (torch.autocast(device_type="cuda", dtype=torch_dtype)
-           if amp_enabled else contextlib.nullcontext())
-    opt, n_decay, n_nodecay = model.configure_optimizers(
-        args.weight_decay, args.learning_rate, (args.beta1, args.beta2))
 
-    log("Model created ({} params, {} non-embedding)".format(
-        human(model.num_params()), human(model.num_params(non_embedding=True))))
+    ctx = (
+        torch.autocast(device_type="cuda", dtype=torch_dtype)
+        if amp_enabled
+        else contextlib.nullcontext()
+    )
+    opt, n_decay, n_nodecay = model.configure_optimizers(
+        args.weight_decay, args.learning_rate, (args.beta1, args.beta2)
+    )
+
+    log(
+        f"Model created ({human(model.num_params())} params, {human(model.num_params(non_embedding=True))} non-embedding)"
+    )
     for k, v in model.param_breakdown().items():
-        log("  {:<40} {:>12,}".format(k, v))
-    log("Optimizer: AdamW | decayed {:,} | undecayed {:,}".format(n_decay, n_nodecay))
+        log(f"  {k:<40} {v:>12,}")
+    log(f"Optimizer: AdamW | decayed {n_decay:,} | undecayed {n_nodecay:,}")
 
     if args.compile:
         try:
             model = torch.compile(model)
             log("torch.compile enabled")
         except Exception as e:
-            warn("torch.compile unavailable ({}); continuing eager".format(
-                str(e)[:120]))
+            warn(f"torch.compile unavailable ({str(e)[:120]}); continuing eager")
 
     tokens_per_step = args.batch_size * args.grad_accum_steps * args.block_size
-    log("Effective batch: {} seqs x {} tokens = {} tokens/step".format(
-        args.batch_size * args.grad_accum_steps, args.block_size, tokens_per_step))
+    log(
+        f"Effective batch: {args.batch_size * args.grad_accum_steps} seqs x {args.block_size} tokens = {tokens_per_step} tokens/step"
+    )
 
     data = Data(args.block_size, args.batch_size, device)
     rng = np.random.default_rng(args.seed)
 
     start_step = 0
     best_val = float("inf")
-    history = {"step": [], "train_loss": [], "val_loss": [], "lr": [],
-               "tokens_seen": [], "wall_seconds": []}
-    stats = {"nan_events": 0, "oom_events": 0, "lr_scale": 1.0,
-             "resumed_from": None, "wall_seconds": 0.0}
+    history = {
+        "step": [],
+        "train_loss": [],
+        "val_loss": [],
+        "lr": [],
+        "tokens_seen": [],
+        "wall_seconds": [],
+    }
+    stats = {
+        "nan_events": 0,
+        "oom_events": 0,
+        "lr_scale": 1.0,
+        "resumed_from": None,
+        "wall_seconds": 0.0,
+    }
 
     ckpt_path = latest_checkpoint()
-    if ckpt_path and (args.resume or True):
+    if ckpt_path and args.resume:
         ck = load_checkpoint_safely(ckpt_path)
         if ck is None:
             # Corruption recovery: fall back to the previous checkpoint.
-            others = sorted(glob.glob(CKPT_GLOB),
-                            key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0]))
+            others = sorted(
+                glob.glob(CKPT_GLOB),
+                key=lambda p: int(p.rsplit("_", 1)[-1].split(".")[0]),
+            )
             for cand in reversed(others[:-1]):
                 ck = load_checkpoint_safely(cand)
                 if ck:
                     ckpt_path = cand
-                    warn("Recovered from previous checkpoint {}".format(cand))
+                    warn(f"Recovered from previous checkpoint {cand}")
                     break
         if ck:
             model.load_state_dict(ck["model"])
@@ -309,18 +386,35 @@ def main():
             history = ck.get("history", history)
             stats.update(ck.get("stats", {}))
             stats["resumed_from"] = os.path.basename(ckpt_path)
-            log("Resumed from {} at step {} (best val {:.4f})".format(
-                os.path.basename(ckpt_path), start_step, best_val))
+            log(
+                f"Resumed from {os.path.basename(ckpt_path)} at step {start_step} (best val {best_val:.4f})"
+            )
 
     with open(CONFIG_PATH, "w", encoding="utf-8") as fh:
-        json.dump({"model": cfg.to_dict(), "training": vars(args),
-                   "tokens_per_step": tokens_per_step,
-                   "total_training_tokens": tokens_per_step * args.max_steps},
-                  fh, indent=2)
+        json.dump(
+            {
+                "model": cfg.to_dict(),
+                "training": vars(args),
+                "tokens_per_step": tokens_per_step,
+                "total_training_tokens": tokens_per_step * args.max_steps,
+            },
+            fh,
+            indent=2,
+        )
+
+    # Record experiment start
+    _record_experiment(
+        name=f"slm-scratch-step{start_step}",
+        config=CONFIG_PATH,
+        metrics=[
+            f"step={start_step}",
+            f"best_val_loss={best_val if math.isfinite(best_val) else 'inf'}",
+        ],
+    )
 
     # ------------------------------------------------------------- benchmark
     if args.benchmark:
-        log("Benchmarking {} optimizer steps ...".format(args.benchmark))
+        log(f"Benchmarking {args.benchmark} optimizer steps ...")
         model.train()
         t0 = time.time()
         for _ in range(args.benchmark):
@@ -339,8 +433,9 @@ def main():
         dt = time.time() - t0
         per_step = dt / args.benchmark
         tps = tokens_per_step / per_step
-        log("Benchmark: {:.1f}s/step | {:.0f} tokens/s | projected {} for {} steps"
-            .format(per_step, tps, fmt_dur(per_step * args.max_steps), args.max_steps))
+        log(
+            f"Benchmark: {per_step:.1f}s/step | {tps:.0f} tokens/s | projected {fmt_dur(per_step * args.max_steps)} for {args.max_steps} steps"
+        )
         return 0
 
     # ------------------------------------------------------------ train loop
@@ -370,10 +465,13 @@ def main():
                     scaler.scale(loss / args.grad_accum_steps).backward()
             except (RuntimeError, MemoryError) as e:
                 msg = str(e).lower()
-                if "out of memory" in msg or "cannot allocate" in msg or \
-                        isinstance(e, MemoryError):
+                if (
+                    "out of memory" in msg
+                    or "cannot allocate" in msg
+                    or isinstance(e, MemoryError)
+                ):
                     stats["oom_events"] += 1
-                    critical("OOM at step {} ({}). Halving batch size.".format(step, e))
+                    critical(f"OOM at step {step} ({e}). Halving batch size.")
                     opt.zero_grad(set_to_none=True)
                     if args.batch_size > 1:
                         args.batch_size = max(1, args.batch_size // 2)
@@ -381,10 +479,12 @@ def main():
                     else:
                         args.block_size = max(64, args.block_size // 2)
                     data = Data(args.block_size, args.batch_size, device)
-                    tokens_per_step = (args.batch_size * args.grad_accum_steps
-                                       * args.block_size)
-                    warn("Retrying with batch_size={} grad_accum={} block={}".format(
-                        args.batch_size, args.grad_accum_steps, args.block_size))
+                    tokens_per_step = (
+                        args.batch_size * args.grad_accum_steps * args.block_size
+                    )
+                    warn(
+                        f"Retrying with batch_size={args.batch_size} grad_accum={args.grad_accum_steps} block={args.block_size}"
+                    )
                     continue
                 raise
 
@@ -393,7 +493,7 @@ def main():
             # NaN/Inf recovery: roll back to the best weights and cut the LR.
             if not math.isfinite(mean_loss):
                 stats["nan_events"] += 1
-                critical("Non-finite loss ({}) at step {}.".format(mean_loss, step))
+                critical(f"Non-finite loss ({mean_loss}) at step {step}.")
                 opt.zero_grad(set_to_none=True)
                 stats["lr_scale"] *= 0.1
                 restored = False
@@ -405,8 +505,11 @@ def main():
                             if "optimizer" in ck:
                                 opt.load_state_dict(ck["optimizer"])
                             step = ck.get("step", step)
-                            warn("Reloaded {} and scaled LR by 0.1 (scale now {:.2g})"
-                                 .format(os.path.basename(cand), stats["lr_scale"]))
+                            warn(
+                                "Reloaded {} and scaled LR by 0.1 (scale now {:.2g})".format(
+                                    os.path.basename(cand), stats["lr_scale"]
+                                )
+                            )
                             restored = True
                             break
                 if not restored:
@@ -431,9 +534,10 @@ def main():
                 tps = window_tokens / max(1e-6, now - last_log)
                 sec_per_step = (now - last_log) / args.log_interval
                 eta = sec_per_step * (args.max_steps - step)
-                log("Step {:05d} | Loss: {:.4f} | Throughput: {:.0f} tokens/s | "
-                    "ETA: {} | LR: {:.6f}".format(step, mean_loss, tps,
-                                                  fmt_dur(eta), lr))
+                log(
+                    f"Step {step:05d} | Loss: {mean_loss:.4f} | Throughput: {tps:.0f} tokens/s | "
+                    f"ETA: {fmt_dur(eta)} | LR: {lr:.6f}"
+                )
                 last_log, window_tokens = now, 0
 
             if step % args.eval_interval == 0:
@@ -452,33 +556,39 @@ def main():
                     best_val = losses["val"]
                     best_val_step = step
                     save_model_only(BEST_PATH, model, step, best_val, cfg, history)
-                    log("  -> Val loss: {:.4f} (new best, improved {:.4f}) | "
+                    log(
+                        "  -> Val loss: {:.4f} (new best, improved {:.4f}) | "
                         "train {:.4f} | ppl {:.1f}".format(
                             losses["val"],
                             improvement if math.isfinite(improvement) else 0.0,
-                            losses["train"], math.exp(min(20, losses["val"]))))
+                            losses["train"],
+                            math.exp(min(20, losses["val"])),
+                        )
+                    )
                 else:
-                    log("  -> Val loss: {:.4f} (no improvement, best: {:.4f} "
+                    log(
+                        "  -> Val loss: {:.4f} (no improvement, best: {:.4f} "
                         "@ step {}) | train {:.4f}".format(
-                            losses["val"], best_val, best_val_step, losses["train"]))
+                            losses["val"], best_val, best_val_step, losses["train"]
+                        )
+                    )
 
                 with open(LOSSES_PATH, "w", encoding="utf-8") as fh:
                     json.dump(history, fh, indent=2)
 
                 if step - best_val_step >= args.patience_steps:
-                    stop_reason = ("early stop: no val improvement for {} steps"
-                                   .format(step - best_val_step))
+                    stop_reason = f"early stop: no val improvement for {step - best_val_step} steps"
                     log(stop_reason)
                     break
 
             if step % args.checkpoint_interval == 0 or _INTERRUPTED["flag"]:
                 stats["wall_seconds"] = base_wall + (time.time() - run_started)
-                path = os.path.join(HERE, "checkpoint_step_{}.pt".format(step))
-                save_checkpoint(path, model, opt, step, best_val, history,
-                                cfg, args, stats)
+                path = os.path.join(HERE, f"checkpoint_step_{step}.pt")
+                save_checkpoint(
+                    path, model, opt, step, best_val, history, cfg, args, stats
+                )
                 rotate_checkpoints()
-                log("Step {:05d} | Checkpoint saved: {}".format(
-                    step, os.path.basename(path)))
+                log(f"Step {step:05d} | Checkpoint saved: {os.path.basename(path)}")
 
             if _INTERRUPTED["flag"]:
                 stop_reason = "interrupted by user"
@@ -489,7 +599,7 @@ def main():
         warn(stop_reason)
     finally:
         stats["wall_seconds"] = base_wall + (time.time() - run_started)
-        path = os.path.join(HERE, "checkpoint_step_{}.pt".format(step))
+        path = os.path.join(HERE, f"checkpoint_step_{step}.pt")
         save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats)
         rotate_checkpoints()
         save_model_only(FINAL_PATH, model, step, best_val, cfg, history)
@@ -502,13 +612,16 @@ def main():
             "stop_reason": stop_reason,
             "best_val_loss": None if best_val == float("inf") else round(best_val, 5),
             "best_val_step": best_val_step,
-            "final_train_loss": history["train_loss"][-1] if history["train_loss"] else None,
+            "final_train_loss": history["train_loss"][-1]
+            if history["train_loss"]
+            else None,
             "final_val_loss": history["val_loss"][-1] if history["val_loss"] else None,
             "tokens_seen": step * tokens_per_step,
             "wall_seconds": round(stats["wall_seconds"], 1),
             "wall_human": fmt_dur(stats["wall_seconds"]),
             "tokens_per_second": round(
-                step * tokens_per_step / max(1e-6, stats["wall_seconds"]), 1),
+                step * tokens_per_step / max(1e-6, stats["wall_seconds"]), 1
+            ),
             "nan_events": stats["nan_events"],
             "oom_events": stats["oom_events"],
             "lr_scale_final": stats["lr_scale"],
@@ -518,11 +631,26 @@ def main():
         }
         with open(STATS_PATH, "w", encoding="utf-8") as fh:
             json.dump(final_stats, fh, indent=2)
-        log("Training stopped ({}) at step {} after {}".format(
-            stop_reason, step, fmt_dur(stats["wall_seconds"])))
+
+        _record_experiment(
+            name=f"slm-scratch-final-step{step}",
+            config=CONFIG_PATH,
+            metrics=[
+                f"step={step}",
+                f"best_val_loss={best_val if math.isfinite(best_val) else 'inf'}",
+                f"final_train_loss={final_stats['final_train_loss']}",
+                f"final_val_loss={final_stats['final_val_loss']}",
+                f"wall_seconds={final_stats['wall_seconds']}",
+            ],
+        )
+
+        log(
+            "Training stopped ({}) at step {} after {}".format(
+                stop_reason, step, fmt_dur(stats["wall_seconds"])
+            )
+        )
         if best_val < float("inf"):
-            log("Best val loss {:.4f} @ step {} -> best_model.pt".format(
-                best_val, best_val_step))
+            log(f"Best val loss {best_val:.4f} @ step {best_val_step} -> best_model.pt")
     return 0
 
 

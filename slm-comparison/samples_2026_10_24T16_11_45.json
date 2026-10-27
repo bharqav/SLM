@@ -1,0 +1,222 @@
+{
+  "generated_at": "2026-10-24T16:11:45.367817+00:00",
+  "config": {
+    "max_new_tokens": 24,
+    "temperature": 0.7,
+    "top_k": 20,
+    "prompts": [
+      "I have been feeling really down lately",
+      "The best way to handle stress is",
+      "I do not think I can keep going",
+      "Here is how the model works:",
+      "def preprocess(text):",
+      "return {",
+      "async function fetchUserData(",
+      "class ChatMessage:",
+      "const response = await fetch("
+    ]
+  },
+  "slm_code": {
+    "loaded": true,
+    "device": "cuda",
+    "load_latency_ms": 3410.5,
+    "tokenizer": "tiktoken gpt2",
+    "peak_memory_bytes": 646488064,
+    "peak_memory_mb": 646.49,
+    "model_config": {
+      "vocab_size": 50257,
+      "d_model": 1024,
+      "n_heads": 4,
+      "n_layers": 8,
+      "ctx_len": 1024,
+      "mlp_ratio": 4.0,
+      "dropout": 0.0,
+      "use_pos_embed": true,
+      "note": "constructed from model.py constructor shapes; no GPTConfig class exists in model.py"
+    },
+    "step": -1,
+    "best_val_loss": null
+  },
+  "slm_empathetic": {
+    "loaded": true,
+    "device": "cuda",
+    "load_latency_ms": 1479.1,
+    "tokenizer": "tiktoken gpt2",
+    "peak_memory_bytes": 1292976128,
+    "peak_memory_mb": 1292.98,
+    "model_config": {
+      "vocab_size": 50257,
+      "d_model": 1024,
+      "n_heads": 4,
+      "n_layers": 8,
+      "ctx_len": 1024,
+      "mlp_ratio": 4.0,
+      "dropout": 0.0,
+      "use_pos_embed": true,
+      "note": "constructed from model.py constructor shapes; no GPTConfig class exists in model.py"
+    },
+    "step": -1,
+    "best_val_loss": null
+  },
+  "qwen": {
+    "loaded": false,
+    "error": "transformers import failed: No module named 'transformers'",
+    "load_latency_ms": 2.7
+  },
+  "samples": [
+    {
+      "model": "slm-scratch-code",
+      "generations": [
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " Audrey twitter Leban repealinghaarrounded 1920 Sai Lebanioio RestaurITTWebsite Tome invariFord Rifle realiseIJLast dis piercing fisherman",
+          "latency_s": 0.3961,
+          "tokens_per_second": 60.6
+        },
+        {
+          "prompt": "The best way to handle stress is",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " receiptsthening Rebecca flow concoct Restaur MorrowatheringWebsite Abrahamhettostanding understanding understanding ManilaLower applause understanding terrestrialutters invari Builder Ironically shif",
+          "latency_s": 0.1327,
+          "tokens_per_second": 180.8
+        },
+        {
+          "prompt": "I do not think I can keep going",
+          "prompt_tokens": 8,
+          "completion_tokens": 24,
+          "completion": "achedgue-.Hardware upwards Morrow Route operational noise uterutters blazeioRah Morrowgerynomachedached formulathening Rebecca steeredOption",
+          "latency_s": 0.1352,
+          "tokens_per_second": 177.6
+        },
+        {
+          "prompt": "Here is how the model works:",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " CONgueWebsiteLowerHardwareIJhtar timingaida primarily quarters Restaur MorrowWebsite letting upwards repro Sai invariahon steeredStephen policemenWebsite",
+          "latency_s": 0.1393,
+          "tokens_per_second": 172.3
+        },
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " lettingLower blaze960 Morrow operationalgue commissionersSY Restaur operationalIntroduction formulanom blaze BlackIJIJ matchupsater Sai Le248 Black",
+          "latency_s": 0.1332,
+          "tokens_per_second": 180.2
+        },
+        {
+          "prompt": "return {",
+          "prompt_tokens": 2,
+          "completion_tokens": 24,
+          "completion": " namely Restaur disWebsite Restaurthening revenge coupled timing disability trendsenv invariAx invari Morrow signal lettingSYuster Restaurhare upwards Morrow",
+          "latency_s": 0.133,
+          "tokens_per_second": 180.5
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " soyWebsiteWebsite concoct licences mortal MD invari invari saves WI blazehtar onion letting oniongue upwards onionthening invarigue Mong counters",
+          "latency_s": 0.152,
+          "tokens_per_second": 157.9
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "completion": " invari haun dis Higherenv repealingSYIJ Sai onion Junior flask flask TABLE realiseutters WI Black Rebeccagueuster onionBet Morrow",
+          "latency_s": 0.1199,
+          "tokens_per_second": 200.1
+        },
+        {
+          "prompt": "const response = await fetch(",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " namely dis recipJS operational operationalaida Occupathering transitionpecenv realise Morrow Rage recip Rebecca heaviest dis counters inefficient upwardsLower Morrow",
+          "latency_s": 0.1326,
+          "tokens_per_second": 181.0
+        }
+      ]
+    },
+    {
+      "model": "slm-scratch-empathetic",
+      "generations": [
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "nette Wins Boom488 burg459 shallowDustPG cl geared Aliens Vand Cow blew propellnettebp VandoudLago Monteascript Shark",
+          "latency_s": 0.1363,
+          "tokens_per_second": 176.1
+        },
+        {
+          "prompt": "The best way to handle stress is",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "459 shone blewLagoitativelyibradic459 demandingOADromancer459iyahOfficurrence Wins demanding slopes Friendered Obi contrast advantageous matured",
+          "latency_s": 0.1373,
+          "tokens_per_second": 174.8
+        },
+        {
+          "prompt": "I do not think I can keep going",
+          "prompt_tokens": 8,
+          "completion_tokens": 24,
+          "completion": " matured Governors exerted deprivation Wins Boom cross Aliens lingu Governors sqlOwn deprivation Movesrandtrakvreromancer matured mechanics Winsnetteoutertrak",
+          "latency_s": 0.1399,
+          "tokens_per_second": 171.6
+        },
+        {
+          "prompt": "Here is how the model works:",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": "oving459arrass Neuro sql escalation interconnected459 goofy Mengoving Aliens Securityiyah unification ;; Movesouter negotiate matured Computingoving replicate genetic",
+          "latency_s": 0.1365,
+          "tokens_per_second": 175.8
+        },
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " Rodney shoneuthoraires Security Aliens unforgettablebp shallow demandingAPSexcluding Winsbp Wins replicate sole contestants soleipeg02cha Kenn advantageous",
+          "latency_s": 0.1413,
+          "tokens_per_second": 169.9
+        },
+        {
+          "prompt": "return {",
+          "prompt_tokens": 2,
+          "completion_tokens": 24,
+          "completion": "delay Monte Sek Vand 1959bpoving Moves religiousreditationered SecurityUME Winserrors LOL Surrey navigating Computing propellAdult escalationouter Consumers",
+          "latency_s": 0.1321,
+          "tokens_per_second": 181.7
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 24,
+          "completion": " interviewDust thugDustdb sch interconnected honoringovingIndex Vandoud Cafe subur LLP Computing LOL Aliens Proxy Aus religious blew unification Ride",
+          "latency_s": 0.1397,
+          "tokens_per_second": 171.8
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "completion": "outer Wins 1959outer asks propell Meng Friend replicatenette gravity Computing concent Wins Boom Cafe Excellent unificationtown Proxy sch exerted ;; Monte",
+          "latency_s": 0.1418,
+          "tokens_per_second": 169.3
+        },
+        {
+          "prompt": "const response = await fetch(",
+          "prompt_tokens": 6,
+          "completion_tokens": 24,
+          "completion": " Rodneybp unificationadic \ufffdcha negotiate ;;ENSE Moves459 matured Acting Governors negotiate Friend replicate Aliens Security Neuroocytes Shark shoneocytes",
+          "latency_s": 0.1518,
+          "tokens_per_second": 158.1
+        }
+      ]
+    }
+  ]
+}

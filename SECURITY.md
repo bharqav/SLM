@@ -1,33 +1,55 @@
 # Security Policy
 
-## Reporting a vulnerability
+## Supported Versions
 
-This project processes sensitive conversation content by design, so reports are welcome and taken seriously.
+This project is actively maintained. Security patches are applied to the latest release on the `main` branch.
 
-**Please do not open a public GitHub issue for a security vulnerability.**
+## Reporting a Vulnerability
 
-Report privately via [GitHub Security Advisories](https://github.com/bharqav/emotional-slm/security/advisories/new) ("Report a vulnerability").
+If you discover a security vulnerability in this project, please report it responsibly:
 
-Include:
+1. **Do NOT** open a public GitHub issue for security vulnerabilities
+2. **Do NOT** post details of the vulnerability in public forums or social media
+3. **DO** email the maintainers directly at security@example.com (replace with actual contact)
 
-- affected endpoint/component (e.g. `backend/services/chat_pipeline.py`)
-- reproduction steps or a minimal proof of concept
-- expected vs. actual behavior
+Include the following information:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if any)
 
-## Response targets
+## Security Best Practices
 
-- **Recognition:** within 7 days
-- **Triage decision:** within 14 days
-- **Patch or documented mitigation:** best effort within 30 days, guided by severity
+### Model Artifacts
 
-This is a best-effort, volunteer-maintained project — targets are commitments to respond, not an SLA.
+- **Never commit** real model weights or sensitive training data to version control
+- Use `.gitignore` to exclude `.pt`, `.bin`, `.safetensors` files
+- Store large artifacts in dedicated storage (S3, GCS, HuggingFace Hub)
+- Verify checksums of downloaded artifacts before loading
 
-## Scope
+### API Server
 
-In scope: authentication/session handling, the chat safety pipeline (`backend/services/`), model gateway, admin/staff authorization, GDPR endpoints, streaming (SSE/WebSocket) paths, and container configuration.
+- Always set a strong `API_KEY` in production
+- Never expose the API server directly to the internet without authentication
+- Use HTTPS in production (reverse proxy with nginx/Caddy)
+- Rate-limit requests to prevent abuse
 
-Out of scope: brute-force endpoints that are already rate-limited at the application layer (still reported on a best-effort basis), self-XSS in a single-user session, missing rate limits on endpoints behind Cloudflare-style upstream protections in hypothetical production deployments, and the *model's conversational output quality* (that is a product concern, not a security vulnerability).
+### Dependencies
 
-## Supported versions
+- Keep dependencies up to date: `pip install -U -r requirements.txt -c constraints.txt`
+- Run security scans: `make security` or `python -m pip_audit`
+- Review dependency updates before merging
 
-Only the latest `main` branch is supported. Trained model artifacts are never committed; if you believe a model weight file was exposed via a release asset, report it and treat the artifact as untrusted.
+### Data Privacy
+
+- Training data may contain sensitive information
+- Follow data licensing terms (CC BY-NC-4.0, CC BY-NC-SA)
+- Do not use the model for processing personal data without appropriate safeguards
+
+## Known Limitations
+
+- The Qwen merged weights in `slm-ft/merged_fp16/` are placeholder stubs, not real weights
+- The empathetic model checkpoint is a placeholder JSON file
+- No real training corpus is included in this repository
+
+These limitations do not constitute security vulnerabilities but should be understood by users of the repository.

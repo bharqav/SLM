@@ -1,5 +1,4 @@
-"""
-Phase 4.2: Generate text from a trained checkpoint.
+"""Phase 4.2: Generate text from a trained checkpoint.
 
 Usage
 -----
@@ -7,8 +6,8 @@ Usage
     python inference.py --prompt "def calculate_" --tokens 60
     python inference.py --checkpoint final_model.pt --temperature 0.8
 """
+
 import argparse
-import json
 import os
 import sys
 import time
@@ -16,8 +15,8 @@ import time
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from slmlog import log, warn, error, phase
 from model import GPT, GPTConfig
+from slmlog import error, log, phase, warn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SAMPLES_PATH = os.path.join(HERE, "inference_samples.txt")
@@ -27,29 +26,54 @@ TEST_PROMPTS = [
     "# TODO:",
     "class DataProcessor:",
     "async function fetch",
-    '"""This function',
+    """This function""",
 ]
 
 
 def load_model(checkpoint, device):
     path = checkpoint if os.path.isabs(checkpoint) else os.path.join(HERE, checkpoint)
     if not os.path.exists(path):
-        raise FileNotFoundError("checkpoint not found: {}".format(path))
+        raise FileNotFoundError(f"checkpoint not found: {path}")
     ck = torch.load(path, map_location=device, weights_only=False)
-    cfg = GPTConfig(**ck["model_config"])
-    model = GPT(cfg)
-    model.load_state_dict(ck["model"])
+
+    old_cfg = ck["model_config"]
+    cfg = GPTConfig(
+        vocab_size=old_cfg["vocab_size"],
+        block_size=old_cfg.get("block_size", 1024),
+        n_layer=old_cfg.get("n_layer", 8),
+        n_head=old_cfg.get("n_head", 4),
+        n_embd=old_cfg.get("n_embd", 1024),
+        dropout=old_cfg.get("dropout", 0.0),
+    )
+
+    model = GPT.from_config(cfg)
+    # The checkpoint was saved by the same model.py, so state_dict keys match
+    # natively (transformer.wte, transformer.wpe, transformer.h.N.*, etc.).
+    # No key remapping is needed.
+    state = ck["model"]
+    model_state = model.state_dict()
+    load_state = {k: v for k, v in state.items() if k in model_state}
+    missing = set(model_state.keys()) - set(load_state.keys())
+    if missing:
+        warn(f"Missing {len(missing)} keys when loading checkpoint")
+    model.load_state_dict(load_state, strict=False)
     model.to(device).eval()
+
     step = ck.get("step", "?")
     best = ck.get("best_val_loss")
-    log("Loaded {} (step {}, best val loss {})".format(
-        os.path.basename(path), step,
-        "{:.4f}".format(best) if isinstance(best, float) else best))
+    log(
+        "Loaded {} (step {}, best val loss {})".format(
+            os.path.basename(path),
+            step,
+            f"{best:.4f}" if isinstance(best, float) else best,
+        )
+    )
     return model, cfg, ck
 
 
 def get_encoder():
     import tiktoken
+
     return tiktoken.get_encoding("gpt2")
 
 
@@ -58,7 +82,7 @@ def repetition_ratio(text):
     words = text.split()
     if len(words) < 8:
         return 0.0
-    grams = [" ".join(words[i:i + 4]) for i in range(len(words) - 3)]
+    grams = [" ".join(words[i : i + 4]) for i in range(len(words) - 3)]
     return 1.0 - len(set(grams)) / len(grams)
 
 
@@ -97,28 +121,36 @@ def main():
             x = torch.tensor(ids, dtype=torch.long, device=device)[None, ...]
             t0 = time.time()
             try:
-                out = model.generate(x, args.tokens, temperature=args.temperature,
-                                     top_k=args.top_k)
+                out = model.generate(
+                    x, args.tokens, temperature=args.temperature, top_k=args.top_k
+                )
             except Exception as e:
-                warn("generation failed for {!r}: {}".format(prompt, e))
+                warn(f"generation failed for {prompt!r}: {e}")
                 continue
             dt = time.time() - t0
             text = enc.decode(out[0].tolist())
-            completion = text[len(prompt):]
+            completion = text[len(prompt) :]
             total_tokens += args.tokens
             total_time += dt
 
             rep = repetition_ratio(completion)
-            results.append({"prompt": prompt, "completion": completion,
-                            "full": text, "repetition_ratio": round(rep, 3),
-                            "tokens_per_second": round(args.tokens / max(dt, 1e-6), 1)})
+            results.append(
+                {
+                    "prompt": prompt,
+                    "completion": completion,
+                    "full": text,
+                    "repetition_ratio": round(rep, 3),
+                    "tokens_per_second": round(args.tokens / max(dt, 1e-6), 1),
+                }
+            )
             print("\n" + "=" * 70)
-            print("PROMPT: {!r}".format(prompt))
+            print(f"PROMPT: {prompt!r}")
             print("-" * 70)
             print(text)
             print("-" * 70)
-            print("{} tokens in {:.1f}s ({:.1f} tok/s) | repeated 4-grams: {:.0%}"
-                  .format(args.tokens, dt, args.tokens / max(dt, 1e-6), rep))
+            print(
+                f"{args.tokens} tokens in {dt:.1f}s ({args.tokens / max(dt, 1e-6):.1f} tok/s) | repeated 4-grams: {rep:.0%}"
+            )
 
     if not results:
         error("No samples generated.")
@@ -127,11 +159,12 @@ def main():
     if not args.prompt:
         with open(SAMPLES_PATH, "w", encoding="utf-8") as fh:
             fh.write("Inference samples\n")
-            fh.write("checkpoint: {}\n".format(args.checkpoint))
+            fh.write(f"checkpoint: {args.checkpoint}\n")
             fh.write("step: {}\n".format(ck.get("step")))
             fh.write("best_val_loss: {}\n".format(ck.get("best_val_loss")))
-            fh.write("temperature: {} | top_k: {} | max_new_tokens: {}\n".format(
-                args.temperature, args.top_k, args.tokens))
+            fh.write(
+                f"temperature: {args.temperature} | top_k: {args.top_k} | max_new_tokens: {args.tokens}\n"
+            )
             fh.write("=" * 70 + "\n")
             for r in results:
                 fh.write("\nPROMPT: {!r}\n".format(r["prompt"]))
@@ -142,12 +175,14 @@ def main():
 
         high_rep = [r for r in results if r["repetition_ratio"] > 0.5]
         log("")
-        log("Generated {} samples -> inference_samples.txt".format(len(results)))
-        log("Mean inference speed: {:.1f} tokens/s on {}".format(
-            total_tokens / max(total_time, 1e-6), device))
+        log(f"Generated {len(results)} samples -> inference_samples.txt")
+        log(
+            f"Mean inference speed: {total_tokens / max(total_time, 1e-6):.1f} tokens/s on {device}"
+        )
         if high_rep:
-            warn("{}/{} samples show heavy repetition (>50% repeated 4-grams)"
-                 .format(len(high_rep), len(results)))
+            warn(
+                f"{len(high_rep)}/{len(results)} samples show heavy repetition (>50% repeated 4-grams)"
+            )
         else:
             log("No sample shows degenerate repetition.")
     return 0

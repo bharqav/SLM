@@ -1,0 +1,14 @@
+{
+  "generation_config": {
+    "bos_token_id": 151643,
+    "do_sample": true,
+    "eos_token_id": [151645, 151643],
+    "pad_token_id": 151643,
+    "repetition_penalty": 1.05,
+    "temperature": 0.7,
+    "top_k": 20,
+    "top_p": 0.8,
+    "transformers_version": "5.20.1"
+  },
+  "note": "reconstructed to match slm-ft/merged_fp16/config.json; replace with real file before publishing"
+}

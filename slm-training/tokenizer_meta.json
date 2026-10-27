@@ -1,6 +1,0 @@
-{
-  "tokenizer": "tiktoken",
-  "encoding": "gpt2",
-  "vocab_size": 50257,
-  "eos_id": 50256
-}

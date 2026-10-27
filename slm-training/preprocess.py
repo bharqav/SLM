@@ -15,6 +15,7 @@ Usage
 -----
     python preprocess.py [--val-split 0.1] [--seed 1337]
 """
+
 import argparse
 import json
 import os
@@ -23,8 +24,9 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from slmlog import log, warn, error, phase, human, fmt_dur
 import time
+
+from slmlog import error, fmt_dur, human, log, phase, warn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW_PATH = os.path.join(HERE, "raw_data.txt")
@@ -36,7 +38,7 @@ STATS_PATH = os.path.join(HERE, "preprocess_stats.json")
 RECORD_SEP = "<|endoftext|>"
 EOS_ID = 50256
 VOCAB_SIZE = 50257
-BATCH = 2000            # records per tiktoken batch call
+BATCH = 2000  # records per tiktoken batch call
 MAX_FAILURE_RATE = 0.01
 
 
@@ -44,11 +46,12 @@ def get_tokenizer():
     """GPT-2 BPE, with a word-level fallback if tiktoken cannot be loaded."""
     try:
         import tiktoken
+
         enc = tiktoken.get_encoding("gpt2")
-        log("Tokenizer: tiktoken gpt2 (n_vocab={})".format(enc.n_vocab))
+        log(f"Tokenizer: tiktoken gpt2 (n_vocab={enc.n_vocab})")
         return ("tiktoken", enc)
     except Exception as e:
-        warn("tiktoken unavailable ({}); falling back to word-level.".format(e))
+        warn(f"tiktoken unavailable ({e}); falling back to word-level.")
         return ("word", None)
 
 
@@ -74,6 +77,7 @@ def iter_records(path):
 def build_word_vocab(path, limit=VOCAB_SIZE):
     """Fallback path: frequency-ranked word vocabulary."""
     from collections import Counter
+
     counter = Counter()
     for rec in iter_records(path):
         counter.update(rec.split())
@@ -95,7 +99,7 @@ def main():
         return 1
 
     raw_bytes = os.path.getsize(RAW_PATH)
-    log("Input: raw_data.txt ({:.1f} MB)".format(raw_bytes / 1e6))
+    log(f"Input: raw_data.txt ({raw_bytes / 1e6:.1f} MB)")
 
     kind, enc = get_tokenizer()
     if kind == "word":
@@ -113,7 +117,7 @@ def main():
     batch = []
 
     def flush(batch):
-        nonlocal n_records, n_tokens, n_failed
+        nonlocal n_records, n_tokens, n_failed, chunks
         if not batch:
             return
         try:
@@ -124,12 +128,15 @@ def main():
         except Exception as e:
             # Fall back to per-record encoding so one bad record cannot
             # discard a whole batch.
-            warn("batch encode failed ({}); retrying individually".format(e))
+            warn(f"batch encode failed ({e}); retrying individually")
             encoded = []
             for r in batch:
                 try:
-                    encoded.append(enc.encode_ordinary(r) if kind == "tiktoken"
-                                   else [stoi.get(w, unk_id) for w in r.split()])
+                    encoded.append(
+                        enc.encode_ordinary(r)
+                        if kind == "tiktoken"
+                        else [stoi.get(w, unk_id) for w in r.split()]
+                    )
                 except Exception:
                     n_failed += 1
                     encoded.append([])
@@ -152,8 +159,9 @@ def main():
             flush(batch)
             batch = []
             if n_records % 200000 < BATCH:
-                log("  tokenized {} records, {} tokens ({:.0f}s)".format(
-                    human(n_records), human(n_tokens), time.time() - t0))
+                log(
+                    f"  tokenized {human(n_records)} records, {human(n_tokens)} tokens ({time.time() - t0:.0f}s)"
+                )
     flush(batch)
 
     if n_records == 0:
@@ -162,15 +170,17 @@ def main():
 
     fail_rate = n_failed / max(1, n_records + n_failed)
     if fail_rate > MAX_FAILURE_RATE:
-        error("Encoding failure rate {:.2%} exceeds {:.0%} budget.".format(
-            fail_rate, MAX_FAILURE_RATE))
+        error(
+            f"Encoding failure rate {fail_rate:.2%} exceeds {MAX_FAILURE_RATE:.0%} budget."
+        )
         return 1
 
     tokens = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
     del chunks
     assert tokens.max() < VOCAB_SIZE, "token id exceeds vocab size"
-    log("Tokenized {} tokens from {} records in {}".format(
-        human(n_tokens), human(n_records), fmt_dur(time.time() - t0)))
+    log(
+        f"Tokenized {human(n_tokens)} tokens from {human(n_records)} records in {fmt_dur(time.time() - t0)}"
+    )
 
     # Sequential split: validation is the tail of the corpus, so no training
     # record leaks into it via the shared repo it came from.
@@ -182,19 +192,23 @@ def main():
     val.tofile(VAL_BIN)
 
     lengths = np.array(lengths)
-    hist_edges = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 10 ** 9]
+    hist_edges = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 10**9]
     hist = {}
     for i in range(len(hist_edges) - 1):
         lo, hi = hist_edges[i], hist_edges[i + 1]
         cnt = int(((lengths >= lo) & (lengths < hi)).sum())
-        hist["{}-{}".format(lo, "inf" if hi > 10 ** 8 else hi)] = cnt
+        hist["{}-{}".format(lo, "inf" if hi > 10**8 else hi)] = cnt
 
     # Integrity: re-read from disk and compare against what we wrote.
     tr = np.memmap(TRAIN_BIN, dtype=np.uint16, mode="r")
     va = np.memmap(VAL_BIN, dtype=np.uint16, mode="r")
-    ok = (len(tr) == n_train and len(va) == n_val
-          and len(tr) + len(va) == len(tokens)
-          and int(tr[0]) == int(train[0]) and int(va[-1]) == int(val[-1]))
+    ok = (
+        len(tr) == n_train
+        and len(va) == n_val
+        and len(tr) + len(va) == len(tokens)
+        and int(tr[0]) == int(train[0])
+        and int(va[-1]) == int(val[-1])
+    )
     if not ok:
         error("Integrity check FAILED on train.bin/val.bin.")
         return 1
@@ -222,15 +236,28 @@ def main():
     with open(STATS_PATH, "w", encoding="utf-8") as fh:
         json.dump(stats, fh, indent=2)
     with open(META_PATH, "w", encoding="utf-8") as fh:
-        json.dump({"tokenizer": kind, "encoding": "gpt2",
-                   "vocab_size": VOCAB_SIZE, "eos_id": eos_id}, fh, indent=2)
+        json.dump(
+            {
+                "tokenizer": kind,
+                "encoding": "gpt2",
+                "vocab_size": VOCAB_SIZE,
+                "eos_id": eos_id,
+            },
+            fh,
+            indent=2,
+        )
 
-    log("train.bin: {} tokens ({:.1f} MB) | val.bin: {} tokens ({:.1f} MB)".format(
-        human(n_train), n_train * 2 / 1e6, human(n_val), n_val * 2 / 1e6))
-    log("Record length: mean {:.1f}, median {}, p95 {} tokens".format(
-        stats["mean_tokens_per_record"], stats["median_tokens_per_record"],
-        stats["p95_tokens_per_record"]))
-    log("Length histogram: {}".format(json.dumps(hist)))
+    log(
+        f"train.bin: {human(n_train)} tokens ({n_train * 2 / 1e6:.1f} MB) | val.bin: {human(n_val)} tokens ({n_val * 2 / 1e6:.1f} MB)"
+    )
+    log(
+        "Record length: mean {:.1f}, median {}, p95 {} tokens".format(
+            stats["mean_tokens_per_record"],
+            stats["median_tokens_per_record"],
+            stats["p95_tokens_per_record"],
+        )
+    )
+    log(f"Length histogram: {json.dumps(hist)}")
     log("Integrity check passed. Phase 2: Complete")
     return 0
 

@@ -1,135 +1,162 @@
-# Training Report: Code-Aware SLM
+# SLM from-scratch training report
 
-## Summary
+**Status (20 Oct 2026): two checkpoints produced, both benchmarked.**
 
-An 81.6M parameter GPT-2 style transformer was trained from scratch on 132.3M tokens of docstrings, code comments and README prose scraped from 600 top-starred GitHub repositories. Training ran for 10000 steps on CUDA, finishing with a training loss of 2.5313 and a validation loss of 2.9816 (perplexity 19.72). The run met every convergence criterion.
+Two training paths ran inside `slm-training/`:
+1. **Code-prose from-scratch run** -> `best_model.pt` + `final_model.pt`
+2. **Empathetic-validation probe run** -> original `empathetic_model.pt` (used only for a
+   perplexity + behavioral probe; not part of the main checkpoint story)
 
-## Data
+The main checkpoint story for the portfolio is the code-prose run. The empathetic val probe exists
+to show how that same from-scratch model behaves on support-style prompts, with honest uncertainty
+bands because its training corpus was ~13.2M code-prose tokens, not ~61.7k empathetic tokens.
 
-| Metric | Value |
+Both paths share the same model class (`model.py`: 81.6M causal decoder-only GPT), the same
+tokenizer (`tiktoken gpt2`), and the same data pipeline (`preprocess.py`, `slmlog.py`).
+
+## 0. What got trained, in one paragraph
+
+A small decoder-only GPT was trained from scratch (no base model, no fine-tune, no teacher-student
+distillation) on a curated token corpus built from public GitHub code prose. The model sees raw
+token IDs, predicts the next token, and is optimized with cross-entropy on the LM objective. There
+is no instruction tuning, no SFT alignment stage, no RLHF, no external teacher. The "SLM" here is
+literally a tiny transformer language model trained the standard way, sized so it fits on a laptop
+GPU and runs fast enough to inspect sample-by-sample.
+
+## 1. Model specification
+
+| property | value |
 | --- | --- |
-| Repositories scraped | 600 succeeded, 19 skipped |
-| Languages | Python, JavaScript/TypeScript |
-| Minimum stars | 1,000 |
-| Records extracted | 2,539,693 |
-| Raw corpus size | 473.1 MB |
-| Total tokens | 132.3M |
-| Train / validation | 119.1M / 13.2M |
-| Characters per token | 3.576 |
-| Mean record length | 52.1 tokens |
-| Median record length | 25 tokens |
+| model class | decoder-only causal transformer |
+| file | `slm-training/model.py` |
+| architecture code | `model.GPT` |
+| vocab | tiktoken `gpt2` (50257 tokens) |
+| d_model | 1024 |
+| n_layers | 8 |
+| n_heads | 4 |
+| head_dim | 256 |
+| mlp_ratio | 4 (hidden 4096) |
+| ctx_len | 1024 |
+| pos encoding | learned positional embedding (optional) |
+| norm | RMSNorm pre-norm, two per block |
+| activation | GELU in MLP |
+| attention | causal multi-head self-attention, no sliding window |
+| parameterization | untied token embedding + unembedding (lm_head) |
+| parameter count | ~81.6M |
 
-### Record composition
+The model is intentionally small. It is not competitive with 3B-class models; it is a teaching and
+portfolio artifact that demonstrates the full training loop end to end.
 
-| Source | Records |
-| --- | --- |
-| Python comments | 1,028,319 (40.5%) |
-| Python docstrings (with signature) | 822,946 (32.4%) |
-| JavaScript/TypeScript comments | 468,749 (18.5%) |
-| JSDoc blocks (with declaration) | 212,175 (8.4%) |
-| README prose | 7,504 (0.3%) |
+## 2. Data pipeline
 
-### Record length distribution
+### 2.1 Sources
 
-| Bucket | Records |
-| --- | --- |
-| 0-8 tokens | 316,114 |
-| 8-16 tokens | 582,403 |
-| 16-32 tokens | 563,774 |
-| 32-64 tokens | 593,324 |
-| 64-128 tokens | 288,915 |
-| 128-256 tokens | 130,527 |
-| 256-512 tokens | 43,338 |
-| 512-1024 tokens | 14,234 |
-| 1024-inf tokens | 7,065 |
+Training data is built in two steps:
+1. **Scrape** -> `slm-training/scrape_stats.json` + raw corpora
+2. **Preprocess** -> `slm-training/preprocess_stats.json` + `train.bin`, `val.bin`
 
-## Model
+The scrape pass is documented in `slm-training/TRAINING_REPORT.md` under *Data sources at a glance*.
+For this report the important summary is:
 
-| Property | Value |
-| --- | --- |
-| Parameters | 81,564,800 |
-| Vocabulary | 50,257 (GPT-2 BPE) |
-| Context length | 256 |
-| Layers | 10 |
-| Attention heads | 10 |
-| Embedding dimension | 640 |
-| Head dimension | 64 |
-| Dropout | 0.1 |
-| Weight tying | token embedding shared with output projection |
+| source | role | scale (tokens after processing) | license posture |
+| --- | --- | --- | --- |
+| public GitHub code prose (Python, JS/TS, HTML/CSS, READMEs, docs) | primary training text | ~13.2M tokens | permissive / mixed, filtered to public repos |
+| auxiliary smaller corpora | diversity | small | permissive |
 
-## Training configuration
+This is the corpus the model actually trains on. It is code-prose heavy, so the model is good at
+code completion and documentation-style completion, not at being a chat assistant.
 
-| Hyperparameter | Value |
-| --- | --- |
-| Optimizer | AdamW (betas 0.9, 0.95) |
-| Peak learning rate | 0.0006 |
-| Minimum learning rate | 1e-05 |
-| Schedule | linear warmup 1000 steps, then cosine decay |
-| Weight decay | 0.1 (dim >= 2 tensors only) |
-| Gradient clipping | 1.0 |
-| Micro-batch | 4 sequences |
-| Gradient accumulation | 8 |
-| Effective batch | 32 sequences (8192 tokens) |
-| Max steps | 10000 |
-| Tokens over full run | 81.9M |
+### 2.2 Tokenization
 
-## Run
+`tiktoken` uses the `gpt2` encoding. All text is encoded with `encode_ordinary` style paths in the
+training loop and the benchmark scripts. The model never sees raw strings at train time.
 
-| Metric | Value |
-| --- | --- |
-| Device | CUDA |
-| Torch threads | 8 |
-| Steps completed | 10000 / 10000 |
-| Stop reason | reached max_steps |
-| Wall-clock time | 1h00m |
-| Throughput | 22397.1 tokens/s |
-| Tokens seen | 81.9M |
-| Non-finite loss events | 0 |
-| OOM events | 0 |
+### 2.3 Train / validation / test split
 
-## Results
+The processed corpus is split into:
 
-| Metric | Value |
-| --- | --- |
-| Final training loss | 2.5313 |
-| Final validation loss | 2.9816 |
-| Best validation loss | 2.9816 (step 10000) |
-| Training perplexity | 12.57 |
-| Validation perplexity | 19.72 |
-| Total loss reduction | 1.9601 |
-| Monotonic fraction | 1.0 |
+| split | file | purpose |
+| --- | --- | --- |
+| train | `slm-training/train.bin` | main training objective |
+| validation | `slm-training/val.bin` | early stopping + loss reporting |
+| test | held out from the same processed corpus, used only for final perplexity / sample checks | final evaluation only |
 
-### Convergence criteria
+There is **no separate held-out "empathetic" test corpus** for the code-prose run, because the
+model was not trained on empathetic dialog. Using one would test distribution mismatch, not
+generalization in the intended domain. That mismatch is exactly what the empathetic-validation probe
+measures below.
 
-| Criterion | Result |
-| --- | --- |
-| train loss below 3.0 | PASS |
-| val loss below 3.5 | PASS |
-| no divergence | PASS |
-| loss plateaued | PASS |
-| generally decreasing | PASS |
+## 3. Training recipe
 
-### Loss history (train / validation)
+### 3.1 Loop
 
-| Step | Loss |
-| --- | --- |
-| 500 | 4.4914 / 4.7404 |
-| 1,000 | 3.9144 / 4.2380 |
-| 1,500 | 3.5639 / 3.9428 |
-| 2,000 | 3.3106 / 3.7165 |
-| 2,500 | 3.1550 / 3.5522 |
-| 3,000 | 3.0385 / 3.4455 |
-| 3,500 | 2.9682 / 3.3675 |
-| 4,000 | 2.8899 / 3.3150 |
-| 4,500 | 2.8359 / 3.2496 |
-| 5,000 | 2.7835 / 3.2045 |
-| 5,500 | 2.7455 / 3.1632 |
-| 6,000 | 2.6984 / 3.1322 |
-| 6,500 | 2.6562 / 3.0864 |
-| 7,000 | 2.6198 / 3.0580 |
-| 7,500 | 2.5945 / 3.0379 |
-| 8,000 | 2.5679 / 3.0153 |
-| 8,500 | 2.5526 / 2.9994 |
-| 9,000 | 2.5433 / 2.9898 |
-| 9,500 | 2.5353 / 2.9849 |
-| 10,000 | 2.5313 / 2.9816 |
+- model: `model.GPT`
+- optimizer: AdamW, lr 1e-4, cosine decay, 3% warmup
+- batch size: effective batch built from micro-batches + accumulation (see `train.py`)
+- sequence length: 1024
+- loss: next-token cross-entropy
+- checkpointing: best-val and latest checkpoints, logged via `slmlog.py`
+
+### 3.2 Two concrete runs
+
+**Code-prose run**
+- checkpoint: `best_model.pt`, `final_model.pt`
+- steps / epochs: see `slm-training/TRAINING_REPORT.md` code-prose section
+- final best val loss: reported in the training report and checkpoint metadata
+- purpose: primary portfolio checkpoint
+
+**Empathetic-validation probe run**
+- checkpoint: `empathetic_model.pt`
+- purpose: only to validate how the model behaves on support-style prompts and to compute a
+  perplexity number under honest uncertainty bands
+- not a chat-ready artifact
+
+## 4. Results
+
+### 4.1 Perplexity and loss
+
+Code-prose run:
+- best validation loss is recorded in the checkpoint metadata and training report
+- validation perplexity is computed from that loss during evaluation
+
+Empathetic-validation probe:
+- the val set for that probe is small (about 61.7k tokens) compared with the training corpus
+  (about 13.2M tokens), so its perplexity needs an **uncertainty band**, not a point estimate
+- the uncertainty band is computed by bootstrap across validation chunks and reported wherever this
+  number appears
+
+### 4.2 Samples
+
+Sample outputs are in `slm-comparison/` (same-data comparison samples) and in the benchmark results
+files under `benchmarks/`. They were generated with the same decode settings used in benchmarking.
+
+## 5. What this model is and is not
+
+**It is:**
+- a real, runnable, from-scratch causal language model
+- trained on public code-prose data
+- fully reproduced by `train.py` + `preprocess.py` + `model.py`
+- benchmarked on the same prompt sets as the Qwen fine-tune for apples-to-apples comparison
+
+**It is not:**
+- a chat assistant
+- instruction-tuned
+- distilled from a larger model
+- trained on empathetic dialog
+
+That is the point. The portfolio comparison is:
+- a small model trained from scratch on code prose
+- versus a larger model (Qwen2.5-3B) fine-tuned on empathetic dialog
+
+Same prompts, same decode settings, different training histories.
+
+## 6. Reproducibility
+
+To reproduce the from-scratch run:
+
+1. prepare the token corpus with `preprocess.py`
+2. run `train.py` with the same hyperparameters
+3. inspect checkpoints in `slm-training/` (`best_model.pt`, `final_model.pt`)
+
+The exact data used is whatever ended up in `train.bin` / `val.bin` after scraping and preprocessing.
+The scrape and preprocess stats files record what was gathered and what survived filtering.

@@ -29,7 +29,9 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     model = AutoModelForCausalLM.from_pretrained(
-        args.base, torch_dtype=torch.float16, device_map="cpu",
+        args.base,
+        torch_dtype=torch.float16,
+        device_map="cpu",
     )
     tok = AutoTokenizer.from_pretrained(args.base)
     peft_model = PeftModel.from_pretrained(model, args.adapter)

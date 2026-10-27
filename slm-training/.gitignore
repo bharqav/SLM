@@ -1,18 +1,53 @@
-# Model artifacts (published as GitHub release assets, not in git)
+# large binaries and model artifacts
 *.pt
-*.pt.tmp
-
-# Datasets and intermediates
-raw_data.txt
 *.bin
-scrape_state.json
-scrape_state.json.tmp
+*.safetensors
 
-# Logs
-*.log
+# raw and processed data
+raw_data.txt
+train.bin
+val.bin
+*.csv
+*.jsonl
+*.json
+scrape_stats.json
+preprocess_stats.json
+TRAINING_REPORT.md
 
-# Python
-__pycache__/
-*.py[cod]
+# local env
 .venv/
 venv/
+.env
+.env.*
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# tooling cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+pre-commit-cache/
+
+# logs
+*.log
+logs/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# this repo's temp file should never be tracked
+*.TEMP.txt
+
+# keep real artifacts out of the committed repo; repo is stripped to scripts + docs only

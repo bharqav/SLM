@@ -1,17 +1,47 @@
 # Changelog
 
-All notable changes to this project are documented here.
-Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
+All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.1.0] - 2026-10-24
+## [Unreleased]
 
 ### Added
+- Comprehensive test suite with 15 passing pytest tests
+- `verify_setup.py` - Automated artifact verification
+- `evaluate_test_split.py` - Held-out test split perplexity evaluation
+- `slm_api.py` - FastAPI inference server with Bearer auth
+- `run_all.py` - Single entry-point for full pipeline
+- `Makefile` - Build/test/bench/verify shortcuts
+- `pyproject.toml` - Project metadata and tool configuration
+- `requirements.txt` and `constraints.txt` - Dependency management
+- `.pre-commit-config.yaml` - Pre-commit hooks for linting/formatting
+- `.env.example` - Environment variable template
+- `.gitignore` - Git ignore rules
+- Dockerfile and docker-compose.yml for containerized deployment
+- `notebooks/token_analysis.ipynb` - Token distribution EDA
+- `MODEL_CARD.md` - HuggingFace Hub-ready model card
+- Expanded prompt set from 9 to 20 prompts (10 empathetic + 10 code/technical)
+- Seeded generation (`--seed 1337`) for reproducible outputs
+- CI pipeline with ruff, pytest+coverage, verification, pip-audit, and artifact upload
+- GitHub issue and PR templates
+- CONTRIBUTING.md and SECURITY.md
 
-- FastAPI backend: JWT auth with single-use refresh-token rotation and replay detection, signup consent gating (`accept_terms`, `confirm_age_18`), admin/staff role bootstrap, GDPR export/delete, Prometheus `/metrics`, structured JSON logging with request IDs.
-- Safety-first chat pipeline (`backend/services/chat_pipeline.py`): crisis triage levels (L0–L4) with fixed human-authored replies for crisis-critical turns, prompt-injection and PII heuristics, optional external safety classifiers that fail closed, output-safety gate that replaces violating completions, `transparency` annotations on every turn.
-- Model gateway (`backend/services/model_gateway/`): tiered fallback chain — canary/fast/quality traffic shaping → primary → fallback → opt-in locally served fine-tune → opt-in in-process local artifact → canned stub — with per-tier latency metrics, bounded timeouts/attempts, and a circuit breaker.
-- Training track `slm-ft/`: QLoRA fine-tune of Qwen2.5-3B-Instruct on EmpatheticDialogues + ESConv (stage-1 val loss 2.39), stage-2 behavioral-policy steering with a 5-probe behavioral gate, merge to fp16, local model server, and an unattended training/resume guard.
-- Training track `slm-training/`: from-scratch 81.6M-param GPT trained on code prose (val ppl 19.7) and on empathetic dialogues (val ppl 7.0).
-- Next.js frontend: login and chat UI with React Query + Zustand state layer.
-- Governance, incident-response, AI architecture, deployment, and training runbook docs.
-- CI: pytest matrix (3.11/3.12), pip-audit, bandit, frontend lint/build, npm audit, and a documentation link check. Dependabot proposes non-breaking pip, npm and Actions updates; secret scanning and push protection are enabled.
+### Changed
+- Updated benchmark numbers to reflect 20-prompt evaluation
+- Restored original GPT-2 architecture from git history (10L/10H/640D)
+- Fixed `tests/__init__.py` (was broken literal text)
+- Reorganized README into 18 sections with consistent numbering
+- Updated comparison pipeline documentation with honest placeholder disclosures
+
+### Fixed
+- Model loading failure due to architecture mismatch (restored `model.py` from git)
+- Broken reference in `benchmarks/benchmark_report.md`
+
+## [1.0.0] - 2026-10-20
+
+### Added
+- Initial release of SLM vs Qwen comparison
+- From-scratch GPT training pipeline (81.6M params)
+- Qwen2.5-0.5B QLoRA fine-tune with stage-2 steering
+- Live same-prompt comparison generator
+- Forward-pass and generation benchmarks
+- Comprehensive README with architecture diagrams

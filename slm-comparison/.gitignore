@@ -1,0 +1,21 @@
+# generated comparison artifacts are outputs, not source
+comparison_samples.json
+samples/
+*.log
+
+# local env
+.venv/
+venv/
+.env
+.env.*
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

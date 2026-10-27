@@ -1,29 +1,57 @@
-## Summary
+name: Pull Request
+about: Submit a pull request
+title: '[PR] '
+labels: ''
+assignees: ''
 
-<!-- What changed and why. Link the issue if there is one: Fixes #123 -->
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for submitting a pull request! Please fill out the checklist below.
 
-## Type of change
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have read the [Contributing Guidelines](CONTRIBUTING.md)
+          required: true
+        - label: I have run `make test` and all tests pass
+          required: true
+        - label: I have run `make lint` and there are no linting errors
+          required: true
+        - label: I have run `make typecheck` and there are no type errors
+          required: false
+        - label: I have updated the documentation if needed
+          required: true
+        - label: I have added tests for any new functionality
+          required: true
+        - label: I have updated the CHANGELOG.md
+          required: false
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor / refactor-adjacent cleanup
-- [ ] Documentation
-- [ ] Tests only
-- [ ] CI / tooling
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what this PR does.
+    validations:
+      required: true
 
-## Safety impact
+  - type: textarea
+    id: related-issues
+    attributes:
+      label: Related Issues
+      description: List any related issues (e.g., 'Closes #123', 'Fixes #456').
 
-Changes under `backend/services/` (safety pipeline, crisis policy, model
-gateway) affect user-facing safety behavior.
+  - type: textarea
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes
+      description: Does this PR introduce any breaking changes? If yes, please describe them and the migration path.
 
-- [ ] This PR does **not** change safety-relevant behavior
-- [ ] This PR **does** change safety-relevant behavior, and I added or updated
-      tests covering it
-
-## Checklist
-
-- [ ] `pytest -q` passes locally
-- [ ] `cd frontend && npm run lint && npm run build` passes (if frontend changed)
-- [ ] New/changed behavior is covered by tests
-- [ ] Docs updated (`README.md` or `docs/`) if API or operations changed
-- [ ] No secrets, credentials, `.env` files, model weights, or local paths added
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: Additional Notes
+      description: Add any additional notes, screenshots, or context for the reviewers.

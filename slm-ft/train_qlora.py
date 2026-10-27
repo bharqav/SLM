@@ -17,24 +17,22 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
 import time
 from pathlib import Path
 
 import torch
+from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
+from prepare_data import trim_user_tail
 from torch.utils.data import DataLoader, Dataset
-
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
 )
-from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
-
-from prepare_data import trim_user_tail
 
 BASE = "Qwen/Qwen2.5-3B-Instruct"
 FULL_SEQ_LEN = 1024
+
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
@@ -48,10 +46,16 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--accum", type=int, default=16)
     ap.add_argument("--max-len", type=int, default=FULL_SEQ_LEN)
     ap.add_argument("--limit", type=int, default=0, help="cap #dialogs (smoke test)")
-    ap.add_argument("--init-adapter", default=None,
-                    help="continue training from this adapter dir (stage-2)")
-    ap.add_argument("--resume-from", default=None,
-                    help="resume an interrupted run (loads adapter + step state)")
+    ap.add_argument(
+        "--init-adapter",
+        default=None,
+        help="continue training from this adapter dir (stage-2)",
+    )
+    ap.add_argument(
+        "--resume-from",
+        default=None,
+        help="resume an interrupted run (loads adapter + step state)",
+    )
     args = ap.parse_args()
     return args
 
@@ -84,7 +88,11 @@ class SFTDataset(Dataset):
                     continue
                 msgs = json.loads(line)["messages"]
                 msgs = trim_user_tail(list(msgs))
-                if not msgs or msgs[-1]["role"] != "assistant" or sum(1 for m in msgs if m["role"] == "user") < 1:
+                if (
+                    not msgs
+                    or msgs[-1]["role"] != "assistant"
+                    or sum(1 for m in msgs if m["role"] == "user") < 1
+                ):
                     continue
                 self.rows.append(build_example(tok, msgs, max_len))
         if limit:
@@ -155,7 +163,15 @@ def main() -> None:
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
     steps_done = 0
     if args.resume_from:
@@ -163,7 +179,9 @@ def main() -> None:
         base_dir = Path(args.resume_from)
         state_file = base_dir / "last_ckpt" / "train_state.json"
         if not state_file.exists():
-            state_file = base_dir / "train_state.json"  # resume-from may point at last_ckpt itself
+            state_file = (
+                base_dir / "train_state.json"
+            )  # resume-from may point at last_ckpt itself
         if state_file.exists():
             steps_done = json.loads(state_file.read_text())["steps_done"]
         print(f"resuming from {args.resume_from} at step {steps_done}")
@@ -176,16 +194,25 @@ def main() -> None:
 
     train_ds = SFTDataset(args.data, tok, args.max_len, limit=args.limit)
     val_ds = SFTDataset(args.val, tok, args.max_len)
-    log = {"config": vars(args), "train_n": len(train_ds), "val_n": len(val_ds), "steps": []}
+    log = {
+        "config": vars(args),
+        "train_n": len(train_ds),
+        "val_n": len(val_ds),
+        "steps": [],
+    }
     print(f"train dialogs: {len(train_ds)} | val: {len(val_ds)}")
 
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch, shuffle=True,
+        train_ds,
+        batch_size=args.batch,
+        shuffle=True,
         collate_fn=lambda b: collate(b, tok.pad_token_id or tok.eos_token_id),
         drop_last=True,
     )
     val_loader = DataLoader(
-        val_ds, batch_size=args.batch, shuffle=False,
+        val_ds,
+        batch_size=args.batch,
+        shuffle=False,
         collate_fn=lambda b: collate(b, tok.pad_token_id or tok.eos_token_id),
         drop_last=False,
     )
@@ -193,7 +220,11 @@ def main() -> None:
     total_steps = int(len(train_loader) * args.epochs) // args.accum
     warmup = max(1, int(0.03 * total_steps))
     final_target = total_steps + steps_done
-    opt = torch.optim.AdamW((p for p in model.parameters() if p.requires_grad), lr=args.lr, weight_decay=0.01)
+    opt = torch.optim.AdamW(
+        (p for p in model.parameters() if p.requires_grad),
+        lr=args.lr,
+        weight_decay=0.01,
+    )
 
     def lr_at(step: int) -> float:
         gstep = step + steps_done
@@ -225,26 +256,36 @@ def main() -> None:
             old_lrs = [g["lr"] for g in opt.param_groups]
             for g in opt.param_groups:
                 g["lr"] = lr_now
-            outm = model(input_ids=ids.to(device), attention_mask=attn.to(device), labels=labels.to(device))
+            outm = model(
+                input_ids=ids.to(device),
+                attention_mask=attn.to(device),
+                labels=labels.to(device),
+            )
             outm.loss.backward()
             if (i + 1) % args.accum == 0 or i == len(train_loader) - 1:
                 torch.nn.utils.clip_grad_norm_(
                     (p for p in model.parameters() if p.requires_grad), 1.0
                 )
-                opt.step(); opt.zero_grad(set_to_none=True)
+                opt.step()
+                opt.zero_grad(set_to_none=True)
                 step += 1
                 for g, old in zip(opt.param_groups, old_lrs):
                     g["lr"] = old
                 if step % 50 == 0 or step == total_steps:
-                    print(f"step {step + steps_done}/{final_target} loss {outm.loss.item():.4f} "
-                          f"lr {lr_now:.2e} {time.perf_counter()-start:.0f}s", flush=True)
+                    print(
+                        f"step {step + steps_done}/{final_target} loss {outm.loss.item():.4f} "
+                        f"lr {lr_now:.2e} {time.perf_counter() - start:.0f}s",
+                        flush=True,
+                    )
                 if step % 100 == 0 or step == total_steps:
-                    log["steps"].append({
-                        "step": step + steps_done,
-                        "train_loss": round(outm.loss.item(), 4),
-                        "lr": lr_now,
-                        "elapsed_s": round(time.perf_counter() - start, 1),
-                    })
+                    log["steps"].append(
+                        {
+                            "step": step + steps_done,
+                            "train_loss": round(outm.loss.item(), 4),
+                            "lr": lr_now,
+                            "elapsed_s": round(time.perf_counter() - start, 1),
+                        }
+                    )
                 if step % 200 == 0 or step == total_steps:
                     checkpoint(step)
                 if step >= total_steps:

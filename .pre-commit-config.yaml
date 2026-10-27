@@ -1,29 +1,43 @@
-default_install_hook_types:
-  - pre-commit
-  - pre-push
-
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
 repos:
-  - repo: local
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
     hooks:
-      - id: backend-syntax-check
-        name: backend syntax check
-        entry: python -m compileall backend scripts tests
-        language: system
-        pass_filenames: false
-        types: [python]
-        stages: [pre-commit]
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
 
-      - id: frontend-lint
-        name: frontend lint
-        entry: npm --prefix frontend run lint
-        language: system
-        pass_filenames: false
-        files: ^frontend/
-        stages: [pre-push]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.2
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
 
-      - id: backend-tests
-        name: backend tests
-        entry: python -m pytest -q
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-setuptools
+          - types-tqdm
+        args:
+          - --strict
+          - --exclude=^slm-training/
+          - --exclude=^slm-ft/
+          - --exclude=^benchmarks/
+          - --exclude=^notebooks/
+          - --exclude=^docs/
+          - --exclude=^scripts/
+          - --exclude=^tests/
+        files: ^(harness\.py|run_all\.py|verify_setup\.py|evaluate_test_split\.py|slm_api\.py|write_comp\.py|write_comparison\.py)$

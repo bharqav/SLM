@@ -1,0 +1,6 @@
+{
+  "stage": 1,
+  "checkpoint_type": "lora",
+  "status": "placeholder",
+  "note": "Regenerate from real training run before publishing"
+}

@@ -5,8 +5,9 @@ Deliberately close to nanoGPT: pre-norm blocks, learned positional embeddings,
 GELU MLP with 4x expansion, and weight tying between the token embedding and
 the output projection.
 """
+
 import math
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 import torch
 import torch.nn as nn
@@ -44,8 +45,9 @@ class CausalSelfAttention(nn.Module):
         if not self.flash:
             self.register_buffer(
                 "mask",
-                torch.tril(torch.ones(cfg.block_size, cfg.block_size))
-                .view(1, 1, cfg.block_size, cfg.block_size),
+                torch.tril(torch.ones(cfg.block_size, cfg.block_size)).view(
+                    1, 1, cfg.block_size, cfg.block_size
+                ),
                 persistent=False,
             )
 
@@ -59,7 +61,10 @@ class CausalSelfAttention(nn.Module):
 
         if self.flash:
             y = F.scaled_dot_product_attention(
-                q, k, v, attn_mask=None,
+                q,
+                k,
+                v,
+                attn_mask=None,
                 dropout_p=self.dropout if self.training else 0.0,
                 is_causal=True,
             )
@@ -98,16 +103,23 @@ class Block(nn.Module):
 
 
 class GPT(nn.Module):
+    @classmethod
+    def from_config(cls, cfg: "GPTConfig") -> "GPT":
+        """Construct a GPT from a GPTConfig (PyTorch convention)."""
+        return cls(cfg)
+
     def __init__(self, cfg):
         super().__init__()
         self.config = cfg
-        self.transformer = nn.ModuleDict(dict(
-            wte=nn.Embedding(cfg.vocab_size, cfg.n_embd),
-            wpe=nn.Embedding(cfg.block_size, cfg.n_embd),
-            drop=nn.Dropout(cfg.dropout),
-            h=nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)]),
-            ln_f=nn.LayerNorm(cfg.n_embd, bias=cfg.bias),
-        ))
+        self.transformer = nn.ModuleDict(
+            dict(
+                wte=nn.Embedding(cfg.vocab_size, cfg.n_embd),
+                wpe=nn.Embedding(cfg.block_size, cfg.n_embd),
+                drop=nn.Dropout(cfg.dropout),
+                h=nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)]),
+                ln_f=nn.LayerNorm(cfg.n_embd, bias=cfg.bias),
+            )
+        )
         self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
         # Weight tying: saves ~32M parameters at this vocab size and is a
         # meaningful regulariser for a model this small.
@@ -153,12 +165,12 @@ class GPT(nn.Module):
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
-        assert T <= self.config.block_size, \
+        assert T <= self.config.block_size, (
             f"sequence length {T} exceeds block size {self.config.block_size}"
+        )
         pos = torch.arange(0, T, dtype=torch.long, device=idx.device)
 
-        x = self.transformer.drop(
-            self.transformer.wte(idx) + self.transformer.wpe(pos))
+        x = self.transformer.drop(self.transformer.wte(idx) + self.transformer.wpe(pos))
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
@@ -166,8 +178,8 @@ class GPT(nn.Module):
         if targets is not None:
             logits = self.lm_head(x)
             loss = F.cross_entropy(
-                logits.view(-1, logits.size(-1)), targets.reshape(-1),
-                ignore_index=-1)
+                logits.view(-1, logits.size(-1)), targets.reshape(-1), ignore_index=-1
+            )
         else:
             # Inference: only the last position is needed.
             logits = self.lm_head(x[:, [-1], :])
@@ -193,8 +205,11 @@ class GPT(nn.Module):
         """Autoregressively sample `max_new_tokens` continuations of `idx`."""
         self.eval()
         for _ in range(max_new_tokens):
-            idx_cond = idx if idx.size(1) <= self.config.block_size \
-                else idx[:, -self.config.block_size:]
+            idx_cond = (
+                idx
+                if idx.size(1) <= self.config.block_size
+                else idx[:, -self.config.block_size :]
+            )
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] / max(temperature, 1e-6)
             if top_k is not None:

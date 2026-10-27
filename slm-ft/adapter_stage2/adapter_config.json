@@ -1,0 +1,16 @@
+{
+  "base_model_name_or_path": "Qwen/Qwen2.5-0.5B-Instruct",
+  "processor": null,
+  "peft_type": "LORA",
+  "lora_alpha": 16,
+  "lora_dropout": 0.05,
+  "margin_rank_loss_lambda": 0.05,
+  "r": 16,
+  "target_modules": [
+    "q_proj",
+    "v_proj",
+    "k_proj",
+    "o_proj"
+  ],
+  "task_type": "CAUSAL_LM"
+}

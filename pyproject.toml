@@ -1,0 +1,150 @@
+[project]
+name = "slm-project"
+version = "1.0.0"
+description = "From-scratch SLM vs Qwen fine-tune comparison with reproducible benchmarks"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "SLM Project", email = "contact@example.com"},
+]
+keywords = ["slm", "qwen", "fine-tuning", "benchmark", "transformer"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "tiktoken>=0.5.0",
+    "transformers>=4.30.0",
+    "accelerate>=0.20.0",
+    "huggingface_hub>=0.16.0",
+    "numpy>=1.24.0",
+    "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
+]
+qlora = [
+    "peft>=0.6.0",
+    "bitsandbytes>=0.41.0; platform_system != 'Windows' or platform_machine != 'AMD64'",
+    "datasets>=2.14.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+all = [
+    "slm-project[server]",
+    "slm-project[qlora]",
+    "slm-project[dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-repo/slm-comparison"
+Repository = "https://github.com/your-repo/slm-comparison"
+"Benchmark Report" = "https://github.com/your-repo/slm-comparison/blob/main/benchmarks/benchmark_report.md"
+
+[project.scripts]
+slm-bench = "run_all:run"
+slm-verify = "verify_setup:verify"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers -m 'not slow'"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/site-packages/*",
+    "*/run_all.py",
+    "*/harness.py",
+    "*/verify_setup.py",
+    "*/evaluate_test_split.py",
+]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "UP006", # use X instead of typing.X (keep compatibility)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["slm*", "tests*"]
+
+[tool.setuptools.package-data]
+"slm-training" = ["*.py", "*.json", "*.md"]
+"slm-ft" = ["*.py", "*.json", "*.md", "**/*.py"]

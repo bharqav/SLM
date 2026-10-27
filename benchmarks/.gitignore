@@ -1,0 +1,27 @@
+# benchmark results are run-dependent and should be regenerated, not committed
+results_*.json
+
+# local scratch
+*.log
+*.tmp
+*.TEMP.txt
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+.env.*
+
+# tooling cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
