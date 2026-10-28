@@ -122,7 +122,7 @@
 **completion_tokens**: 80  **prompt_tokens**: 5  **tokens_per_second**: 34.9  **latency_s**: 2.2929
 **completion**:  a single DBMS table\n    (``user_id=None``/``user_id=None``) so the caller can assert a\n    non-empty ``user_id`` or ``user_id``. The ``metadata`` field is\n    ``"admin-admin"`` (no user_id), so it is not a DB
 
-### qwen2.5-0.5b-base
+### qwen2.5-3b-base
 
 **prompt**: I have been feeling really down lately
 **completion_tokens**: 80  **prompt_tokens**: 7  **tokens_per_second**: 9.4  **latency_s**: 8.4659

@@ -1,37 +1,7 @@
-[
-  {
-    "name": "4L/4H/512D",
-    "params": 38473216,
-    "20_passes_s": 0.302,
-    "throughput": 66.3,
-    "latency_ms": 15.08
-  },
-  {
-    "name": "6L/6H/768D",
-    "params": 81322752,
-    "20_passes_s": 0.651,
-    "throughput": 30.7,
-    "latency_ms": 32.57
-  },
-  {
-    "name": "8L/4H/1024D",
-    "params": 152497152,
-    "20_passes_s": 1.324,
-    "throughput": 15.1,
-    "latency_ms": 66.22
-  },
-  {
-    "name": "10L/10H/640D",
-    "params": 81564800,
-    "20_passes_s": 0.772,
-    "throughput": 25.9,
-    "latency_ms": 38.62
-  },
-  {
-    "name": "12L/6H/1536D",
-    "params": 417569280,
-    "20_passes_s": 3.859,
-    "throughput": 5.2,
-    "latency_ms": 192.95
-  }
-]
+{
+  "name": "slm-scratch",
+  "passes": 20,
+  "time_s": 0.52,
+  "throughput_passes_s": 38.5,
+  "avg_latency_ms": 25.99
+}

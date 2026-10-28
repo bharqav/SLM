@@ -28,6 +28,10 @@ EXPECTED_ARTIFACTS = [
     PROJECT_ROOT / "benchmarks" / "benchmark_report.md",
     PROJECT_ROOT / "README.md",
 ]
+EMPATHY_DATA = PROJECT_ROOT / "slm-training" / "empathy_train.bin"
+EMPATHY_VAL = PROJECT_ROOT / "slm-training" / "empathy_val.bin"
+EMPATHY_CKPT = PROJECT_ROOT / "slm-training" / "best_empathy_model.pt"
+SLM_CKPT = PROJECT_ROOT / "slm-training" / "best_model.pt"
 
 
 def run() -> int:
@@ -52,6 +56,56 @@ def run() -> int:
     if verify_result.returncode != 0:
         print(f"WARNING: verify_setup.py returned exit code {verify_result.returncode}")
 
+    # Step 1.6: optionally train empathetic fine-tune
+    if EMPATHY_DATA.exists() and EMPATHY_VAL.exists():
+        print("\n[run_all] Empathetic data found — training fine-tune...")
+        train_result = subprocess.run(
+            [
+                sys.executable,
+                "slm-training/train.py",
+                "--train-bin",
+                str(EMPATHY_DATA),
+                "--val-bin",
+                str(EMPATHY_VAL),
+                "--n-layer",
+                "12",
+                "--n-head",
+                "12",
+                "--n-embd",
+                "768",
+                "--max-steps",
+                "200",
+                "--batch-size",
+                "2",
+                "--grad-accum-steps",
+                "8",
+                "--learning-rate",
+                "1e-4",
+                "--min-lr",
+                "1e-5",
+                "--warmup-steps",
+                "50",
+                "--eval-interval",
+                "50",
+                "--checkpoint-interval",
+                "50",
+                "--log-interval",
+                "25",
+                "--threads",
+                "2",
+            ],
+            cwd=str(PROJECT_ROOT),
+            capture_output=False,
+        )
+        if train_result.returncode != 0:
+            print(
+                f"WARNING: empathy training failed with exit code {train_result.returncode}"
+            )
+        else:
+            print("[run_all] Empathy training complete.")
+    else:
+        print("[run_all] No empathetic data found — skipping fine-tune.")
+
     # Step 2: run live comparison
     script = PROJECT_ROOT / "slm-comparison" / "generate_live_comparison.py"
     if not script.exists():
@@ -67,6 +121,20 @@ def run() -> int:
     if result.returncode != 0:
         print(f"ERROR: {script} failed with exit code {result.returncode}")
         return result.returncode
+
+    # Step 2.5: run empathetic evaluation if model is available
+    eval_script = PROJECT_ROOT / "benchmarks" / "evaluate_empathy.py"
+    if eval_script.exists() and (EMPATHY_CKPT.exists() or SLM_CKPT.exists()):
+        print(f"\n[run_all] Running empathetic eval: {eval_script}")
+        eval_result = subprocess.run(
+            [sys.executable, str(eval_script)],
+            cwd=str(PROJECT_ROOT),
+            capture_output=False,
+        )
+        if eval_result.returncode != 0:
+            print(
+                f"WARNING: empathetic eval failed with exit code {eval_result.returncode}"
+            )
 
     print("\n[run_all] Validating artifacts...")
     missing = [p for p in EXPECTED_ARTIFACTS if not p.exists()]

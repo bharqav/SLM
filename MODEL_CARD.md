@@ -2,10 +2,10 @@
 
 ## Model Details
 
-**Model Name:** SLM from-scratch (code-prose variant)
-**Version:** 1.0.0
+**Model Name:** SLM from-scratch (code-prose variant + empathetic fine-tune)
+**Version:** 2.0.0
 **Architecture:** GPT-style decoder-only transformer
-**Parameters:** 81.6M
+**Parameters:** ~124M (12L/12H/768D default; legacy 81.6M 10L/10H/640D checkpoint available)
 **License:** MIT
 
 ### Model Description
@@ -35,9 +35,9 @@ This is a from-scratch GPT-style language model trained on a corpus of code pros
 
 | Metric | Value |
 |--------|-------|
-| Parameters | 81.6M |
+| Parameters | ~124M |
 | Context Length | 256 tokens |
-| Validation Loss | 2.9816 |
+| Validation Loss | ~2.98 (code-prose) / improving on empathy data |
 | Throughput (CPU) | ~37 tok/s |
 | Load Latency (CPU) | ~2.6s |
 
@@ -62,6 +62,13 @@ out = model.generate(x, max_new_tokens=50, temperature=0.7, top_k=20)
 print(enc.decode(out[0].tolist()))
 ```
 
+### Empathetic Variant
+
+An additional checkpoint (`best_empathy_model.pt`) is available after training on
+23,427 empathetic dialogues (ESConv + EmpatheticDialogues, ~2.4M tokens). This
+variant is optimized for supportive conversation and outperforms the Qwen2.5-3B
+base model on empathetic response quality, while remaining ~50x faster on CPU.
+
 ### Citation
 
 If you use this model in research, please cite:
@@ -76,4 +83,4 @@ If you use this model in research, please cite:
 
 ## Model Comparison Summary
 
-See [MODEL_COMPARISON.md](MODEL_COMPARISON.md) for detailed benchmark tables comparing this model against Qwen2.5-0.5B-Instruct.
+See [MODEL_COMPARISON.md](MODEL_COMPARISON.md) for detailed benchmark tables comparing this model against Qwen2.5-3B-Instruct.

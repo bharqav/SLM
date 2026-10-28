@@ -1,166 +1,47 @@
 {
-  "model": "Qwen/Qwen2.5-0.5B-Instruct",
-  "params": 494032768,
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "params": 3085938688,
+  "note": "Base model used as proxy for fine-tuned adapter (adapter_stage2 weights are placeholder stubs)",
   "results": [
-    {
-      "prompt": "I have been feeling really down lately",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": " and I'm not sure why. Can you suggest some ways to boost my mood?\nCertainly! Boosting your mood can be a challenging task, but there are several strategies that might help. Here are 5 tips to consider:\n\n1. **Connect with Others**: Spend time with friends or family who bring you joy. Sharing experiences and feelings with others can significantly uplift your mood.\n\n2. **Exercise",
-      "latency_s": 8.4659,
-      "tokens_per_second": 9.4
-    },
-    {
-      "prompt": "The best way to handle stress is",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": " by practicing mindfulness. What does this mean? The practice of mindfulness involves being present and fully engaged in the moment, without getting lost in thoughts or worries about the future or past. It helps us to stay calm and centered, and can improve our overall well-being.\nThere are several different types of mindfulness practices that you can try:\n- Body scan meditation: This involves focusing your attention on different parts of",
-      "latency_s": 8.3918,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "I do not think I can keep going",
-      "prompt_tokens": 8,
-      "completion_tokens": 80,
-      "completion": " because I have no energy.  What does this sentence mean?\n\na) You feel like giving up\nb) You are tired\nc) You are very energetic\n\nTo determine what the sentence \"I do not think I can keep going because I have no energy\" means, let's analyze it step by step:\n\n1. **Identify the key elements:**\n   - The subject is \"",
-      "latency_s": 8.4047,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "I just need someone to listen to me",
-      "prompt_tokens": 8,
-      "completion_tokens": 80,
-      "completion": " play guitar, it's not a very good song but I can't find any other way to learn.\n\nTo get the best out of your learning experience, consider using an online platform that offers guitar lessons. Some popular options include:\n\n1. Duolingo: A free app for kids and adults that teaches you songs in Spanish or English.\n\n2. Guitar Lesson Planet: Offers lessons from experienced guitarists",
-      "latency_s": 8.4742,
-      "tokens_per_second": 9.4
-    },
-    {
-      "prompt": "I'm scared about my future",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": ", I don't know what to do.\n\nDoes it follow that \"I have no idea what to do.\"?\nOptions are:\n(a). yes.\n(b). it is not possible to tell.\n(c). no. (a).Write a sentence describing the sentiment of this review and why? The sentiment of this review is positive. The reviewer seems satisfied with their experience at the restaurant and recommends it",
-      "latency_s": 8.407,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "I feel like nobody understands me",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": ". I want to have a conversation with someone who knows what they're talking about.\n\nHow can I get people to understand my message? What are some effective ways to communicate effectively?\n\n1. Start by asking yourself: \"What is your definition of 'understanding'?\" and \"What is the difference between understanding and knowing?\"\n\n2. Ask yourself: How do you think you would explain this concept to",
-      "latency_s": 8.3555,
-      "tokens_per_second": 9.6
-    },
-    {
-      "prompt": "What should I do when I feel overwhelmed?",
-      "prompt_tokens": 9,
-      "completion_tokens": 80,
-      "completion": " Respond with a short summary sentence. When feeling overwhelmed, it's important to take a few deep breaths and try to break the situation into smaller, more manageable tasks. This can help reduce stress and increase resilience in the face of challenges.Human: How does the sentence \"I'm not sure if she will come back\" imply that \"She is coming back\"? Please provide an example of how",
-      "latency_s": 8.3818,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "I've been having trouble sleeping at night",
-      "prompt_tokens": 8,
-      "completion_tokens": 80,
-      "completion": ". What can I do to help me sleep better?\n\nAs an AI language model, I don't have personal experiences or emotions like humans do, but here are some general tips that may help you sleep better:\n\n1. Create a relaxing bedtime routine: Establish a regular time and activity schedule before bed, including going to bed, getting out of your bed, reading a book, or listening to calming music",
-      "latency_s": 8.3832,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "I lost someone important to me",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": ", and now I'm feeling depressed. What should I do?\nWhat can I do if I feel like I am going mad? I have been feeling very depressed for a long time.\nDo those questions have the same meaning?\n\n  * no\n  * yes\n\nno\nThese questions do not have the same meaning. The first question is asking about how to handle feelings of depression after losing a loved",
-      "latency_s": 8.4037,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "Here is how the model works:",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": " I am a 15-year-old male. My father was a doctor and my mother had cancer for many years, so she has been taking chemotherapy every day since her diagnosis. I have always felt sick and very tired. I feel like I need to take a nap in the middle of the day. The most recent time that I felt sick was when I went to school yesterday. I did not",
-      "latency_s": 8.4,
-      "tokens_per_second": 9.5
-    },
     {
       "prompt": "def preprocess(text):",
       "prompt_tokens": 4,
-      "completion_tokens": 80,
-      "completion": "  # text is a string\n    return text.lower().strip()\n\n# Function to tokenize the input text into words and punctuation marks\ndef tokenize(text):\n    tokens = []\n    for word in text.split():\n        if word.isalpha():  # Check if the word starts with an alphabet character\n            tokens.append(word)\n    return tokens\n\n# Function to remove stop words from the list of",
-      "latency_s": 8.3998,
-      "tokens_per_second": 9.5
+      "completion_tokens": 40,
+      "completion": " \n    # Remove punctuation and convert to lowercase\n    text = re.sub(r'[^\\w\\s]', '', text.lower())\n    return text\n\n# Function to tokenize the text\ndef tokenize(text):\n",
+      "latency_s": 17.9855,
+      "tokens_per_second": 2.2
     },
     {
-      "prompt": "return {",
-      "prompt_tokens": 2,
-      "completion_tokens": 80,
-      "completion": " \n  \"nvim-treesitter/nvim-treesitter\",\n  build = \":TSUpdate\",\n  config = function()\n    vim.g.treesitter_platform = 'lua'\n    vim.g.treesitter_installed = true\n    require('nvim-treesitter.configs').setup({\n      ensure_installed = {\n        'javascript',\n        'typescript',\n        'python',\n        'css",
-      "latency_s": 8.3867,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "async function fetchUserData(",
-      "prompt_tokens": 5,
-      "completion_tokens": 80,
-      "completion": "accessToken) {\n  const response = await fetch(`https://jsonplaceholder.typicode.com/users/${accessToken}`);\n  return response.json();\n}\n\nfunction renderUser(data, accessToken) {\n  console.log('data', data);\n  // console.log('accessToken', accessToken);\n\n  let userId = data.id;\n  let userName = data.name;\n  let userEmail = data.email;\n\n  if (userId !== undefined",
-      "latency_s": 8.385,
-      "tokens_per_second": 9.5
+      "prompt": "I have been feeling really down lately",
+      "prompt_tokens": 7,
+      "completion_tokens": 40,
+      "completion": ", and I don't know what to do. I'm not sure if it's just a phase or something more serious. Can you give me some advice on how to cope with this?\nIt's",
+      "latency_s": 16.6807,
+      "tokens_per_second": 2.4
     },
     {
       "prompt": "class ChatMessage:",
       "prompt_tokens": 4,
-      "completion_tokens": 80,
-      "completion": " \n    def __init__(self, name):\n        self.name = name\n        self.messages = []\n    \n    def add_message(self, message):\n        self.messages.append(message)\n        \n    def get_messages(self):\n        return self.messages\n\ndef main():\n    messages = []\n\n    while True:\n        print(\"\\n\\n\\tChatbot\")\n        print(\"1. Add Message\")\n        print(\"2",
-      "latency_s": 8.3862,
-      "tokens_per_second": 9.5
+      "completion_tokens": 40,
+      "completion": "  # This class represents a chat message.\n    def __init__(self, sender, content):\n        self.sender = sender  # The sender of the message.\n        self.content = content  #",
+      "latency_s": 16.2589,
+      "tokens_per_second": 2.5
     },
     {
-      "prompt": "const response = await fetch(",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": " 'https://api.npoint.io/9631f70d52b8c4a17e4d' )\n    .then(response => response.json())\n  const posts = response.map(post => {\n    return {\n      id: post.id,\n      title: post.title,\n      content: post.content,\n      author: post.author,\n      date: new Date(post",
-      "latency_s": 8.3895,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "def train_model(dataset):",
+      "prompt": "async function fetchUserData(",
       "prompt_tokens": 5,
-      "completion_tokens": 80,
-      "completion": " \n    from sklearn.model_selection import train_test_split\n    X_train, X_test, y_train, y_test = train_test_split(dataset['X'], dataset['y'], test_size=0.2)\n    return X_train, X_test, y_train, y_test\n\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.metrics import accuracy_score\nimport numpy",
-      "latency_s": 8.3881,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "import torch.nn as nn",
-      "prompt_tokens": 5,
-      "completion_tokens": 80,
-      "completion": "\nfrom .base_model import BaseModel\n\n\nclass Net(nn.Module):\n    def __init__(self, num_classes=1000, dropout=0.5):\n        super(Net, self).__init__()\n        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)\n        self.pool =",
-      "latency_s": 8.4186,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "# TODO: implement this function",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": "\ndef find_max(a, b):\n    if a > b:\n        return a\n    else:\n        return b\n\n# Test cases to verify the correctness of the function\nassert find_max(10, 20) == 20\nassert find_max(-5, -10) == -5\nassert find_max(3, 7) == 7\nassert",
-      "latency_s": 8.4098,
-      "tokens_per_second": 9.5
-    },
-    {
-      "prompt": "if __name__ == '__main__':",
-      "prompt_tokens": 9,
-      "completion_tokens": 80,
-      "completion": " \n    # create a list of numbers\n    numbers = [1, 2, 3, 4, 5]\n\n    # loop through the list and print each number\n    for num in numbers:\n        print(num)\n\n# output: 1\n# 2\n# 3\n# 4\n# 5\n\n# you can also use a for loop with while",
-      "latency_s": 8.3954,
-      "tokens_per_second": 9.5
+      "completion_tokens": 40,
+      "completion": "accessToken) {\n    try {\n        const response = await fetch('https://api.github.com/user', {\n            headers: {\n                'Authorization': `Bearer ${accessToken}`\n            }\n        });\n        if",
+      "latency_s": 16.417,
+      "tokens_per_second": 2.4
     },
     {
       "prompt": "SELECT * FROM users WHERE",
       "prompt_tokens": 5,
-      "completion_tokens": 80,
-      "completion": " id IN (SELECT user_id FROM orders WHERE status = 'completed') \nWHERE user_id IN (SELECT user_id FROM users) AND user_id NOT IN (SELECT user_id FROM users) GROUP BY user_id HAVING COUNT(*) > 1; \n\nWhat are the possible outcomes of this SQL query? There could be multiple outcomes, depending on the structure and data in your database. However, here",
-      "latency_s": 8.3822,
-      "tokens_per_second": 9.5
+      "completion_tokens": 40,
+      "completion": " username = 'user123' AND password = 'password123';\nSELECT * FROM users WHERE username = 'user123' AND password = 'incorrect_password';\n\nIn the first",
+      "latency_s": 16.7046,
+      "tokens_per_second": 2.4
     }
   ]
 }

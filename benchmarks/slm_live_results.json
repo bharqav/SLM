@@ -1,168 +1,48 @@
 {
   "model": "slm-scratch",
+  "params": 81564800,
   "step": 10000,
   "best_val_loss": 2.9816031455993652,
-  "params": 81564800,
   "results": [
-    {
-      "prompt": "I have been feeling really down lately",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": ".<|endoftext|>The following is the same as the other two ways, but the first\nfunction is the same as the second function.\n\nIt is possible that the second function is not a call to\nany function, but it is just a call to the first function.\n\nThe first function is the same as the second function. It is\nthe first function, but it is a call",
-      "latency_s": 2.398,
-      "tokens_per_second": 33.4
-    },
-    {
-      "prompt": "The best way to handle stress is",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": " to make sure we can make sure to make sure to make sure to make sure\nit is not possible to make sure we can make sure to make sure to make sure we\nshould be able to make sure to make sure we can make sure that we can make sure\nthe results of the same function<|endoftext|>Make sure we can make sure we can make sure we can make sure to make sure\n",
-      "latency_s": 2.2997,
-      "tokens_per_second": 34.8
-    },
-    {
-      "prompt": "I do not think I can keep going",
-      "prompt_tokens": 8,
-      "completion_tokens": 80,
-      "completion": " to keep going\n                                                                            ",
-      "latency_s": 2.2896,
-      "tokens_per_second": 34.9
-    },
-    {
-      "prompt": "I just need someone to listen to me",
-      "prompt_tokens": 8,
-      "completion_tokens": 80,
-      "completion": "?<|endoftext|>/**\n * @param {string | null} value\n * @returns {Promise<void>}\n */\nasync function get(value)<|endoftext|>/**\n * @param {number} value\n * @returns {Promise<void>}\n */\nasync function get(value)<|endoftext|>/**\n * @param {string | null} value\n",
-      "latency_s": 2.3381,
-      "tokens_per_second": 34.2
-    },
-    {
-      "prompt": "I'm scared about my future",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": ".<|endoftext|>If the user asked to find a single user, then we can check that\nthe user can find a user, and then we should check for\nthe user to find a user's member.<|endoftext|>If we're doing a user, we can find the user's member,\nthen we'll just check if the user is a member.<|endoftext|>If we're doing a user, then we",
-      "latency_s": 2.3008,
-      "tokens_per_second": 34.8
-    },
-    {
-      "prompt": "I feel like nobody understands me",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": "?<|endoftext|>@import {\n\tFileSystem } from \"../lib/util/FileSystem.js\"<|endoftext|>/**\n * @import {\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n\tFileSystem,\n",
-      "latency_s": 2.3114,
-      "tokens_per_second": 34.6
-    },
-    {
-      "prompt": "What should I do when I feel overwhelmed?",
-      "prompt_tokens": 9,
-      "completion_tokens": 80,
-      "completion": "\n        image_id (`str`, *optional*):\n            The id of the image to create the image for.\n\n           This is a string.\n        image_id (`str`, *optional*):\n  ",
-      "latency_s": 2.3963,
-      "tokens_per_second": 33.4
-    },
-    {
-      "prompt": "I've been having trouble sleeping at night",
-      "prompt_tokens": 8,
-      "completion_tokens": 80,
-      "completion": " level.<|endoftext|>TODO: Remove this in a future version of the\n`_parse_tensors` function.<|endoftext|>def _parse_tensors(tensors: list, t_numbers: list, max_length: int) -> list:\n    \"\"\"\n    Parse tensors from TensorFlow's ``num_tens",
-      "latency_s": 2.3508,
-      "tokens_per_second": 34.0
-    },
-    {
-      "prompt": "I lost someone important to me",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": ".\n    \"\"\"<|endoftext|>def test_the_backend_is_rejected(self, tmp_path):\n    \"\"\"\n    The user's own stdlib probe must not be re-executed on this\n    backend. The backend must be re-executed on this backend's own.\n    \"\"\"<|endoftext|>def test",
-      "latency_s": 2.299,
-      "tokens_per_second": 34.8
-    },
-    {
-      "prompt": "Here is how the model works:",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": "\n- `claude-4-preview` with `claude-4-preview` in the proxy\n- `claude-4-preview` (or the proxy)\n- `claude-4-preview` (or the proxy)\n\nThe real `claude-4-preview` CLI already returns a `cl",
-      "latency_s": 2.3365,
-      "tokens_per_second": 34.2
-    },
     {
       "prompt": "def preprocess(text):",
       "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": "\n    \"\"\"Build a preprocess image from the input image.\"\"\"<|endoftext|>def _build_image_to_image():\n    \"\"\"Build an image from the input image.\"\"\"<|endoftext|>def _build_image_to_image(image):\n    \"\"\"Build a image from the input image.\"\"\"<|endoftext|>def _build_image_to_image(image",
-      "latency_s": 2.3424,
-      "tokens_per_second": 34.2
+      "completion_tokens": 40,
+      "completion": "\n    \"\"\"\n    Preprocesses text and decode images to image.\n\n    Args:\n       text (str): Text to pre",
+      "latency_s": 0.9213,
+      "tokens_per_second": 43.4
     },
     {
-      "prompt": "return {",
-      "prompt_tokens": 2,
-      "completion_tokens": 80,
-      "completion": "boolean} `true` when the object is created.\n */\nfunction isEmptyObjects(obj)<|endoftext|>/**\n * Returns `true` if `obj` is an object.\n * @return {boolean} `true` if `obj` is an object.\n */\nfunction isEmptyObjects()<|endoftext|>/**\n * Returns `true` if `obj` is",
-      "latency_s": 2.2518,
-      "tokens_per_second": 35.5
-    },
-    {
-      "prompt": "async function fetchUserData(",
+      "prompt": "I have been feeling really down lately",
       "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": "userData):\n    \"\"\"\n    fetches the authenticated user data for a single user\n\n    https://www.mexc.com/api-docs/futures/account-list-user-data\n\n    :param str[] [userData]: list of accounts that should be made in the list\n    :param dict [",
-      "latency_s": 2.3059,
-      "tokens_per_second": 34.7
+      "completion_tokens": 40,
+      "completion": "<|endoftext|>The \"no-op\" property can be either \"no\" or \"no\" (e.g. \"no-op\",\n\"any\") or \"all\" (e.g",
+      "latency_s": 0.8901,
+      "tokens_per_second": 44.9
     },
     {
       "prompt": "class ChatMessage:",
       "prompt_tokens": 4,
-      "completion_tokens": 80,
-      "completion": "\n    \"\"\"\n    A chat message for the user to be opened.\n\n    Args:\n        chat_id: The chat id to send to the user.\n        assistant_id: Optional assistant ID to send to the user.\n        user_id:",
-      "latency_s": 2.3244,
-      "tokens_per_second": 34.4
+      "completion_tokens": 40,
+      "completion": "\n    \"\"\"Get message content\"\"\"<|endoftext|>def get_message_content(self) -> ChatMessage:\n    \"\"\"Get message content\"\"\"<|endoftext|>def get_message_content(",
+      "latency_s": 0.8792,
+      "tokens_per_second": 45.5
     },
     {
-      "prompt": "const response = await fetch(",
-      "prompt_tokens": 6,
-      "completion_tokens": 80,
-      "completion": "request)<|endoftext|>/**\n * @type {import('../../').Configuration}\n */\nasync function create()<|endoftext|>/**\n * @param {import('../\").Configuration} configuration\n * @param {import('../../\").Configuration} [config]\n * @param {import('../../\").Configuration} [config]\n * @param {import(\"../../\").Configuration}",
-      "latency_s": 2.3268,
-      "tokens_per_second": 34.4
-    },
-    {
-      "prompt": "def train_model(dataset):",
-      "prompt_tokens": 9,
-      "completion_tokens": 80,
-      "completion": "\n    \"\"\"\n    A training dataset for training.\n\n    Parameters\n    ----------\n    dataset : :class:`Dataset`\n        The training dataset.\n\n    Returns\n    -------\n    training_dataset : :class:`Dataset`",
-      "latency_s": 2.3619,
-      "tokens_per_second": 33.9
-    },
-    {
-      "prompt": "import torch.nn as nn",
+      "prompt": "async function fetchUserData(",
       "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": ".BatchNorm2d\n    >>> from transformers import AutoTokenizer, AutoTokenizer, AutoModelForText2DModel\n\n    >>> model = AutoModelForText2DModel.from_pretrained(\"openai/Qwen3-VL-14\")\n\n    >>> model = AutoModelForText2DModel(configuration)\n\n",
-      "latency_s": 2.3729,
-      "tokens_per_second": 33.7
-    },
-    {
-      "prompt": "# TODO: implement this function",
-      "prompt_tokens": 7,
-      "completion_tokens": 80,
-      "completion": " to create new\n                                                                            ",
-      "latency_s": 2.3213,
-      "tokens_per_second": 34.5
-    },
-    {
-      "prompt": "if __name__ == '__main__':",
-      "prompt_tokens": 10,
-      "completion_tokens": 80,
-      "completion": " the main method will\n                                                                           ",
-      "latency_s": 2.4285,
-      "tokens_per_second": 32.9
+      "completion_tokens": 40,
+      "completion": "userData, userData, params = {})<|endoftext|>/**\n * @method\n * @name bitteam#fetchDepositAddress\n * @description fetch the deposit address for a currency associated",
+      "latency_s": 0.9875,
+      "tokens_per_second": 40.5
     },
     {
       "prompt": "SELECT * FROM users WHERE",
       "prompt_tokens": 5,
-      "completion_tokens": 80,
-      "completion": " a single DBMS table\n    (``user_id=None``/``user_id=None``) so the caller can assert a\n    non-empty ``user_id`` or ``user_id``. The ``metadata`` field is\n    ``\"admin-admin\"`` (no user_id), so it is not a DB",
-      "latency_s": 2.2929,
-      "tokens_per_second": 34.9
+      "completion_tokens": 40,
+      "completion": " clause\n                                      ",
+      "latency_s": 0.9802,
+      "tokens_per_second": 40.8
     }
   ]
 }

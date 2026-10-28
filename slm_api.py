@@ -81,9 +81,13 @@ def load_model(checkpoint: str = "best_model.pt") -> tuple[GPT, any]:
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-    cfg = GPTConfig()
-    model = GPT(cfg)
     state = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
+    model_cfg = state.get("model_config")
+    if model_cfg:
+        cfg = GPTConfig(**model_cfg)
+    else:
+        cfg = GPTConfig()
+    model = GPT(cfg)
     model.load_state_dict(state["model"])
     model.eval()
 

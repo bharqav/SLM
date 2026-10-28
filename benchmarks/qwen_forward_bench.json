@@ -1,7 +1,7 @@
 {
-  "name": "Qwen2.5-0.5B-Instruct",
-  "params": 494032768,
-  "20_passes_s": 6.468,
-  "throughput": 3.1,
-  "latency_ms": 323.39
+  "name": "Qwen2.5-3B",
+  "passes": 20,
+  "time_s": 26.733,
+  "throughput_passes_s": 0.7,
+  "avg_latency_ms": 1336.63
 }

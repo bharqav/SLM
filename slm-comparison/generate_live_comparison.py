@@ -394,7 +394,7 @@ def main() -> int:
             qwen, PROMPTS, args.max_new_tokens, args.temperature, args.top_k
         )
         report["samples"].append(
-            {"model": "qwen2.5-0.5b-base", "generations": qwen_results}
+            {"model": "qwen2.5-3b-base", "generations": qwen_results}
         )
         with open(
             ROOT / "benchmarks" / "qwen_base_results.json", "w", encoding="utf-8"

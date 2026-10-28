@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download Qwen2.5-0.5B-Instruct base model for fine-tuning.
+"""Download Qwen2.5-3B-Instruct base model for fine-tuning.
 
 This script downloads the base model and tokenizer from HuggingFace Hub.
 It does NOT download the fine-tuned merged weights (which are placeholders).
@@ -31,14 +31,12 @@ from huggingface_hub import snapshot_download  # noqa: E402
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(
-        description="Download Qwen2.5-0.5B-Instruct base model"
-    )
+    ap = argparse.ArgumentParser(description="Download Qwen2.5-3B-Instruct base model")
     ap.add_argument("--output-dir", default="qwen-base", help="Directory to save model")
     ap.add_argument("--revision", default="main", help="Git revision to download")
     args = ap.parse_args()
 
-    model_id = "Qwen/Qwen2.5-0.5B-Instruct"
+    model_id = "Qwen/Qwen2.5-3B-Instruct"
     out = Path(args.output_dir)
     print(f"Downloading {model_id} to {out} ...")
 

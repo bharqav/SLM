@@ -40,7 +40,8 @@ class TestModelLoading:
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from model import GPT, GPTConfig
 
-        cfg = GPTConfig()
+        # best_model.pt was trained with 10/10/640 config; use matching config
+        cfg = GPTConfig(n_layer=10, n_head=10, n_embd=640)
         model = GPT(cfg)
         state = torch.load(str(slm_checkpoint), map_location="cpu", weights_only=False)
         model.load_state_dict(state["model"])
@@ -55,7 +56,8 @@ class TestModelLoading:
         from model import GPT, GPTConfig
         from tiktoken import get_encoding
 
-        cfg = GPTConfig()
+        # best_model.pt was trained with 10/10/640 config; use matching config
+        cfg = GPTConfig(n_layer=10, n_head=10, n_embd=640)
         model = GPT(cfg)
         state = torch.load(str(slm_checkpoint), map_location="cpu", weights_only=False)
         model.load_state_dict(state["model"])
@@ -79,9 +81,9 @@ class TestModelLoading:
         cfg = GPTConfig()
         d = cfg.to_dict()
         assert d["vocab_size"] == 50257
-        assert d["n_layer"] == 10
-        assert d["n_head"] == 10
-        assert d["n_embd"] == 640
+        assert d["n_layer"] == 12
+        assert d["n_head"] == 12
+        assert d["n_embd"] == 768
 
     def test_model_num_params(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
@@ -111,7 +113,8 @@ class TestModelLoading:
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from model import GPT, GPTConfig
 
-        cfg = GPTConfig()
+        # best_model.pt was trained with 10/10/640 config; use matching config
+        cfg = GPTConfig(n_layer=10, n_head=10, n_embd=640)
         model = GPT(cfg)
         state = torch.load(str(slm_checkpoint), map_location="cpu", weights_only=False)
         model.load_state_dict(state["model"])

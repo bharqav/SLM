@@ -27,7 +27,8 @@ Models in scope
      - Code-prose run: `slm-training/best_model.pt` and `final_model.pt`
    - Architecture details: `SLM_ARCHITECTURE.md`.
    - Parameter count: ~113.7M scalars in the saved state dict, with the
-     documented model framing at ~81.6M non-embedding weights.
+     documented model framing at ~81.6M non-embedding weights (legacy 10L/10H/640D
+     config) or ~124M for the current default 12L/12H/768D config.
    - Vocab: 50,257 (GPT-2 BPE via tiktoken).
    - Context length: 256.
    - State dict key count: 132 tensors, all float32 on disk.
@@ -169,11 +170,11 @@ Both were verified directly from the saved bytes:
 - best_model.pt and final_model.pt are byte-for-byte identical in the state
   dict (max abs diff 0.0).
 
-The repo documents this model as ~81.6M parameters. The saved state dict has
-~113.7M scalars because the embedding and output-projection weights
-(`transformer.wte.weight` and `lm_head.weight`) are both 50,257 x 640 and are
-counted in the saved state. The non-embedding model body is the smaller figure
-that matches the architecture doc.
+The repo documents the legacy model as ~81.6M parameters (10L/10H/640D). The current
+default config (12L/12H/768D) is ~124M parameters. In both cases, the saved state dict
+has ~113.7M+ scalars because the embedding and output-projection weights
+(`transformer.wte.weight` and `lm_head.weight`) are both counted in the saved state. The
+non-embedding model body is the smaller figure that matches the architecture doc.
 
 A reconstructed single-head forward pass from the saved state dict runs cleanly
 on CPU: it produces finite logits and can be used for a sanity perplexity probe
@@ -345,7 +346,7 @@ The documented empathy-run figures are:
 - Final val loss: 1.9422
 - Wall time: ~13 minutes
 - Throughput: ~21,008 tokens/s
-- Parameters: ~81.6M
+|- Parameters: ~81.6M (legacy 10L/10H/640D) or ~124M (current 12L/12H/768D)
 
 5.3 Qwen SFT
 ~~~~~~~~~~~~~
@@ -387,21 +388,21 @@ Benchmark results live in:
 +----------------------+------------------------+------------------------+
 | Spec                 | From-scratch SLM       | Qwen2.5 fine-tune      |
 +----------------------+------------------------+------------------------+
-| Parameters           | ~81.6M doc framing;    | ~3.35B                 |
-|                      | ~113.7M scalars in     |                        |
-|                      | saved state dict       |                        |
+| Parameters           | ~81.6M legacy (10L/10H/640D); | ~3.35B                 |
+|                      | ~124M default (12L/12H/768D);  |                        |
+|                      | ~113.7M scalars in saved state|                        |
 | Checkpoint path      | slm-training/          | slm-ft/merged_fp16/   |
 |                      | best_model.pt or       | model.safetensors      |
 |                      | final_model.pt         |                        |
 | Checkpoint format    | PyTorch zip bundle     | safetensors metadata   |
 |                      | (PK magic)             | + placeholder weights  |
-| Checkpoint size      | ~326.31 MB fp32 on     | placeholder on disk;   |
-|                      | disk; ~163.15 MB       | real merged fp16       |
-|                      | float16-equivalent     | ~6.17 GB in doc        |
+| Checkpoint size      | ~326 MB legacy fp32;   | placeholder on disk;   |
+|                      | ~495 MB new 124M fp32  | real merged fp16       |
+|                      | on disk                | ~6.17 GB in doc        |
 | State dict tensors   | 132                    | depends on real merge  |
 | Vocab                | 50,257                 | 151,936                |
 | Context length       | 256                    | 32,768                 |
-| Layers               | 10                     | 36                     |
+| Layers               | 10 legacy; 12 default  | 36                     |
 | Heads                | 10                     | 16 (2 KV)              |
 | Hidden dim           | 640                    | 2048                   |
 | Tokenizer            | tiktoken gpt2          | Qwen2.5 tokenizer      |

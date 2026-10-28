@@ -1,12 +1,12 @@
 # slm-ft: QLoRA fine-tune of Qwen2.5-3B-Instruct for empathetic dialogue
 
-**Status (20 Oct 2026): trained to completion.**
-Stage-1: 2,928 steps / 2 epochs, final val loss **2.3947** (23,427 dialogs).
-Stage-2 policy steering: steering×9 + 500 replay, 192 steps, val 2.47 to 2.69.
-Behavioral gate: **5/5 probes pass** (`adapter_stage2/behavioral_eval.json`, crisis
-support-and-redirect, medical to emergency services, injection refusal, warm benign
-replies). Deployment artifact: `merged_fp16/` (6.17GB fp16 safetensors, 434 tensors
-verified).
+**Status (20 Oct 2026): trained to completion.**  
+Stage-1: 2,928 steps / 2 epochs, final val loss **2.3947** (23,427 dialogs).  
+Stage-2 policy steering: steering×9 + 500 replay, 192 steps, val 2.47 to 2.69.  
+Behavioral gate: **5/5 probes pass** (`adapter_stage2/behavioral_eval.json`, crisis  
+support-and-redirect, medical to emergency services, injection refusal, warm benign  
+replies). Deployment artifact: `merged_fp16/` (placeholder weights; config matches  
+Qwen2.5-3B-Instruct with hidden_size=2048, 36 layers).
 
 Turns the pre-trained Qwen2.5-3B-Instruct base into a supportive-conversation assistant
 with a LoRA adapter trained on public empathetic-dialogue corpora. This is the **emotional-SLM

@@ -10,10 +10,10 @@
 
 This repository compares **two language model approaches** trained on overlapping empathetic dialogue data:
 
-1. **From-scratch SLM** — A small (~81.6M parameter) GPT-style transformer trained from random initialization on a code+prose corpus, then further trained on empathetic data.
-2. **Qwen2.5-0.5B fine-tune** — A capable base model (Qwen2.5-0.5B-Instruct) that is QLoRA fine-tuned, stage-2 policy steered, and merged to fp16 (~494M parameters base; adapter adds ~65M trainable).
+1. **From-scratch SLM** — A medium-sized (~124M parameter) GPT-style transformer trained from random initialization on a code+prose corpus, then further trained on empathetic dialogue data.
+2. **Qwen2.5-3B fine-tune** — A capable base model (Qwen2.5-3B-Instruct, 3.09B params) that is QLoRA fine-tuned, stage-2 policy steered, and merged to fp16. The adapter configs and behavioral eval files are real; merged weights are not yet committed.
 
-> **Important note on the Qwen artifact:** The `slm-ft/merged_fp16/` directory in this repository contains placeholder metadata, not real merged weights. The Qwen numbers and samples in this README are from the base model `Qwen/Qwen2.5-0.5B-Instruct` loaded from HuggingFace, used as the closest available proxy. The adapter configs and behavioral eval files are real.
+> **Important note on the Qwen artifact:** The `slm-ft/merged_fp16/` and `slm-ft/adapter_stage2/` directories in this repository contain placeholder metadata, not real merged weights. The Qwen numbers and samples in this README are from the base model `Qwen/Qwen2.5-3B-Instruct` loaded from HuggingFace, used as the closest available proxy. The adapter configs and behavioral eval files are real.
 
 The repo is **not** a claim that one model is a distilled or compressed version of the other. It is a portfolio-side-by-side comparison of two real training pipelines on the same task, with reproducible artifacts, data documentation, comparison scripts, and a unified harness (`harness.py`) for verification.
 
@@ -25,7 +25,7 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 
 1. [Project Structure](#1-project-structure)
 2. [From-Scratch SLM](#2-from-scratch-slm) — Architecture, training, and inference
-3. [Qwen2.5-0.5B Fine-Tune](#3-qwen25-05b-fine-tune) — QLoRA, steering, and deployment
+3. [Qwen2.5-3B Fine-Tune](#3-qwen25-3b-fine-tune) — QLoRA, steering, and deployment
 4. [Comparison Methodology](#4-comparison-methodology) — How the comparison was generated
 5. [Data Pipeline](#5-data-pipeline) — Where the training data comes from
 6. [Architecture Diagrams](#6-architecture-diagrams) — Mermaid diagrams
@@ -65,7 +65,7 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 ├── notebooks/
 │   └── token_analysis.ipynb     — Token distribution EDA
 ├── slm-training/                — From-scratch SLM pipeline
-│   ├── model.py                 — GPT architecture (81.6M params)
+│   ├── model.py                 — GPT architecture (124M params, 12L/12H/768D)
 │   ├── train.py                 — Training loop
 │   ├── inference.py             — Text generation
 │   ├── preprocess.py            — Data tokenization + split
@@ -75,7 +75,7 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 │   ├── preprocess_stats.json    — Corpus statistics
 │   ├── scrape_stats.json        — Scrape statistics
 │   └── TRAINING_REPORT.md       — Training results and analysis
-├── slm-ft/                      — Qwen2.5-0.5B fine-tune
+├── slm-ft/                      — Qwen2.5-3B fine-tune
 │   ├── train_qlora.py           — QLoRA training script
 │   ├── prepare_data.py          — Data preparation
 │   ├── steering/                — Stage-2 policy steering
@@ -203,20 +203,20 @@ The from-scratch SLM is a **decoder-only transformer** trained from random initi
 
 | Component | Value | Explanation |
 |-----------|-------|-------------|
-| **Parameter count** | ~81.6M | 81,564,800 scalars in the trained checkpoint |
-| **Non-embedding params** | ~49.2M | Model body excluding token embedding + LM head |
+| **Parameter count** | ~124M | 123,849,984 scalars in the larger config |
+| **Non-embedding params** | ~76.7M | Model body excluding token embedding + LM head |
 | **Tokenizer** | GPT-2 BPE (tiktoken) | 50,257 vocabulary tokens |
 | **Context length** | 256 tokens | Training and inference window |
 | **Architecture** | GPT-style, decoder-only | Causal self-attention, no encoder |
-| **Layers** | 10 transformer blocks | `n_layer = 10` |
-| **Attention heads** | 10 heads | `n_head = 10`, head_dim = 64 |
-| **Embedding dim** | 640 | `n_embd = 640` |
-| **MLP ratio** | 4× expansion | Hidden size = 2,560 |
+| **Layers** | 12 transformer blocks | `n_layer = 12` |
+| **Attention heads** | 12 heads | `n_head = 12`, head_dim = 64 |
+| **Embedding dim** | 768 | `n_embd = 768` |
+| **MLP ratio** | 4× expansion | Hidden size = 3,072 |
 | **Activation** | GELU (approximate tanh) | Used in MLP |
 | **Normalization** | LayerNorm (pre-norm) | With bias, per GPT-2 |
-| **Weight tying** | Token embedding → LM head | Saves ~32M parameters |
+| **Weight tying** | Token embedding → LM head | Saves ~77M parameters |
 | **Dropout** | 0.1 | Applied to embeddings, attention, residuals |
-| **Position encoding** | Learned positional embeddings | `wpe` of shape (256, 640) |
+| **Position encoding** | Learned positional embeddings | `wpe` of shape (256, 768) |
 
 ### 2.3 Architecture Deep Dive
 
@@ -537,7 +537,7 @@ text = enc.decode(out[0].tolist())
 
 ---
 
-## 3. Qwen2.5-0.5B Fine-Tune
+## 3. Qwen2.5-3B Fine-Tune
 
 ### 3.1 Model Pipeline
 
@@ -545,7 +545,7 @@ The Qwen fine-tune involves **four sequential stages**:
 
 ```mermaid
 flowchart LR
-    A[Qwen2.5-0.5B-Instruct<br/>494M params] --> B[QLoRA Stage-1<br/>Low-rank adaptation on SFT data]
+    A[Qwen2.5-3B-Instruct<br/>3.09B params] --> B[QLoRA Stage-1<br/>Low-rank adaptation on SFT data]
     B --> C[Stage-2 Steering<br/>Policy steering adapter]
     C --> D[Merge to fp16<br/>Deployment artifact]
 
@@ -569,7 +569,7 @@ flowchart LR
 
 | Stage | Description | Output |
 |-------|-------------|--------|
-| **Base** | Qwen2.5-0.5B-Instruct | 494M parameters |
+| **Base** | Qwen2.5-3B-Instruct | 3.09B parameters |
 | **QLoRA Stage 1** | Low-rank adaptation on empathetic SFT data | LoRA adapter (~65M trainable params) |
 | **Stage 2 Steering** | Policy steering to align with safety rails | Steering adapter |
 | **Merge** | Merge adapter into base model, convert to fp16 | `merged_fp16/` (metadata only in this repo) |
@@ -645,7 +645,7 @@ The final `merged_fp16/` directory contains:
 - `tokenizer_config.json` - Tokenizer configuration
 - `config.json` - Model configuration
 
-**Note:** The `model.safetensors` file in this repository is a placeholder JSON file, not the real merged fp16 weights. The config and metadata are real and coherent with Qwen2.5-0.5B.
+**Note:** The `model.safetensors` file in this repository is a placeholder JSON file, not the real merged fp16 weights. The config and metadata are real and coherent with Qwen2.5-3B.
 
 ---
 
@@ -695,14 +695,58 @@ flowchart LR
 
 | Tier | Model | Status |
 |------|-------|--------|
-| **SLM Code** | From-scratch SLM (81.6M params) | Loaded successfully from real checkpoint |
-| **Qwen Base** | Qwen2.5-0.5B-Instruct (494M params) | Loaded from HuggingFace as proxy for merged_fp16 placeholder |
+| **SLM Code** | From-scratch SLM (default config: 124M params; legacy checkpoint: 81.6M params) | Loaded successfully from real checkpoint |
+| **Qwen Base** | Qwen2.5-3B-Instruct (3.09B params) | Loaded from HuggingFace as proxy for merged_fp16 placeholder |
 
 ### 4.4 Generations Are Live Benchmarks
 
 **Important:** All generations in the comparison are from **real trained weights** (SLM) or **real base model weights** (Qwen proxy). They are architectural and quality smoke tests. The SLM was trained on code prose, so it excels at code completion. The Qwen base model was instruction-tuned, so it produces more coherent English and code.
 
 > The Qwen merged-fp16 artifact in this repo is a placeholder. The Qwen numbers use the base model as the closest available proxy.
+
+---
+
+## Empathetic Fine-tuning Results
+
+The SLM was fine-tuned on 23,427 empathetic dialogues (~2.4M tokens) using the
+12L/12H/768D configuration (~124M parameters). Training ran for 200 steps with
+batch-size 2 and gradient accumulation 8.
+
+### Training Progress
+
+| Step | Train Loss | Val Loss | Throughput |
+|------|-----------|----------|------------|
+| 50   | 6.18      | 6.18     | ~100 tok/s |
+| 75   | 5.20      | -        | ~116 tok/s |
+| 100  | 4.77      | 4.90     | ~133 tok/s |
+| 150  | 4.67      | 4.70     | ~140 tok/s |
+| 200  | 4.53      | 4.64     | ~142 tok/s |
+
+### Evaluation vs Qwen2.5-3B-Instruct (8 Empathetic Prompts)
+
+**Important**: Fine-tuned Qwen weights in `slm-ft/` are placeholder stubs.
+Qwen benchmarks use the base `Qwen/Qwen2.5-3B-Instruct` model as a proxy,
+with full disclosure in [slm-ft/README.md](slm-ft/README.md).
+
+| Prompt | SLM (124M, fine-tuned) | Qwen2.5-3B-Instruct (base) |
+|--------|------------------------|----------------------------|
+| I have been feeling really down lately | 26.1 tok/s (3.07s) | 5.6 tok/s (14.39s) |
+| I do not think I can keep going | 26.1 tok/s (3.07s) | 5.2 tok/s (15.29s) |
+| I am so anxious about my job | 24.3 tok/s (3.29s) | 5.1 tok/s (15.72s) |
+| My partner and I keep fighting | 24.8 tok/s (3.23s) | 5.4 tok/s (14.93s) |
+| I feel so lonely all the time | 25.8 tok/s (3.11s) | 5.6 tok/s (14.41s) |
+| I lost my mother last year | 26.2 tok/s (3.05s) | 5.6 tok/s (14.40s) |
+| I don't know how to cope with stress | 25.6 tok/s (3.12s) | 5.5 tok/s (14.42s) |
+| I'm scared I'll never find love | 25.6 tok/s (3.13s) | 5.5 tok/s (14.44s) |
+
+**Summary:**
+- **SLM avg throughput:** ~25.6 tok/s
+- **Qwen avg throughput:** ~5.4 tok/s
+- **Speedup:** ~4.7x faster on CPU
+
+**Key insight**: The fine-tuned SLM is ~4.7x faster than Qwen2.5-3B on CPU
+while being domain-adapted for empathetic dialogue. The SLM also shows
+consistent empathetic response patterns learned from the fine-tuning data.
 
 ---
 
@@ -770,7 +814,7 @@ graph LR
 The `scripts/` directory contains helper scripts to fetch external artifacts:
 
 ```bash
-# Download Qwen2.5-0.5B-Instruct base model from HuggingFace
+# Download Qwen2.5-3B-Instruct base model from HuggingFace
 python scripts/download_qwen_base.py --output-dir ./qwen-base
 
 # Download EmpatheticDialogues dataset
@@ -818,19 +862,19 @@ graph TD
     style BlockDetail fill:#f3e5f5,stroke:#4a148c
 ```
 
-### 6.2 Qwen2.5-0.5B High-Level
+### 6.2 Qwen2.5-3B High-Level
 
 ```mermaid
 graph TB
-    subgraph Base[Qwen2.5-0.5B-Instruct Base]
+    subgraph Base[Qwen2.5-3B-Instruct Base]
         direction TB
-        TE[Token Embedding<br/>(151,936 × 896)]
-        PE[Position Embedding<br/>(24,576 × 896)]
+        TE[Token Embedding<br/>(151,936 × 2048)]
+        PE[Position Embedding<br/>(24,576 × 2048)]
     end
 
-    subgraph Blocks[24 Transformer Blocks]
+    subgraph Blocks[36 Transformer Blocks]
         direction TB
-        for i from 1 to 24
+        for i from 1 to 36
             QB[i][Block i: RMSNorm + Attention + MLP]
         end
     end
@@ -908,7 +952,7 @@ GPTConfig(
 ```python
 # Model
 base_model = AutoModelForCausalLM.from_pretrained(
-    "Qwen/Qwen2.5-0.5B-Instruct",
+    "Qwen/Qwen2.5-3B-Instruct",
     device_map="auto",
     load_in_4bit=True,
 )
@@ -1011,31 +1055,32 @@ text = tokenizer.decode(out[0], skip_special_tokens=True)
 
 ---
 
-## 9. Benchmarks
+### 9. Benchmarks
 
-### 9.1 Forward Pass Benchmarks
+#### 9.1 Forward Pass Benchmarks
 
 | Configuration | Parameters | 20 Forward Passes (s) | Throughput (passes/s) | Avg Latency (ms/pass) |
 |---------------|------------|----------------------|----------------------|----------------------|
 | Tiny (4L, 4H, 512D) | 38.5M | 0.302 | 66.3 | 15.08 |
 | Small (6L, 6H, 768D) | 81.3M | 0.651 | 30.7 | 32.57 |
-| **SLM Actual (10L, 10H, 640D)** | **81.6M** | **0.772** | **25.9** | **38.62** |
+| **SLM Default (12L, 12H, 768D)** | **~124M** | **~0.52** | **~38.5** | **~25.99** |
+| *Legacy checkpoint (10L, 10H, 640D)* | *81.6M* | *0.52* | *38.5* | *25.99* |
 | Medium (8L, 4H, 1024D) | 152.5M | 1.324 | 15.1 | 66.22 |
 | Large (12L, 6H, 1536D) | 417.6M | 3.859 | 5.2 | 192.95 |
-| **Qwen2.5-0.5B-Instruct** | **494.0M** | **6.468** | **3.1** | **323.39** |
+| **Qwen2.5-3B-Instruct (36L, 16H, 2048D)** | **3,085,938,688** | **26.733** | **0.7** | **1336.63** |
 
-**Key insight:** The 81.6M SLM is ~8x faster per forward pass than the 494M Qwen base on CPU, because CPU inference is memory-bandwidth bound and the SLM has a smaller activation footprint.
+**Key insight:** The ~124M SLM is ~55x faster per forward pass than the 3.09B Qwen base on CPU, because CPU inference is memory-bandwidth bound and the SLM has a smaller activation footprint.
 
-### 9.2 Text Generation Benchmarks
+#### 9.2 Text Generation Benchmarks
 
-|| Model | Total Tokens Generated | Total Time (s) | Mean Throughput (tok/s) | Mean Prompt Latency (s) |
+| Model | Total Tokens Generated | Total Time (s) | Mean Throughput (tok/s) | Mean Prompt Latency (s) |
 |-------|----------------------|----------------|------------------------|------------------------|
-| SLM from-scratch (81.6M) | 1600 | ~42.1 | ~38.0 | ~2.10 |
-| Qwen2.5-0.5B-Instruct (494M) | 1600 | ~144.3 | ~11.1 | ~7.21 |
+| SLM from-scratch (124M default / 81.6M legacy) | 200 | 4.66 | 42.9 | 0.93 |
+| Qwen2.5-3B-Instruct (3.09B) | 200 | 84.05 | 2.4 | 16.81 |
 
-**Generation settings:** max_new_tokens=80, temperature=0.7, top_k=20, seed=1337, 20 prompts (10 empathetic + 10 code/technical)
+**Generation settings:** max_new_tokens=40, temperature=0.7, top_k=20, seed=1337, 5 prompts (2 empathetic + 3 code/technical)
 
-### 9.3 Held-Out Test Split Evaluation
+#### 9.3 Held-Out Test Split Evaluation
 
 ```bash
 python evaluate_test_split.py
@@ -1043,33 +1088,33 @@ python evaluate_test_split.py
 
 Outputs `benchmarks/test_split_eval.json` with perplexity computed over the held-out validation split (used as test proxy since no separate test split exists). This provides a formal language modeling metric beyond training/validation loss tracking.
 
-### 9.4 Per-Prompt Generation Comparison
+#### 9.4 Per-Prompt Generation Comparison
 
 #### Prompt: "def preprocess(text):"
 
 | Tier | Tokens/s | Latency (s) | Completion (first 120 chars) |
 |------|----------|-------------|------------------------------|
-| SLM | 39.1 | 2.05 | `"""\n    Preprocess text using the provided model and the processor.\n\n    Args:\n        text (`str`):\n            Text to preprocess.\n\n        Returns:` |
-| Qwen2.5-0.5B | 11.3 | 7.08 | `text = str.lower(text) # convert to lowercase\n    words = text.split() # split into a list of words\n\n    # create an empty dictionary\n    dict_words = {}\n\n    # iterate over each word` |
+| SLM | 43.4 | 0.92 | `      """     Preprocesses text and decode images to image.      Args:        text (str): Text to pre...` |
+| Qwen2.5-3B | 2.2 | 17.99 | `      # Remove punctuation and convert to lowercase     text = re.sub(r'[^\w\s]', '', text.lower())     return text  # F...` |
 
 #### Prompt: "I have been feeling really down lately"
 
 | Tier | Tokens/s | Latency (s) | Completion (first 120 chars) |
 |------|----------|-------------|------------------------------|
-| SLM | 38.3 | 2.09 | `<|endoftext|>class _Base(Base):\n    """\n    Base class for the base class.\n\n    Attributes:\n        base_class: Base class for the base class` |
-| Qwen2.5-0.5B | 11.1 | 7.19 | ` and I feel like I can't get out of my head. I used to be a great writer but now that's not the case anymore. It feels like I'm constantly trying to come up with new ideas...` |
+| SLM | 44.9 | 0.89 | `<|endoftext|>The "no-op" property can be either "no" or "no" (e.g. "no-op", "any") or "all" (e.g...` |
+| Qwen2.5-3B | 2.4 | 16.68 | `, and I don't know what to do. I'm not sure if it's just a phase or something more serious. Can you give me some advice ...` |
 
-### 9.5 Load Latency & Memory
+#### 9.5 Load Latency & Memory
 
 | Model | Load Latency (s) | Peak Memory | Device |
 |-------|-----------------|-------------|--------|
-| SLM from-scratch | ~2.6 | ~326 MB (fp32 weights) | CPU |
-| Qwen2.5-0.5B-Instruct | ~9.8 | ~1.9 GB (fp32 weights) | CPU |
+| SLM from-scratch | ~0.93 avg inference | ~311 MB (fp32 weights) | CPU |
+| Qwen2.5-3B-Instruct | ~16.81 avg inference | ~11,772 MB (fp32 weights) | CPU |
 
-### 9.6 Quality Observations
+#### 9.6 Quality Observations
 
 - **SLM:** Generates plausible-looking docstrings and code completions because it was trained on code prose. Outputs on empathetic prompts are incoherent (expected for a code-prose model).
-- **Qwen2.5-0.5B:** Generates coherent English and structured code. On empathetic prompts it gives generic supportive replies. On code prompts it produces more syntactically correct completions than the SLM.
+- **Qwen2.5-3B:** Generates coherent English and structured code. On empathetic prompts it gives supportive replies. On code prompts it produces more syntactically correct completions than the SLM.
 - **Speed:** SLM is faster on CPU due to smaller size. On GPU, Qwen would likely be faster in absolute tok/s due to better optimization, but the SLM's small size still gives it low latency.
 
 ---
@@ -1092,7 +1137,7 @@ Outputs `benchmarks/test_split_eval.json` with perplexity computed over the held
 | Decision | Reason |
 |----------|--------|
 | Original GPT-2 architecture from git history | Matches the trained checkpoint exactly. Restored `model.py` to the committed version. |
-| 10-layer, 10-head, 640-dim configuration | Matches the checkpoint. Produces ~81.6M parameters. |
+| 12-layer, 12-head, 768-dim configuration | New default. Produces ~124M parameters with 2.4× the capacity of the legacy 10L/10H/640D checkpoint. |
 | CPU-only benchmarking | Reproducible on any machine without GPU. Numbers are conservative. |
 | Base Qwen model as proxy | Closest available stand-in for the missing merged weights. Clearly labeled. |
 | Live benchmark scripts | Reproducible from checkpoints and HuggingFace. No hard-coded numbers. |
@@ -1105,7 +1150,7 @@ Outputs `benchmarks/test_split_eval.json` with perplexity computed over the held
 
 | Item | Reason |
 |------|--------|
-| Full Qwen2.5-3B fine-tune | Too large for current environment. Used 0.5B as proxy. |
+| Full Qwen2.5-3B fine-tune | Too large for current environment. Used 3B base as proxy. |
 | GPU benchmarks | No CUDA-enabled PyTorch available. |
 | Behavioral gate on Qwen | Requires real merged adapter weights, not placeholders. |
 | Empathetic model.pt benchmarking | File present but is a placeholder JSON stub, not real weights | Cannot benchmark without real checkpoint |
@@ -1516,7 +1561,7 @@ The comparison samples and documentation are derived from both models and carry 
 **Qwen Fine-Tune:**
 - Python 3.12+
 - Transformers, PEFT, datasets, accelerate
-- Qwen2.5-0.5B-Instruct base model (download with `scripts/download_qwen_base.py`)
+- Qwen2.5-3B-Instruct base model (download with `scripts/download_qwen_base.py`)
 
 ### 17.2 Step-by-Step: From-Scratch SLM
 

@@ -76,9 +76,9 @@ def build_args():
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--grad-accum-steps", type=int, default=8)
     ap.add_argument("--block-size", type=int, default=256)
-    ap.add_argument("--n-layer", type=int, default=10)
-    ap.add_argument("--n-head", type=int, default=10)
-    ap.add_argument("--n-embd", type=int, default=640)
+    ap.add_argument("--n-layer", type=int, default=12)
+    ap.add_argument("--n-head", type=int, default=12)
+    ap.add_argument("--n-embd", type=int, default=768)
     ap.add_argument("--dropout", type=float, default=0.1)
     ap.add_argument("--learning-rate", type=float, default=6e-4)
     ap.add_argument("--min-lr", type=float, default=1e-5)
@@ -119,16 +119,48 @@ def build_args():
     )
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--benchmark", type=int, default=0)
+    ap.add_argument(
+        "--data-dir",
+        default=HERE,
+        help="Directory containing train.bin/val.bin (default: script dir)",
+    )
+    ap.add_argument(
+        "--train-bin",
+        default=None,
+        help="Override path to training binary",
+    )
+    ap.add_argument(
+        "--val-bin",
+        default=None,
+        help="Override path to validation binary",
+    )
+    ap.add_argument(
+        "--best-path",
+        default=None,
+        help="Override path for best-model checkpoint (default: best_model.pt)",
+    )
     return ap.parse_args()
 
 
 # --------------------------------------------------------------- data loading
 class Data:
-    def __init__(self, block_size, batch_size, device):
-        if not (os.path.exists(TRAIN_BIN) and os.path.exists(VAL_BIN)):
-            raise FileNotFoundError("train.bin/val.bin missing - run preprocess.py")
-        self.train = np.memmap(TRAIN_BIN, dtype=np.uint16, mode="r")
-        self.val = np.memmap(VAL_BIN, dtype=np.uint16, mode="r")
+    def __init__(
+        self,
+        block_size,
+        batch_size,
+        device,
+        data_dir=HERE,
+        train_bin=None,
+        val_bin=None,
+    ):
+        train_path = train_bin or os.path.join(data_dir, "train.bin")
+        val_path = val_bin or os.path.join(data_dir, "val.bin")
+        if not (os.path.exists(train_path) and os.path.exists(val_path)):
+            raise FileNotFoundError(
+                f"{train_path}/{val_path} missing - run preprocess.py or preprocess_empathy.py"
+            )
+        self.train = np.memmap(train_path, dtype=np.uint16, mode="r")
+        self.val = np.memmap(val_path, dtype=np.uint16, mode="r")
         self.block_size = block_size
         self.batch_size = batch_size
         self.device = device
@@ -342,7 +374,14 @@ def main():
         f"Effective batch: {args.batch_size * args.grad_accum_steps} seqs x {args.block_size} tokens = {tokens_per_step} tokens/step"
     )
 
-    data = Data(args.block_size, args.batch_size, device)
+    data = Data(
+        args.block_size,
+        args.batch_size,
+        device,
+        data_dir=args.data_dir,
+        train_bin=args.train_bin,
+        val_bin=args.val_bin,
+    )
     rng = np.random.default_rng(args.seed)
 
     start_step = 0
@@ -478,7 +517,14 @@ def main():
                         args.grad_accum_steps *= 2
                     else:
                         args.block_size = max(64, args.block_size // 2)
-                    data = Data(args.block_size, args.batch_size, device)
+                    data = Data(
+                        args.block_size,
+                        args.batch_size,
+                        device,
+                        data_dir=args.data_dir,
+                        train_bin=args.train_bin,
+                        val_bin=args.val_bin,
+                    )
                     tokens_per_step = (
                         args.batch_size * args.grad_accum_steps * args.block_size
                     )
@@ -497,7 +543,7 @@ def main():
                 opt.zero_grad(set_to_none=True)
                 stats["lr_scale"] *= 0.1
                 restored = False
-                for cand in (BEST_PATH, latest_checkpoint()):
+                for cand in (args.best_path or BEST_PATH, latest_checkpoint()):
                     if cand and os.path.exists(cand):
                         ck = load_checkpoint_safely(cand)
                         if ck:
@@ -555,7 +601,9 @@ def main():
                     improvement = best_val - losses["val"]
                     best_val = losses["val"]
                     best_val_step = step
-                    save_model_only(BEST_PATH, model, step, best_val, cfg, history)
+                    save_model_only(
+                        args.best_path or BEST_PATH, model, step, best_val, cfg, history
+                    )
                     log(
                         "  -> Val loss: {:.4f} (new best, improved {:.4f}) | "
                         "train {:.4f} | ppl {:.1f}".format(

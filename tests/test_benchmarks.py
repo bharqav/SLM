@@ -65,7 +65,7 @@ class TestComparisonArtifact:
         assert len(samples) == 2
         models = {s["model"] for s in samples}
         assert "slm-scratch" in models
-        assert "qwen2.5-0.5b-base" in models
+        assert "qwen2.5-3b-base" in models
 
     def test_prompt_coverage(self, comparison_json):
         expected_prompts = {
@@ -115,8 +115,8 @@ class TestComparisonArtifact:
 class TestBenchmarkReport:
     def test_forward_pass_table_present(self, benchmark_report):
         assert "Forward-Pass Throughput Benchmarks" in benchmark_report
-        assert "SLM Actual (10L, 10H, 640D)" in benchmark_report
-        assert "Qwen2.5-0.5B-Instruct" in benchmark_report
+        assert "SLM from-scratch" in benchmark_report and "10L" in benchmark_report
+        assert "Qwen2.5-3B-Instruct" in benchmark_report
 
     def test_generation_table_present(self, benchmark_report):
         assert "Text Generation Benchmarks" in benchmark_report
@@ -135,7 +135,7 @@ class TestReadme:
         expected_sections = [
             "Project Structure",
             "From-Scratch SLM",
-            "Qwen2.5-0.5B Fine-Tune",
+            "Qwen2.5-3B Fine-Tune",
             "Comparison Methodology",
             "Data Pipeline",
             "Architecture Diagrams",

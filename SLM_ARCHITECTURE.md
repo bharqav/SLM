@@ -10,26 +10,26 @@
 │  └─────────────────────┬───────────────────────┘          │
 │                       │                       │          │
 │               Token Embedding               Position Embedding
-│       (50257 × 1024)            (1024 × 1024)           │
+│       (50257 × 768)            (256 × 768)           │
 │                       │                       │          │
 │                       └───────►  Dropout ──────┘          │
 │                                                             │
 │  ┌────────────────────────────────────────────────────┐     │
-│  │  Transformer Blocks (8 layers)                        │     │
-│  │  Each block:                                    │     │
-│  │  ├─ RMSNorm (pre-norm)                              │     │
-│  │  ├─ Causal Self-Attention (4 heads, head_dim=256)  │     │
-│  │  │  └─ QKV projections, scaled dot-product attention │     │
-│  │  ├─ RMSNorm (post-attention)                            │     │
-│  │  └─ MLP (4× expansion, GELU activation)               │     │
-│  │       ├─ Linear(d_model, d_model×4)                   │     │
-│  │       └─ Linear(d_model×4, d_model)                   │     │
+│  │  Transformer Blocks (12 layers)                        │
+│  │  Each block:                                    │
+│  │  ├─ LayerNorm (pre-norm)                              │
+│  │  ├─ Causal Self-Attention (12 heads, head_dim=64)  │
+│  │  │  └─ QKV projections, scaled dot-product attention │
+│  │  ├─ LayerNorm (post-attention)                            │
+│  │  └─ MLP (4× expansion, GELU activation)               │
+│  │       ├─ Linear(768, 3072)                   │
+│  │       └─ Linear(3072, 768)                   │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
-│  └─ Final RMSNorm                                                       │
+│  └─ Final LayerNorm                                                       │
 │                                                             │
 │  └─ Language Modeling Head (tie weights with token embedding)│
-│       Linear(1024, 50257)                                      │
+│       Linear(768, 50257)                                      │
 └──────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -37,23 +37,30 @@
 
 ## Key Hyperparameters
 - **vocab_size**: 50257 (tiktoken GPT-2 tokenizer)
-- **d_model**: 1024
-- **n_heads**: 4
-- **head_dim**: 256
-- **n_layers**: 8
-- **ctx_len**: 1024
+- **n_layers**: 12
+- **n_heads**: 12
+- **head_dim**: 64
+- **d_model**: 768
+- **ctx_len**: 256
 - **mlp_ratio**: 4.0
-- **total parameters**: ~81.6M
+- **total parameters**: ~124M
 
 ## Training Data
-- Source: Public code prose dataset
-- Volume: ~13.2M tokens (estimated)
-- Training tokens: ~12.5M
-- Validation tokens: ~700K
-- Data format: Clean text files, source code, documentation
-- License: Various open-source licenses
+- Source: Public code prose dataset + empathetic dialogues
+- Volume: ~121M tokens (code) + ~2.4M tokens (empathy)
+- Training tokens: ~107M (code) + ~2.1M (empathy)
+- Validation tokens: ~13M (code) + ~49K (empathy)
+- Data format: Clean text files, source code, documentation, dialogue
+- License: Various open-source licenses + CC BY-NC-4.0 (empathetic data)
+
+## Empathetic Fine-Tune
+- Source: ESConv + EmpatheticDialogues
+- Volume: ~2.4M tokens
+- Training dialogs: 23,427
+- Validation dialogs: 461
+- Checkpoint: `best_empathy_model.pt` (after training)
 
 ## Inference
 - Autoregressive generation
 - Temperature sampling with top-k filtering
-- Supports context window up to 1024 tokens
+- Supports context window up to 256 tokens

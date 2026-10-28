@@ -27,10 +27,19 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Changed
 - Updated benchmark numbers to reflect 20-prompt evaluation
+- Increased default model to 12L/12H/768D (~124M params)
 - Restored original GPT-2 architecture from git history (10L/10H/640D)
 - Fixed `tests/__init__.py` (was broken literal text)
 - Reorganized README into 18 sections with consistent numbering
 - Updated comparison pipeline documentation with honest placeholder disclosures
+- Added `--data-dir`, `--train-bin`, `--val-bin` to `train.py`
+- Added `preprocess_empathy.py` for empathetic dialogue tokenization
+
+### Added
+- Empathetic fine-tune pipeline: 23,427 dialogues, ~2.4M tokens
+- `slm-training/empathy_train.bin` and `empathy_val.bin`
+- Training on ESConv + EmpatheticDialogues data
+- New default model config with 2.4x parameter increase
 
 ### Fixed
 - Model loading failure due to architecture mismatch (restored `model.py` from git)
