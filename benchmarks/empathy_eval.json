@@ -3,136 +3,136 @@
     "prompt": "I have been feeling really down lately",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I have been feeling really down lately.\nAssistant: Yeah, I know, I'm sure you feel to go to my parents and I can be a lot of a bit. I'm sure I have a lot.\nUser: I thought I try to my car.<|endoftext|>User: I am so sad. I'm sorry the best on that. I am so sorry to see my house is a little day.\nAssistant:",
+      "text": "I have been feeling really down lately.\nUser: I am sure I am not really had to hear to go to my mind and I. I can be a few for your I cant help in a good.\nAssistant: I love.\nAssistant: That is a few year.\nUser: I'm glad you can't think it was a nice.\nUser: Yeah, I am sorry to get my friend is a",
       "tokens": 80,
-      "latency_s": 3.07,
-      "tok_per_s": 26.1
+      "latency_s": 2.853,
+      "tok_per_s": 28.0
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm sorry to hear that you've been feeling down. It's important to take care of your mental health, and I'm here to help in any way I can. Have you found something specific that has been causing these feelings? Sometimes talking about what's bothering you can be very therapeutic.\n\nIf you're comfortable sharing, it might be helpful to discuss what's on your mind. Alternatively, if",
       "tokens": 80,
-      "latency_s": 14.386,
-      "tok_per_s": 5.6
+      "latency_s": 14.147,
+      "tok_per_s": 5.7
     }
   },
   {
     "prompt": "I do not think I can keep going",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I do not think I can keep going to try and I'm sorry to get to go to work. I wish I'm sure.\nAssistant: I can be a few for your help on the best to the person.\nUser: I thought I try to my car.<|endoftext|>User: I am so sad. I'm sorry the best on that. I am so sorry to see my house is a good.\nAssistant: I",
+      "text": "I do not think I can keep going to try and I'm sorry to get a few way to tell him to go.\nAssistant: I can be a lot of a bit. I cant be in a good!\nUser: I love.\nAssistant: What is a few year.\nUser: I'm a few time the best friend is a nice.\nAssistant: Yeah, I am sorry to get my friend is a",
       "tokens": 80,
-      "latency_s": 3.068,
-      "tok_per_s": 26.1
+      "latency_s": 2.811,
+      "tok_per_s": 28.5
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm sorry to hear that you're feeling this way. It's important to take care of your mental health and well-being. Here are some suggestions that might help:\n\n1. **Take a Break**: If you feel overwhelmed, it's okay to step back for a moment. Take a short break or do something you enjoy.\n\n2. **Break Tasks into Smaller Steps**: Sometimes large tasks can",
       "tokens": 80,
-      "latency_s": 15.29,
-      "tok_per_s": 5.2
+      "latency_s": 14.18,
+      "tok_per_s": 5.6
     }
   },
   {
     "prompt": "I am so anxious about my job",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I am so anxious about my job.\nAssistant: Yeah, I know, I'm sure you feel to go to my parents are a. I can be a few for your friend on the best to the person.\nUser: I thought I try to my car.<|endoftext|>User: I am so sad. I was on the best on that. I am so for the other day\nAssistant: That's always been able to",
+      "text": "I am so anxious about my job.\nUser: I am sure I am not really sorry to hear to go to my mind and I. I can be a few for your job on the best to the family.\nAssistant: I thought that.\nUser: I've been hard and i have to do you feel that the best on that you get a little for you can help him to do you have been a little friend",
       "tokens": 80,
-      "latency_s": 3.289,
-      "tok_per_s": 24.3
+      "latency_s": 2.833,
+      "tok_per_s": 28.2
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm really sorry to hear that you're feeling anxious about your job. It's important to address these feelings and take steps to feel more secure and content in your role. Here are some suggestions that might help:\n\n1. **Communicate with Your Manager**: If you feel comfortable doing so, discuss your concerns or anxieties with your manager. Sometimes, having an open conversation can provide clarity and relief",
       "tokens": 80,
-      "latency_s": 15.719,
-      "tok_per_s": 5.1
+      "latency_s": 14.122,
+      "tok_per_s": 5.7
     }
   },
   {
     "prompt": "My partner and I keep fighting",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "My partner and I keep fighting.\nAssistant: That's good!<|endoftext|>User: I'm sure to go to my parents and I am so much, I'm sorry to help it.\nAssistant: Oh no, i am so I'm sorry to my car.<|endoftext|>User: Do you have a family is very nice the best.\nUser: I am sorry to see a lot of a good. Do you are you",
+      "text": "My partner and I keep fighting.\nAssistant: That's good now?\nUser: I was the same. They got a lot. I am not a few day. I cant the best job and my friend is a bit of the weekend.\nAssistant: I've been hard and I have a family is very important the best.\nUser: Oh no for me so hard\nAssistant: That's always been able to",
       "tokens": 80,
-      "latency_s": 3.228,
-      "tok_per_s": 24.8
+      "latency_s": 2.754,
+      "tok_per_s": 29.0
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm sorry to hear that you're having trouble with your partnership. Conflict is common in any relationship, but it's important to address it constructively. Here are some steps you might consider:\n\n1. **Communicate Openly**: Try to have an open and honest conversation about what's causing the conflicts. It’s important to listen to each other without interrupting.\n\n2. **Identify the",
       "tokens": 80,
-      "latency_s": 14.928,
-      "tok_per_s": 5.4
+      "latency_s": 14.161,
+      "tok_per_s": 5.6
     }
   },
   {
     "prompt": "I feel so lonely all the time",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I feel so lonely all the time.\nUser: I am sure I am not really had to hear that.\nAssistant: Oh,. I can be a few for your friend on the best to the person.  How are you.\nAssistant: What is a few better for you are you feel good time!  You can be able to get a little for you can help?\nUser: I was a little friend",
+      "text": "I feel so lonely all the time.\nUser: I am sure I am not really sorry to hear to go to my mind and I. I can be a few for your job on the best.\nAssistant: I'm sure you.\nAssistant: What is a good you have been so.\nUser: I am the best much.\nUser: Oh no!\nAssistant: I'm sure you are you are you",
       "tokens": 80,
-      "latency_s": 3.105,
-      "tok_per_s": 25.8
+      "latency_s": 2.803,
+      "tok_per_s": 28.5
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm sorry to hear that you're feeling lonely. It's important to remember that feeling lonely is a common human experience, and there are ways to cope with it. Here are some suggestions that might help:\n\n1. **Reach Out to Friends and Family**: Sometimes, just letting someone know how you're feeling can make a big difference. Even if you don't want to talk right away, a",
       "tokens": 80,
-      "latency_s": 14.413,
-      "tok_per_s": 5.6
+      "latency_s": 14.15,
+      "tok_per_s": 5.7
     }
   },
   {
     "prompt": "I lost my mother last year",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I lost my mother last year.\nUser: I am sure I am not really had to hear to go to my parents and she is a hard to be a bit. I'm sure I have a lot.\nAssistant: I thought you can be more of work and he is always have been a family.<|endoftext|>User: I was a new work.\nAssistant: Yeah, I am a good. Do you are you",
+      "text": "I lost my mother last year.\nUser: I am sure I am not really sorry. I wish I'm so.\nAssistant: I am not a few for your I cant be in a good!\nUser: I love.\nAssistant: What is a few year.\nUser: I'm glad I am the best.\nAssistant: Oh wow for me so hard\nAssistant: That's always been able to",
       "tokens": 80,
-      "latency_s": 3.053,
-      "tok_per_s": 26.2
+      "latency_s": 2.765,
+      "tok_per_s": 28.9
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm really sorry to hear that you've lost your mother. Losing a loved one is undoubtedly a very difficult and painful experience. If you need someone to talk to or just want to share your feelings, I'm here for you. Please know that you don't have to go through this alone. If you're struggling with grief or feel overwhelmed, it might be helpful to reach out to friends,",
       "tokens": 80,
-      "latency_s": 14.401,
-      "tok_per_s": 5.6
+      "latency_s": 14.118,
+      "tok_per_s": 5.7
     }
   },
   {
     "prompt": "I don't know how to cope with stress",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I don't know how to cope with stress.\nUser: I know I know but I'm sure I was the same.\nAssistant: I can be a lot of a bit of my house.\nUser: Oh no, and I love it's a lot of him.<|endoftext|>User: Do you have a family is very nice the best.\nAssistant: Oh no for me so much!\nAssistant: I was a little friend",
+      "text": "I don't know how to cope with stress.\nUser: I am sure I am not really had to hear that.\nAssistant: Oh,. I can be a few for your job on the best.\nAssistant: I'm sorry to be a little year.\nUser: I am sorry to be a family.<|endoftext|>User: I was a new job\nAssistant: Is I'm very new best of my dog.\nUser",
       "tokens": 80,
-      "latency_s": 3.12,
-      "tok_per_s": 25.6
+      "latency_s": 2.864,
+      "tok_per_s": 27.9
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "I'm here to help you manage your stress. Coping with stress is important for maintaining both your mental and physical health. Here are some strategies that might be helpful:\n\n1. **Exercise Regularly**: Physical activity can significantly reduce stress. It doesn't have to be intense; even light activities like walking or yoga can make a difference.\n\n2. **Mindfulness and Meditation**: These practices help you",
       "tokens": 80,
-      "latency_s": 14.422,
-      "tok_per_s": 5.5
+      "latency_s": 14.206,
+      "tok_per_s": 5.6
     }
   },
   {
     "prompt": "I'm scared I'll never find love",
     "slm": {
       "label": "SLM empathy (12L/12H/768D)",
-      "text": "I'm scared I'll never find love that you have.\nUser: I am not really had to hear that.\nAssistant: Oh,. I am not doing that you feel like that you have a good!\nUser: I love.\nAssistant: What is a good you have been so.\nUser: I am the best on that you get a little for you can help you do you feel like you.\nUser",
+      "text": "I'm scared I'll never find love my house and I'm sorry to get the time, I know how to go.\nAssistant: I can be a lot of a bit. I cant be in a good!\nUser: I love.\nAssistant: What is a few year.\nUser: I'm glad I am the best it was a nice.\nAssistant: Yeah, I am sorry to get my friend is a",
       "tokens": 80,
-      "latency_s": 3.13,
-      "tok_per_s": 25.6
+      "latency_s": 2.861,
+      "tok_per_s": 28.0
     },
     "qwen": {
       "label": "Qwen2.5-3B-Instruct",
       "text": "It's completely normal to feel scared or uncertain about finding love at any point in your life. Love can be complex and may involve a lot of emotions, experiences, and growth. Here are some thoughts and suggestions that might help:\n\n1. **Embrace Self-Discovery**: Understanding yourself better can make you more attractive to others. Reflect on what you like, what you're passionate about, and what",
       "tokens": 80,
-      "latency_s": 14.44,
-      "tok_per_s": 5.5
+      "latency_s": 14.129,
+      "tok_per_s": 5.7
     }
   }
 ]

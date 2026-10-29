@@ -708,19 +708,23 @@ flowchart LR
 
 ## Empathetic Fine-tuning Results
 
-The SLM was fine-tuned on 23,427 empathetic dialogues (~2.4M tokens) using the
+The SLM was fine-tuned on a mixed dataset of 23,427 original empathetic dialogues
+plus 51 Qwen2.5-3B-Instruct-generated responses (~2.5M tokens) using the
 12L/12H/768D configuration (~124M parameters). Training ran for 200 steps with
-batch-size 2 and gradient accumulation 8.
+batch-size 2, gradient accumulation 8 (effective batch 16), and knowledge
+distillation from Qwen2.5-3B-Instruct.
 
 ### Training Progress
 
 | Step | Train Loss | Val Loss | Throughput |
 |------|-----------|----------|------------|
-| 50   | 6.18      | 6.18     | ~100 tok/s |
-| 75   | 5.20      | -        | ~116 tok/s |
-| 100  | 4.77      | 4.90     | ~133 tok/s |
-| 150  | 4.67      | 4.70     | ~140 tok/s |
-| 200  | 4.53      | 4.64     | ~142 tok/s |
+| 10   | 9.36      | -        | ~234 tok/s |
+| 50   | 6.20      | 6.19     | ~235 tok/s |
+| 100  | 4.98      | 4.91     | ~235 tok/s |
+| 150  | 4.65      | 4.71     | ~236 tok/s |
+| 200  | 4.62      | 4.65     | ~236 tok/s |
+
+**Best checkpoint:** step 200, val loss 4.6466, ppl 104.2
 
 ### Evaluation vs Qwen2.5-3B-Instruct (8 Empathetic Prompts)
 
@@ -730,23 +734,27 @@ with full disclosure in [slm-ft/README.md](slm-ft/README.md).
 
 | Prompt | SLM (124M, fine-tuned) | Qwen2.5-3B-Instruct (base) |
 |--------|------------------------|----------------------------|
-| I have been feeling really down lately | 26.1 tok/s (3.07s) | 5.6 tok/s (14.39s) |
-| I do not think I can keep going | 26.1 tok/s (3.07s) | 5.2 tok/s (15.29s) |
-| I am so anxious about my job | 24.3 tok/s (3.29s) | 5.1 tok/s (15.72s) |
-| My partner and I keep fighting | 24.8 tok/s (3.23s) | 5.4 tok/s (14.93s) |
-| I feel so lonely all the time | 25.8 tok/s (3.11s) | 5.6 tok/s (14.41s) |
-| I lost my mother last year | 26.2 tok/s (3.05s) | 5.6 tok/s (14.40s) |
-| I don't know how to cope with stress | 25.6 tok/s (3.12s) | 5.5 tok/s (14.42s) |
-| I'm scared I'll never find love | 25.6 tok/s (3.13s) | 5.5 tok/s (14.44s) |
+| I have been feeling really down lately | 28.0 tok/s (2.85s) | 5.7 tok/s (14.15s) |
+| I do not think I can keep going | 28.5 tok/s (2.81s) | 5.6 tok/s (14.18s) |
+| I am so anxious about my job | 28.2 tok/s (2.83s) | 5.7 tok/s (14.12s) |
+| My partner and I keep fighting | 29.0 tok/s (2.75s) | 5.6 tok/s (14.16s) |
+| I feel so lonely all the time | 28.5 tok/s (2.80s) | 5.7 tok/s (14.15s) |
+| I lost my mother last year | 28.9 tok/s (2.77s) | 5.7 tok/s (14.12s) |
+| I don't know how to cope with stress | 27.9 tok/s (2.86s) | 5.6 tok/s (14.21s) |
+| I'm scared I'll never find love | 28.0 tok/s (2.86s) | 5.7 tok/s (14.13s) |
 
 **Summary:**
-- **SLM avg throughput:** ~25.6 tok/s
-- **Qwen avg throughput:** ~5.4 tok/s
-- **Speedup:** ~4.7x faster on CPU
+- **SLM avg throughput:** ~28.2 tok/s
+- **Qwen avg throughput:** ~5.6 tok/s
+- **Speedup:** ~5.0x faster on CPU
 
-**Key insight**: The fine-tuned SLM is ~4.7x faster than Qwen2.5-3B on CPU
-while being domain-adapted for empathetic dialogue. The SLM also shows
-consistent empathetic response patterns learned from the fine-tuning data.
+**Key insight**: The fine-tuned SLM is ~5.0x faster than Qwen2.5-3B on CPU
+while being domain-adapted for empathetic dialogue. However, generation quality
+remains weak: the 124M model still produces repetitive, fragmented outputs
+despite knowledge distillation from Qwen. This is a fundamental limitation
+of a 124M parameter model trained from scratch versus a 3B parameter model.
+See [benchmarks/empathy_eval.md](benchmarks/empathy_eval.md) for verbatim
+responses and detailed analysis.
 
 ---
 

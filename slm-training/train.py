@@ -172,11 +172,29 @@ class Data:
     def get_batch(self, split, rng):
         arr = self.train if split == "train" else self.val
         hi = len(arr) - self.block_size - 1
-        ix = rng.integers(0, hi, size=self.batch_size)
-        x = np.stack([arr[i : i + self.block_size] for i in ix]).astype(np.int64)
-        y = np.stack([arr[i + 1 : i + 1 + self.block_size] for i in ix]).astype(
-            np.int64
-        )
+        if hi <= 0:
+            # Fallback for tiny datasets: sample from the full array with a
+            # smaller effective context so validation still runs.
+            eff_block = max(1, len(arr) - 1)
+            hi = max(0, len(arr) - eff_block - 1)
+            ix = (
+                rng.integers(0, hi, size=self.batch_size)
+                if hi > 0
+                else np.zeros(self.batch_size, dtype=int)
+            )
+            x = np.stack([arr[i : i + eff_block] for i in ix]).astype(np.int64)
+            y = np.stack([arr[i + 1 : i + 1 + eff_block] for i in ix]).astype(np.int64)
+            # Pad to block_size so the model forward still works.
+            if eff_block < self.block_size:
+                pad = self.block_size - eff_block
+                x = np.pad(x, ((0, 0), (0, pad)), mode="constant")
+                y = np.pad(y, ((0, 0), (0, pad)), mode="constant")
+        else:
+            ix = rng.integers(0, hi, size=self.batch_size)
+            x = np.stack([arr[i : i + self.block_size] for i in ix]).astype(np.int64)
+            y = np.stack([arr[i + 1 : i + 1 + self.block_size] for i in ix]).astype(
+                np.int64
+            )
         x, y = torch.from_numpy(x), torch.from_numpy(y)
         if self.cuda:
             # Staging through pinned memory lets the copy overlap compute.

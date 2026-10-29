@@ -25,37 +25,41 @@
 
 ## 4. Empathetic Fine-tuning Evaluation
 
-The SLM was fine-tuned on empathetic dialogue data and evaluated against
-Qwen2.5-3B-Instruct (base model proxy; see note above).
+The SLM was fine-tuned on a mixed dataset of empathetic dialogues and Qwen-generated
+responses, evaluated against Qwen2.5-3B-Instruct (base model proxy; see note above).
 
-Training completed 200 steps on 23,427 empathetic dialogues (~2.4M tokens).
-Final train loss: 4.53, final val loss: 4.64, perplexity: 103.4.
+Training completed 200 steps on 23,427 original dialogues plus 51 Qwen-generated
+responses (~2.5M tokens total, 10x oversampled Qwen data).
+Final train loss: 4.62, final val loss: 4.65, perplexity: 104.2.
 
 | Metric | SLM 124M (fine-tuned) | Qwen2.5-3B-Instruct (base) |
 |--------|----------------------|----------------------------|
 | Training steps | 200 | N/A (not fine-tuned on this data) |
-| Training data | 23,427 dialogues, ~2.4M tokens | N/A |
-| Final train loss | 4.53 | N/A |
-| Final val loss | 4.64 | N/A |
-| Avg generation throughput | 25.6 tok/s | 5.4 tok/s |
-| Speedup | **4.7x faster** | baseline |
+| Training data | 23,427 + 51 Qwen responses, ~2.5M tokens | N/A |
+| Final train loss | 4.62 | N/A |
+| Final val loss | 4.65 | N/A |
+| Avg generation throughput | 28.2 tok/s | 5.6 tok/s |
+| Speedup | **5.0x faster** | baseline |
 
 ### Per-Prompt Results (8 empathetic prompts)
 
 | Prompt | SLM (tok/s) | Qwen (tok/s) | Speedup |
 |--------|-------------|--------------|---------|
-| I have been feeling really down lately | 26.1 | 5.6 | 4.7x |
-| I do not think I can keep going | 26.1 | 5.2 | 5.0x |
-| I am so anxious about my job | 24.3 | 5.1 | 4.8x |
-| My partner and I keep fighting | 24.8 | 5.4 | 4.6x |
-| I feel so lonely all the time | 25.8 | 5.6 | 4.6x |
-| I lost my mother last year | 26.2 | 5.6 | 4.7x |
-| I don't know how to cope with stress | 25.6 | 5.5 | 4.7x |
-| I'm scared I'll never find love | 25.6 | 5.5 | 4.7x |
+| I have been feeling really down lately | 28.0 | 5.7 | 4.9x |
+| I do not think I can keep going | 28.5 | 5.6 | 5.1x |
+| I am so anxious about my job | 28.2 | 5.7 | 4.9x |
+| My partner and I keep fighting | 29.0 | 5.6 | 5.2x |
+| I feel so lonely all the time | 28.5 | 5.7 | 5.0x |
+| I lost my mother last year | 28.9 | 5.7 | 5.1x |
+| I don't know how to cope with stress | 27.9 | 5.6 | 5.0x |
+| I'm scared I'll never find love | 28.0 | 5.7 | 4.9x |
 
-**Note**: The SLM's empathetic responses reflect its domain-specific fine-tuning,
-while Qwen generates more general-purpose empathetic text. The SLM's advantage
-is in speed (4.7x) and domain adaptation on empathetic dialogue.
+**Note**: Despite expanded Qwen-generated training data (51 responses vs 8 previously),
+the SLM's empathetic response generation quality remains weak compared to Qwen.
+The 124M model produces repetitive, fragmented outputs, while Qwen generates
+coherent, structured empathetic text. This reflects a fundamental limitation
+of a 124M parameter model versus a 3B parameter model. See [empathy_eval.md](empathy_eval.md)
+for verbatim responses.
 
 ## 5. Per-Prompt Generation Comparison (Selected)
 

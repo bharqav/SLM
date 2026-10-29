@@ -130,7 +130,9 @@ def main() -> None:
             f"  SLM: {slm_tokens} tok in {slm_dt:.2f}s ({slm_tokens / max(slm_dt, 1e-6):.1f} tok/s)"
         )
 
-        qwen_text, qwen_dt, qwen_tokens = generate_qwen(qwen_tokenizer, qwen_model, prompt)
+        qwen_text, qwen_dt, qwen_tokens = generate_qwen(
+            qwen_tokenizer, qwen_model, prompt
+        )
         print(
             f"  Qwen: {qwen_tokens} tok in {qwen_dt:.2f}s ({qwen_tokens / max(qwen_dt, 1e-6):.1f} tok/s)"
         )
