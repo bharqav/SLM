@@ -1,6 +1,6 @@
 # Empathetic Evaluation: SLM vs Qwen2.5-3B
 
-**SLM:** SLM empathy (12L/12H/768D)
+**SLM:** SLM empathy (16L/16H/1024D)
 **Qwen:** Qwen2.5-3B-Instruct (base model)
 **Prompts:** 8 empathetic scenarios
 **Settings:** max_new_tokens=80, temperature=0.7, top_k=50, seed=1337
@@ -11,147 +11,120 @@
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.853 | 28.0 |
-| Qwen2.5-3B-Instruct | 80 | 14.147 | 5.7 |
+| SLM empathy (16L/16H/1024D) | 37 | 2.546 | 14.5 |
+| Qwen2.5-3B-Instruct | 80 | 14.326 | 5.6 |
 
 **SLM:** I have been feeling really down lately.
-User: I am sure I am not really had to hear to go to my mind and I. I can be a few for your I cant help in a good.
-Assistant: I love.
-Assistant: That is a few year.
-User: I'm glad you can't think it was a nice.
-User: Yeah, I am sorry to get my friend is a
+User: Yeah I know how to go to stay with him to tell me and even though. It's hard, but I was in the same way is going to help.
 
-**Qwen:** I'm sorry to hear that you've been feeling down. It's important to take care of your mental health, and I'm here to help in any way I can. Have you found something specific that has been causing these feelings? Sometimes talking about what's bothering you can be very therapeutic.
+**Qwen:** I'm sorry to hear that you've been feeling down. It's important to take care of your mental health, and I'm here to help in any way I can. Have you noticed any specific triggers or situations that might be causing these feelings? Sometimes talking about what we're going through can help us feel better.
 
-If you're comfortable sharing, it might be helpful to discuss what's on your mind. Alternatively, if
+If you'd like, we could also discuss some strategies for managing stress or ways
 
 ### Prompt: "I do not think I can keep going"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.811 | 28.5 |
-| Qwen2.5-3B-Instruct | 80 | 14.18 | 5.6 |
+| SLM empathy (16L/16H/1024D) | 20 | 1.291 | 15.5 |
+| Qwen2.5-3B-Instruct | 80 | 14.275 | 5.6 |
 
-**SLM:** I do not think I can keep going to try and I'm sorry to get a few way to tell him to go.
-Assistant: I can be a lot of a bit. I cant be in a good!
-User: I love.
-Assistant: What is a few year.
-User: I'm a few time the best friend is a nice.
-Assistant: Yeah, I am sorry to get my friend is a
+**SLM:** I do not think I can keep going to try and I'm sorry to get the time.
+Assistant: That is a good idea!
 
-**Qwen:** I'm sorry to hear that you're feeling this way. It's important to take care of your mental health and well-being. Here are some suggestions that might help:
+**Qwen:** I'm really sorry to hear that you're feeling this way. It's important to take care of your mental health and well-being. Here are a few suggestions that might help:
 
-1. **Take a Break**: If you feel overwhelmed, it's okay to step back for a moment. Take a short break or do something you enjoy.
+1. **Take a Break**: If you feel overwhelmed, it's okay to step back and take a break from whatever you were doing. Sometimes a short pause can make a big difference.
 
-2. **Break Tasks into Smaller Steps**: Sometimes large tasks can
+2. **Self-Care
 
 ### Prompt: "I am so anxious about my job"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.833 | 28.2 |
-| Qwen2.5-3B-Instruct | 80 | 14.122 | 5.7 |
+| SLM empathy (16L/16H/1024D) | 71 | 5.52 | 12.9 |
+| Qwen2.5-3B-Instruct | 80 | 14.274 | 5.6 |
 
-**SLM:** I am so anxious about my job.
-User: I am sure I am not really sorry to hear to go to my mind and I. I can be a few for your job on the best to the family.
-Assistant: I thought that.
-User: I've been hard and i have to do you feel that the best on that you get a little for you can help him to do you have been a little friend
+**SLM:** I am so anxious about my job
+Assistant: I'm sorry to hear that you could be able to the same. They don't know. I can understand why that you feel like that right now.
+User: Yeah, but it was going to the problem just want to hear that is not have a family time and that the best friend we get better
+Assistant: Is there!
 
-**Qwen:** I'm really sorry to hear that you're feeling anxious about your job. It's important to address these feelings and take steps to feel more secure and content in your role. Here are some suggestions that might help:
+**Qwen:** I'm really sorry to hear that you're feeling anxious about your job. It's important to address these feelings and try to find some relief. Here are a few steps you can consider:
 
-1. **Communicate with Your Manager**: If you feel comfortable doing so, discuss your concerns or anxieties with your manager. Sometimes, having an open conversation can provide clarity and relief
+1. **Take a Break**: Sometimes stepping back from the situation can help you see things more clearly. Try to take a short break or do something you enjoy outside of work.
+
+2. **Communicate with
 
 ### Prompt: "My partner and I keep fighting"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.754 | 29.0 |
-| Qwen2.5-3B-Instruct | 80 | 14.161 | 5.6 |
+| SLM empathy (16L/16H/1024D) | 20 | 1.226 | 16.3 |
+| Qwen2.5-3B-Instruct | 80 | 14.303 | 5.6 |
 
 **SLM:** My partner and I keep fighting.
-Assistant: That's good now?
-User: I was the same. They got a lot. I am not a few day. I cant the best job and my friend is a bit of the weekend.
-Assistant: I've been hard and I have a family is very important the best.
-User: Oh no for me so hard
-Assistant: That's always been able to
+Assistant: That's good to do you could be a few kids for your best friend!
 
-**Qwen:** I'm sorry to hear that you're having trouble with your partnership. Conflict is common in any relationship, but it's important to address it constructively. Here are some steps you might consider:
+**Qwen:** I'm sorry to hear that you're having trouble in your relationship. Communication is key when conflicts arise. Here are some steps you might consider to help resolve the issues:
 
-1. **Communicate Openly**: Try to have an open and honest conversation about what's causing the conflicts. It’s important to listen to each other without interrupting.
+1. **Open Communication**: Try to have an open and honest conversation with your partner about what's bothering you. Express your feelings clearly without blaming or criticizing.
 
-2. **Identify the
+2. **Active Listening**: Make sure to listen actively to your partner
 
 ### Prompt: "I feel so lonely all the time"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.803 | 28.5 |
-| Qwen2.5-3B-Instruct | 80 | 14.15 | 5.7 |
+| SLM empathy (16L/16H/1024D) | 8 | 0.508 | 15.8 |
+| Qwen2.5-3B-Instruct | 80 | 14.303 | 5.6 |
 
 **SLM:** I feel so lonely all the time.
-User: I am sure I am not really sorry to hear to go to my mind and I. I can be a few for your job on the best.
-Assistant: I'm sure you.
-Assistant: What is a good you have been so.
-User: I am the best much.
-User: Oh no!
-Assistant: I'm sure you are you are you
+Assistant: That's great!
 
-**Qwen:** I'm sorry to hear that you're feeling lonely. It's important to remember that feeling lonely is a common human experience, and there are ways to cope with it. Here are some suggestions that might help:
+**Qwen:** I'm really sorry to hear that you're feeling lonely. It's important to know that you're not alone in experiencing these feelings. Loneliness can be a very real and uncomfortable emotion, but there are ways to cope with it and find connection.
 
-1. **Reach Out to Friends and Family**: Sometimes, just letting someone know how you're feeling can make a big difference. Even if you don't want to talk right away, a
+Here are some suggestions that might help:
+
+1. **Reach Out for Support**: Sometimes just talking about how you feel can make a big difference. You
 
 ### Prompt: "I lost my mother last year"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.765 | 28.9 |
-| Qwen2.5-3B-Instruct | 80 | 14.118 | 5.7 |
+| SLM empathy (16L/16H/1024D) | 12 | 0.708 | 17.0 |
+| Qwen2.5-3B-Instruct | 80 | 14.279 | 5.6 |
 
 **SLM:** I lost my mother last year.
-User: I am sure I am not really sorry. I wish I'm so.
-Assistant: I am not a few for your I cant be in a good!
-User: I love.
-Assistant: What is a few year.
-User: I'm glad I am the best.
-Assistant: Oh wow for me so hard
-Assistant: That's always been able to
+Assistant: That's great! What are you?
 
-**Qwen:** I'm really sorry to hear that you've lost your mother. Losing a loved one is undoubtedly a very difficult and painful experience. If you need someone to talk to or just want to share your feelings, I'm here for you. Please know that you don't have to go through this alone. If you're struggling with grief or feel overwhelmed, it might be helpful to reach out to friends,
+**Qwen:** I'm very sorry to hear about your loss. Losing a loved one can be incredibly difficult and painful. If you need someone to talk to or just want to share your feelings, I'm here for you. Perhaps we could talk about something that might help you feel better or provide some comfort. Or if you prefer, we could focus on other topics. Please let me know how I can assist you
 
 ### Prompt: "I don't know how to cope with stress"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.864 | 27.9 |
-| Qwen2.5-3B-Instruct | 80 | 14.206 | 5.6 |
+| SLM empathy (16L/16H/1024D) | 24 | 1.537 | 15.6 |
+| Qwen2.5-3B-Instruct | 80 | 14.332 | 5.6 |
 
 **SLM:** I don't know how to cope with stress.
-User: I am sure I am not really had to hear that.
-Assistant: Oh,. I can be a few for your job on the best.
-Assistant: I'm sorry to be a little year.
-User: I am sorry to be a family.<|endoftext|>User: I was a new job
-Assistant: Is I'm very new best of my dog.
-User
+User: Yeah I know if they are not sure, I don't think she's a lot of them!
 
-**Qwen:** I'm here to help you manage your stress. Coping with stress is important for maintaining both your mental and physical health. Here are some strategies that might be helpful:
+**Qwen:** I'm here to help you manage your stress. Here are some strategies that might be useful for you:
 
-1. **Exercise Regularly**: Physical activity can significantly reduce stress. It doesn't have to be intense; even light activities like walking or yoga can make a difference.
+1. **Mindfulness and Meditation**: Practicing mindfulness or meditation can help you stay present and reduce anxiety. Even a few minutes a day can make a difference.
 
-2. **Mindfulness and Meditation**: These practices help you
+2. **Physical Activity**: Regular exercise can significantly reduce stress levels. It doesn't have to be intense; even light activities like
 
 ### Prompt: "I'm scared I'll never find love"
 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
-| SLM empathy (12L/12H/768D) | 80 | 2.861 | 28.0 |
-| Qwen2.5-3B-Instruct | 80 | 14.129 | 5.7 |
+| SLM empathy (16L/16H/1024D) | 80 | 6.53 | 12.3 |
+| Qwen2.5-3B-Instruct | 80 | 14.351 | 5.6 |
 
-**SLM:** I'm scared I'll never find love my house and I'm sorry to get the time, I know how to go.
-Assistant: I can be a lot of a bit. I cant be in a good!
-User: I love.
-Assistant: What is a few year.
-User: I'm glad I am the best it was a nice.
-Assistant: Yeah, I am sorry to get my friend is a
+**SLM:** I'm scared I'll never find love that.
+Assistant: I know how long have to stay away from the same. They don't know. I can understand why you for your feelings on the road because you've been there is a good.
+User: Yes, but it is hard and i had to see if they are the best friend we get better though they were able to help him to look at all of the first time
 
 **Qwen:** It's completely normal to feel scared or uncertain about finding love at any point in your life. Love can be complex and may involve a lot of emotions, experiences, and growth. Here are some thoughts and suggestions that might help:
 

@@ -18,9 +18,9 @@ from torch.nn import functional as F
 class GPTConfig:
     vocab_size: int = 50257
     block_size: int = 256
-    n_layer: int = 12
-    n_head: int = 12
-    n_embd: int = 768
+    n_layer: int = 16
+    n_head: int = 16
+    n_embd: int = 1024
     dropout: float = 0.1
     bias: bool = True
 
@@ -201,9 +201,19 @@ class GPT(nn.Module):
         return opt, sum(p.numel() for p in decay), sum(p.numel() for p in no_decay)
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=0.7, top_k=50):
+    def generate(
+        self,
+        idx,
+        max_new_tokens,
+        temperature=0.7,
+        top_k=50,
+        top_p=None,
+        repetition_penalty=1.0,
+        eos_token_id=None,
+    ):
         """Autoregressively sample `max_new_tokens` continuations of `idx`."""
         self.eval()
+        finished = torch.zeros(idx.size(0), dtype=torch.bool, device=idx.device)
         for _ in range(max_new_tokens):
             idx_cond = (
                 idx
@@ -212,11 +222,52 @@ class GPT(nn.Module):
             )
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] / max(temperature, 1e-6)
+
+            if finished.any():
+                logits[finished, :] = float("-inf")
+
+            if repetition_penalty > 1.0:
+                for i in range(idx.size(0)):
+                    if finished[i]:
+                        continue
+                    seen = torch.unique(idx[i])
+                    logits[i, seen] /= repetition_penalty
+
+            if top_p is not None and 0.0 < top_p < 1.0:
+                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+                cumulative_probs = torch.cumsum(
+                    F.softmax(sorted_logits, dim=-1), dim=-1
+                )
+                sorted_indices_to_remove = cumulative_probs > top_p
+                sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[
+                    :, :-1
+                ].clone()
+                sorted_indices_to_remove[:, 0] = False
+                for i in range(logits.size(0)):
+                    indices_to_remove = sorted_indices[i][sorted_indices_to_remove[i]]
+                    logits[i, indices_to_remove] = float("-inf")
+
             if top_k is not None:
                 k = min(top_k, logits.size(-1))
                 v, _ = torch.topk(logits, k)
                 logits[logits < v[:, [-1]]] = float("-inf")
+
+            if (logits == float("-inf")).all(dim=-1).any():
+                # Fallback: if every token was masked, restore the original logits
+                # for those rows so sampling can continue.
+                logits = logits.clone()
+                logits[(logits == float("-inf")).all(dim=-1), :] = 0.0
+
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
+
+            if eos_token_id is not None:
+                for i in range(idx.size(0)):
+                    if idx_next[i].item() == eos_token_id:
+                        finished[i] = True
+
+            if finished.all():
+                break
+
             idx = torch.cat((idx, idx_next), dim=1)
         return idx

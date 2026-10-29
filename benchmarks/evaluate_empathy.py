@@ -33,6 +33,9 @@ PROMPTS = [
 MAX_NEW_TOKENS = 80
 TEMPERATURE = 0.7
 TOP_K = 50
+TOP_P = 0.9
+REPETITION_PENALTY = 1.2
+EOS_TOKEN_ID = 50256  # <|endoftext|>
 SEED = 1337
 
 
@@ -57,7 +60,13 @@ def generate_slm(model, prompt: str, enc) -> tuple[str, float, int]:
     t0 = time.time()
     with torch.no_grad():
         out = model.generate(
-            x, max_new_tokens=MAX_NEW_TOKENS, temperature=TEMPERATURE, top_k=TOP_K
+            x,
+            max_new_tokens=MAX_NEW_TOKENS,
+            temperature=TEMPERATURE,
+            top_k=TOP_K,
+            top_p=TOP_P,
+            repetition_penalty=REPETITION_PENALTY,
+            eos_token_id=EOS_TOKEN_ID,
         )
     dt = time.time() - t0
     new_tokens = out.shape[1] - len(tokens)

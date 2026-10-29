@@ -81,9 +81,9 @@ class TestModelLoading:
         cfg = GPTConfig()
         d = cfg.to_dict()
         assert d["vocab_size"] == 50257
-        assert d["n_layer"] == 12
-        assert d["n_head"] == 12
-        assert d["n_embd"] == 768
+        assert d["n_layer"] == 16
+        assert d["n_head"] == 16
+        assert d["n_embd"] == 1024
 
     def test_model_num_params(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))

@@ -709,8 +709,8 @@ flowchart LR
 ## Empathetic Fine-tuning Results
 
 The SLM was fine-tuned on a mixed dataset of 23,427 original empathetic dialogues
-plus 51 Qwen2.5-3B-Instruct-generated responses (~2.5M tokens) using the
-12L/12H/768D configuration (~124M parameters). Training ran for 200 steps with
+plus 510 Qwen2.5-3B-Instruct-generated responses (~2.5M tokens) using the
+16L/16H/1024D configuration (~253M parameters). Training ran for 500 steps with
 batch-size 2, gradient accumulation 8 (effective batch 16), and knowledge
 distillation from Qwen2.5-3B-Instruct.
 
@@ -718,13 +718,19 @@ distillation from Qwen2.5-3B-Instruct.
 
 | Step | Train Loss | Val Loss | Throughput |
 |------|-----------|----------|------------|
-| 10   | 9.36      | -        | ~234 tok/s |
-| 50   | 6.20      | 6.19     | ~235 tok/s |
-| 100  | 4.98      | 4.91     | ~235 tok/s |
-| 150  | 4.65      | 4.71     | ~236 tok/s |
-| 200  | 4.62      | 4.65     | ~236 tok/s |
+| 10   | 8.69      | -        | ~216 tok/s |
+| 50   | 5.56      | 5.58     | ~214 tok/s |
+| 100  | 4.85      | 4.77     | ~215 tok/s |
+| 150  | 4.53      | 4.60     | ~214 tok/s |
+| 200  | 4.51      | 4.54     | ~214 tok/s |
+| 250  | 4.44      | 4.48     | ~215 tok/s |
+| 300  | 4.37      | 4.41     | ~214 tok/s |
+| 350  | 4.31      | 4.36     | ~213 tok/s |
+| 400  | 4.27      | 4.32     | ~216 tok/s |
+| 450  | 4.23      | 4.29     | ~216 tok/s |
+| 500  | 4.22      | 4.28     | ~216 tok/s |
 
-**Best checkpoint:** step 200, val loss 4.6466, ppl 104.2
+**Best checkpoint:** step 500, val loss 4.2803, ppl 72.3
 
 ### Evaluation vs Qwen2.5-3B-Instruct (8 Empathetic Prompts)
 
@@ -732,29 +738,30 @@ distillation from Qwen2.5-3B-Instruct.
 Qwen benchmarks use the base `Qwen/Qwen2.5-3B-Instruct` model as a proxy,
 with full disclosure in [slm-ft/README.md](slm-ft/README.md).
 
-| Prompt | SLM (124M, fine-tuned) | Qwen2.5-3B-Instruct (base) |
+| Prompt | SLM (253M, fine-tuned) | Qwen2.5-3B-Instruct (base) |
 |--------|------------------------|----------------------------|
-| I have been feeling really down lately | 28.0 tok/s (2.85s) | 5.7 tok/s (14.15s) |
-| I do not think I can keep going | 28.5 tok/s (2.81s) | 5.6 tok/s (14.18s) |
-| I am so anxious about my job | 28.2 tok/s (2.83s) | 5.7 tok/s (14.12s) |
-| My partner and I keep fighting | 29.0 tok/s (2.75s) | 5.6 tok/s (14.16s) |
-| I feel so lonely all the time | 28.5 tok/s (2.80s) | 5.7 tok/s (14.15s) |
-| I lost my mother last year | 28.9 tok/s (2.77s) | 5.7 tok/s (14.12s) |
-| I don't know how to cope with stress | 27.9 tok/s (2.86s) | 5.6 tok/s (14.21s) |
-| I'm scared I'll never find love | 28.0 tok/s (2.86s) | 5.7 tok/s (14.13s) |
+| I have been feeling really down lately | 12.6 tok/s (6.33s) | 5.6 tok/s (14.39s) |
+| I do not think I can keep going | 12.0 tok/s (6.69s) | 5.6 tok/s (14.47s) |
+| I am so anxious about my job | 12.2 tok/s (6.54s) | 5.5 tok/s (14.47s) |
+| My partner and I keep fighting | 12.4 tok/s (6.44s) | 5.6 tok/s (14.55s) |
+| I feel so lonely all the time | 12.3 tok/s (6.48s) | 5.5 tok/s (14.45s) |
+| I lost my mother last year | 12.2 tok/s (6.55s) | 5.6 tok/s (14.42s) |
+| I don't know how to cope with stress | 12.1 tok/s (6.62s) | 5.6 tok/s (14.48s) |
+| I'm scared I'll never find love | 11.9 tok/s (6.71s) | 5.5 tok/s (14.48s) |
 
 **Summary:**
-- **SLM avg throughput:** ~28.2 tok/s
+- **SLM avg throughput:** ~12.2 tok/s
 - **Qwen avg throughput:** ~5.6 tok/s
-- **Speedup:** ~5.0x faster on CPU
+- **Speedup:** ~2.2x faster on CPU
 
-**Key insight**: The fine-tuned SLM is ~5.0x faster than Qwen2.5-3B on CPU
-while being domain-adapted for empathetic dialogue. However, generation quality
-remains weak: the 124M model still produces repetitive, fragmented outputs
-despite knowledge distillation from Qwen. This is a fundamental limitation
-of a 124M parameter model trained from scratch versus a 3B parameter model.
-See [benchmarks/empathy_eval.md](benchmarks/empathy_eval.md) for verbatim
-responses and detailed analysis.
+**Key insight**: Scaling the SLM to 253M parameters and training for 500 steps
+significantly improved training metrics (val loss 4.28, ppl 72.3 vs 4.65/104.2
+for the 124M model). However, generation quality remains far below Qwen: the
+253M model still produces repetitive, fragmented outputs with dialogue artifacts.
+This reflects a fundamental capacity gap between a 253M parameter model trained
+from scratch and a 3B parameter instruction-tuned model. See
+[benchmarks/empathy_eval.md](benchmarks/empathy_eval.md) for verbatim responses
+and detailed analysis.
 
 ---
 

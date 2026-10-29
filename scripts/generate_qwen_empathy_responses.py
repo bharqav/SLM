@@ -73,7 +73,7 @@ PROMPTS = [
 MAX_NEW_TOKENS = 120
 TEMPERATURE = 0.7
 TOP_K = 50
-SEED = 1337
+SEEDS = [1337, 2024, 4096, 7777, 12345]
 
 
 def main() -> None:
@@ -93,20 +93,20 @@ def main() -> None:
 
         import torch
 
-        torch.manual_seed(SEED)
-        with torch.no_grad():
-            out = model.generate(
-                **inputs,
-                max_new_tokens=MAX_NEW_TOKENS,
-                temperature=TEMPERATURE,
-                top_k=TOP_K,
-            )
-        new_tokens = out.shape[1] - inputs["input_ids"].shape[1]
-        decoded = tokenizer.decode(out[0], skip_special_tokens=True)
-        reply = decoded.split("assistant\n")[-1].strip()
-        print(f"  Qwen: {new_tokens} tok\n  {reply[:200]}...")
-
-        records.append({"prompt": prompt, "response": reply})
+        for seed in SEEDS:
+            torch.manual_seed(seed)
+            with torch.no_grad():
+                out = model.generate(
+                    **inputs,
+                    max_new_tokens=MAX_NEW_TOKENS,
+                    temperature=TEMPERATURE,
+                    top_k=TOP_K,
+                )
+            new_tokens = out.shape[1] - inputs["input_ids"].shape[1]
+            decoded = tokenizer.decode(out[0], skip_special_tokens=True)
+            reply = decoded.split("assistant\n")[-1].strip()
+            print(f"  seed={seed}: {new_tokens} tok | {reply[:120]}...")
+            records.append({"prompt": prompt, "response": reply})
 
     with OUT_PATH.open("w", encoding="utf-8") as fh:
         for rec in records:
