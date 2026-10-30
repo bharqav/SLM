@@ -55,7 +55,8 @@ def load_slm(path: Path):
 
 def generate_slm(model, prompt: str, enc) -> tuple[str, float, int]:
     torch.manual_seed(SEED)
-    tokens = enc.encode(prompt)
+    formatted_prompt = f"User: {prompt}\nAssistant:"
+    tokens = enc.encode(formatted_prompt)
     x = torch.tensor([tokens], dtype=torch.long)
     t0 = time.time()
     with torch.no_grad():
@@ -70,8 +71,10 @@ def generate_slm(model, prompt: str, enc) -> tuple[str, float, int]:
         )
     dt = time.time() - t0
     new_tokens = out.shape[1] - len(tokens)
-    text = enc.decode(out[0].tolist())
-    return text, dt, new_tokens
+    full_text = enc.decode(out[0].tolist())
+    # Extract just the assistant response after the formatted prompt
+    response = full_text[len(formatted_prompt) :].strip()
+    return response, dt, new_tokens
 
 
 def generate_qwen(tokenizer, model, prompt: str) -> tuple[str, float, int]:
