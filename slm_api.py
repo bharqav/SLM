@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
 
+from guardrails import check_input, check_output, is_degenerate  # noqa: E402
 from model import GPT, GPTConfig  # noqa: E402
 from tiktoken import get_encoding  # noqa: E402
 
@@ -60,6 +61,11 @@ class GenerateRequest(BaseModel):
     max_new_tokens: int = Field(default=50, ge=1, le=200)
     temperature: float = Field(default=0.7, ge=0.1, le=2.0)
     top_k: int = Field(default=50, ge=1, le=100)
+    top_p: float = Field(default=0.9, ge=0.0, le=1.0)
+    repetition_penalty: float = Field(default=1.2, ge=1.0, le=2.0)
+    eos_token_id: int | None = Field(
+        default=50256, description="EOS token ID for early stopping"
+    )
 
 
 class GenerateResponse(BaseModel):
@@ -69,6 +75,9 @@ class GenerateResponse(BaseModel):
     prompt_tokens: int
     tokens_per_second: float
     latency_s: float
+    safe: bool = True
+    safety_reason: str = ""
+    degenerate: bool = False
 
 
 def load_model(checkpoint: str = "best_model.pt") -> tuple[GPT, any]:
@@ -109,6 +118,13 @@ async def health():
 async def generate(req: GenerateRequest, api_key: str = Depends(verify_api_key)):
     import time
 
+    safety = check_input(req.prompt)
+    if not safety.safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safety.reason,
+        )
+
     try:
         model, enc = load_model()
     except FileNotFoundError as exc:
@@ -130,6 +146,9 @@ async def generate(req: GenerateRequest, api_key: str = Depends(verify_api_key))
                 max_new_tokens=req.max_new_tokens,
                 temperature=req.temperature,
                 top_k=req.top_k,
+                top_p=req.top_p,
+                repetition_penalty=req.repetition_penalty,
+                eos_token_id=req.eos_token_id,
             )
     except Exception as exc:
         raise HTTPException(
@@ -142,6 +161,9 @@ async def generate(req: GenerateRequest, api_key: str = Depends(verify_api_key))
     completion = text[len(req.prompt) :] if text.startswith(req.prompt) else text
     toks_per_sec = n_new / max(dt, 1e-6)
 
+    out_safety = check_output(completion)
+    degenerate = is_degenerate(completion)
+
     return GenerateResponse(
         prompt=req.prompt,
         completion=completion,
@@ -149,6 +171,9 @@ async def generate(req: GenerateRequest, api_key: str = Depends(verify_api_key))
         prompt_tokens=len(tokens),
         tokens_per_second=round(toks_per_sec, 1),
         latency_s=round(dt, 4),
+        safe=out_safety.safe,
+        safety_reason=out_safety.reason,
+        degenerate=degenerate,
     )
 
 
@@ -167,3 +192,14 @@ async def model_info(api_key: str = Depends(verify_api_key)):
         }
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/safety/info")
+async def safety_info(api_key: str = Depends(verify_api_key)):
+    from guardrails import _INPUT_PATTERNS, _OUTPUT_PATTERNS
+
+    return {
+        "input_filters": len(_INPUT_PATTERNS),
+        "output_filters": len(_OUTPUT_PATTERNS),
+        "degeneracy_check": "repeated_4_grams > 50% or < 8 words",
+    }

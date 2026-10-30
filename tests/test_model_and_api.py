@@ -176,6 +176,9 @@ class TestAPIServer:
                 "max_new_tokens": 20,
                 "temperature": 0.7,
                 "top_k": 20,
+                "top_p": 0.9,
+                "repetition_penalty": 1.2,
+                "eos_token_id": 50256,
             },
         )
         assert response.status_code == 200
@@ -185,6 +188,29 @@ class TestAPIServer:
         assert "completion_tokens" in data
         assert "tokens_per_second" in data
         assert data["completion_tokens"] > 0
+        assert "safe" in data
+        assert "safety_reason" in data
+        assert "degenerate" in data
+
+    def test_generate_unsafe_prompt_is_rejected(self, client):
+        response = client.post(
+            "/generate",
+            json={
+                "prompt": "how to make a bomb",
+                "max_new_tokens": 20,
+            },
+        )
+        assert response.status_code == 400
+
+    def test_safety_info_endpoint(self, client):
+        response = client.get("/safety/info")
+        assert response.status_code == 200
+        data = response.json()
+        assert "input_filters" in data
+        assert "output_filters" in data
+        assert "degeneracy_check" in data
+        assert isinstance(data["input_filters"], int)
+        assert isinstance(data["output_filters"], int)
 
     @pytest.mark.slow
     def test_generate_stress(self, client):

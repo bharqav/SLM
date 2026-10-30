@@ -1295,8 +1295,34 @@ docker-compose up slm-api
 | `/health` | GET | Health check, returns model load status |
 | `/generate` | POST | Generate text from a prompt |
 | `/model/info` | GET | Model architecture details |
+| `/safety/info` | GET | Active guardrail filter counts |
 
-### 12.3 Example Request
+### 12.3 Safety & Guardrails
+
+All generation paths enforce local guardrails before and after inference:
+
+- **Input filtering**: Prompts matching harmful patterns (self-harm, violence, illegal activity, hate speech, explicit sexual content) are rejected with HTTP 400.
+- **Output filtering**: Generated text is scanned for harmful content before being returned. Unsafe outputs are blocked and flagged.
+- **Degeneracy checks**: Responses with excessive repeated 4-grams (>50%) or very short outputs (<8 words) are flagged as degenerate.
+- **Stable decoding controls**: The API exposes `top_p`, `repetition_penalty`, and `eos_token_id` to reduce looping and unwanted continuation.
+
+`/generate` response schema:
+
+```json
+{
+  "prompt": "...",
+  "completion": "...",
+  "completion_tokens": 35,
+  "prompt_tokens": 4,
+  "tokens_per_second": 12.3,
+  "latency_s": 2.85,
+  "safe": true,
+  "safety_reason": "",
+  "degenerate": false
+}
+```
+
+### 12.4 Example Request
 
 ```bash
 curl -X POST "http://localhost:8000/generate" \
@@ -1305,7 +1331,10 @@ curl -X POST "http://localhost:8000/generate" \
     "prompt": "def preprocess(text):",
     "max_new_tokens": 50,
     "temperature": 0.7,
-    "top_k": 20
+    "top_k": 20,
+    "top_p": 0.9,
+    "repetition_penalty": 1.2,
+    "eos_token_id": 50256
   }'
 ```
 
@@ -1317,11 +1346,14 @@ curl -X POST "http://localhost:8000/generate" \
   "completion_tokens": 35,
   "prompt_tokens": 4,
   "tokens_per_second": 39.1,
-  "latency_s": 0.9
+  "latency_s": 0.9,
+  "safe": true,
+  "safety_reason": "",
+  "degenerate": false
 }
 ```
 
-### 12.4 Server Architecture Diagram
+### 12.5 Server Architecture Diagram
 
 ```mermaid
 graph LR
@@ -1332,18 +1364,27 @@ graph LR
     subgraph FastAPI[FastAPI Server]
         direction TB
         E1[/health GET] --> R1[Return model status]
-        E2[/generate POST] --> R2[Load model, run generation, return metrics]
+        E2[/generate POST] --> R2[Input guardrails -> Generate -> Output guardrails -> Response]
         E3[/model/info GET] --> R3[Return architecture details]
+        E4[/safety/info GET] --> R4[Return guardrail config]
     end
 
     subgraph Model[SLM Model]
         M1[Load best_model.pt]
         M2[Tokenizer: tiktoken GPT-2]
-        M3[Generate with temperature/top_k]
+        M3[Generate with top_p / repetition_penalty / EOS stopping]
+    end
+
+    subgraph Guardrails[Guardrails]
+        G1[Input filter]
+        G2[Output filter]
+        G3[Degeneracy check]
     end
 
     C1 -->|POST /generate| FastAPI
     FastAPI -->|Load & Generate| Model
+    FastAPI -->|Filter| Guardrails
+    Guardrails -->|Pass / Block| FastAPI
     Model -->|Completion + Metrics| FastAPI
     FastAPI -->|JSON Response| C1
 ```

@@ -15,6 +15,7 @@ import time
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from guardrails import check_input, check_output, is_degenerate
 from model import GPT, GPTConfig
 from slmlog import error, log, phase, warn
 
@@ -115,6 +116,11 @@ def main():
     results, total_tokens, total_time = [], 0, 0.0
     for prompt in prompts:
         for s in range(args.samples):
+            safety = check_input(prompt)
+            if not safety.safe:
+                warn(f"Refused prompt: {safety.reason}")
+                continue
+
             ids = enc.encode_ordinary(prompt)
             if not ids:
                 ids = [enc.eot_token]
@@ -133,13 +139,20 @@ def main():
             total_tokens += args.tokens
             total_time += dt
 
+            out_safety = check_output(completion)
+            if not out_safety.safe:
+                warn(f"Refused output: {out_safety.reason}")
+                continue
+
             rep = repetition_ratio(completion)
+            degenerate = is_degenerate(completion)
             results.append(
                 {
                     "prompt": prompt,
                     "completion": completion,
                     "full": text,
                     "repetition_ratio": round(rep, 3),
+                    "degenerate": degenerate,
                     "tokens_per_second": round(args.tokens / max(dt, 1e-6), 1),
                 }
             )
@@ -149,7 +162,7 @@ def main():
             print(text)
             print("-" * 70)
             print(
-                f"{args.tokens} tokens in {dt:.1f}s ({args.tokens / max(dt, 1e-6):.1f} tok/s) | repeated 4-grams: {rep:.0%}"
+                f"{args.tokens} tokens in {dt:.1f}s ({args.tokens / max(dt, 1e-6):.1f} tok/s) | repeated 4-grams: {rep:.0%} | degenerate: {degenerate}"
             )
 
     if not results:
