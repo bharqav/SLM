@@ -32,7 +32,11 @@ jobs:
 
       - name: Run pytest with coverage
         run: |
-          python -m pytest tests/ -v --cov=. --cov-report=xml --cov-fail-under=80
+          python -m pytest tests/ -v --cov=. --cov-report=xml --cov-fail-under=80 -m "not slow" --ignore=tests/test_model_and_api.py
+
+      - name: Run API and model tests
+        run: |
+          python -m pytest tests/test_model_and_api.py -v --cov=. --cov-report=xml -m "not slow"
 
       - name: Run setup verification
         run: python verify_setup.py

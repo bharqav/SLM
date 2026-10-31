@@ -1,4 +1,4 @@
-.PHONY: help test test-all test-fast bench verify clean lint format format-check typecheck security api docker-build docker-run install install-all harness harness-model
+.PHONY: help test test-all test-fast bench verify clean lint format format-check typecheck security api docker-build docker-run install install-all harness harness-model export-onnx
 
 harness: ## Run full harness (tests + verify + bench + security)
 	python harness.py
@@ -53,6 +53,12 @@ security: ## Run pip-audit security scan
 api: ## Start FastAPI server
 	python -m uvicorn slm_api:app --host $(API_HOST) --port $(API_PORT) --reload
 
+serve: ## Start production server locally
+	./serving/start_server.sh
+
+serve-prod: ## Start production server via Docker Compose
+	docker compose -f docker-compose.prod.yml up --build
+
 docker-build: ## Build Docker image
 	docker build -t slm-project .
 
@@ -64,3 +70,6 @@ install: ## Install project in editable mode with dev deps
 
 install-all: ## Install project with all optional deps
 	pip install -e ".[all]"
+
+export-onnx: ## Export best_model.pt to ONNX with dynamic axes (requires onnx + torch)
+	python -m slm-training.export_onnx --checkpoint slm-training/best_model.pt --output slm-training/best_model.onnx --max-seq-len 256

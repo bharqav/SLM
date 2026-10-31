@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-65%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-215%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -31,16 +31,17 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 6. [Architecture Diagrams](#6-architecture-diagrams) — Mermaid diagrams
 7. [Training Details](#7-training-details) — Hyperparameters, losses, and training loops
 8. [Inference & Generation](#8-inference--generation) — How to run generation
-9. [Benchmarks](#9-benchmarks) — Performance and quality metrics
-10. [Auto-Training Loop](#10-auto-training-loop) — Automated training harness
-11. [What We Tried / Kept / Cut](#11-what-we-tried--kept--cut)
-12. [Docker Deployment](#12-docker-deployment) — Containerized, reproducible environment
-13. [API Server](#13-api-server) — FastAPI inference endpoint
-14. [Testing & Quality](#14-testing--quality) — Test suite, coverage, linting, type checking
-15. [Reproducibility](#15-reproducibility) — Seeded generation, constraints, pre-commit
-16. [Notebooks & Analysis](#16-notebooks--analysis) — Jupyter notebooks for EDA
-17. [License](#17-license) — Legal and ethical considerations
-18. [Reproducing the Comparison](#18-reproducing-the-comparison) — Step-by-step guide
+9. [ONNX Export](#8.4-onnx-export) — Export model to ONNX with dynamic axes
+10. [Benchmarks](#9-benchmarks) — Performance and quality metrics
+11. [Auto-Training Loop](#10-auto-training-loop) — Automated training harness
+12. [What We Tried / Kept / Cut](#11-what-we-tried--kept--cut)
+13. [Docker Deployment](#12-docker-deployment) — Containerized, reproducible environment
+14. [API Server](#13-api-server) — FastAPI inference endpoint
+15. [Testing & Quality](#14-testing--quality) — Test suite, coverage, linting, type checking
+16. [Reproducibility](#15-reproducibility) — Seeded generation, constraints, pre-commit
+17. [Notebooks & Analysis](#16-notebooks--analysis) — Jupyter notebooks for EDA
+18. [License](#17-license) — Legal and ethical considerations
+19. [Reproducing the Comparison](#18-reproducing-the-comparison) — Step-by-step guide
 
 ---
 
@@ -555,7 +556,55 @@ text = enc.decode(out[0].tolist())
 | **max_new_tokens** | 50 | 1 - 200 | Max tokens to generate |
 | **eos_id** | None | token ID | Stop generation at EOS token |
 
----
+|---
+
+## 2.10 Post-Training Quantization
+
+Quantization reduces model size and latency by operating in lower precision. The
+project ships built-in stubs for the most common post-training methods.
+
+**Supported methods:**
+
+| Method | Description | Hardware |
+|--------|-------------|---------|
+| `int8` | 8-bit Linear layers via `bitsandbytes` (NF4/L4) | CUDA + `bitsandbytes >= 0.41` |
+| `int4` | 4-bit NF4 layers via `bitsandbytes` | CUDA + `bitsandbytes` |
+| `gptq` | Stub – returns fp32 model with warning | Any (cross-platform) |
+| `awq` | Stub – returns fp32 model with warning | Any (cross-platform) |
+
+On CPU-only machines (including Windows without CUDA), `int8`/`int4` fall back
+to the original fp32 model with a clear warning; GPTQ/AWQ stubs are always
+cross-platform but return the unmodified model.
+
+**CLI usage:**
+
+```bash
+# Quantize at inference time (INT8 on CUDA)
+python -m slm_training.inference --checkpoint best_model.pt --quantize int8
+
+# INT4 requires CUDA
+python -m slm_training.inference --checkpoint best_model.pt --quantize int4
+
+# GPTQ / AWQ stubs work anywhere
+python -m slm_training.inference --checkpoint best_model.pt --quantize gptq
+```
+
+**Python API:**
+
+```python
+from quantize import quantize_model, QuantizationInfo, get_available_methods
+
+# List available methods for the current hardware
+print(get_available_methods())
+
+model, info = quantize_model(model, method="int8", device="cuda")
+print(info)  # QuantizationInfo(method='int8', applied=True, ...)
+```
+
+**FastAPI / `slm_api.py`** exposes quantization state on two endpoints:
+
+- `GET /model/info` – includes a `quantization` block when a quantized model is loaded.
+- `GET /quantize/info` – lists available quantization methods and current quantization status.
 
 ## 3. Qwen2.5-0.5B Comparison Baseline
 
@@ -1019,6 +1068,66 @@ text = tokenizer.decode(out[0], skip_special_tokens=True)
 | **max_new_tokens** | 50 | 1 - 200 | Max tokens to generate |
 | **eos_id** | None | token ID | Stop generation at EOS token |
 
+### 8.4 ONNX Export
+
+Export the from-scratch SLM to ONNX for cross-framework inference. The exported
+model uses dynamic axes for `batch_size` and `seq_len`, so the same ONNX file
+can serve requests of any size without re-exporting.
+
+**Dependencies:** `onnx`, `torch`, `onnxruntime` (optional, for validation).
+TensorRT is optional; if it is not installed the build step is skipped
+gracefully.
+
+```bash
+# Export via CLI
+make export-onnx
+
+# Or directly
+python -m slm-training.export_onnx \
+  --checkpoint slm-training/best_model.pt \
+  --output slm-training/best_model.onnx \
+  --max-seq-len 256
+
+# With TensorRT engine build (requires tensorrt package)
+python -m slm-training.export_onnx \
+  --checkpoint slm-training/best_model.pt \
+  --output slm-training/best_model.onnx \
+  --trt
+```
+
+Outputs:
+- `slm-training/best_model.onnx` — ONNX model with dynamic `batch_size` and `seq_len`
+- `slm-training/best_model.engine` — TensorRT engine (only when `--trt` is passed and
+  TensorRT is installed)
+
+**Validation:** load with `onnxruntime`:
+
+```python
+import onnxruntime as ort
+import numpy as np
+
+sess = ort.InferenceSession("slm-training/best_model.onnx")
+out = sess.run(None, {"idx": np.zeros((1, 1), dtype=np.int64)})
+print(out[0].shape)  # (1, 1, 50257)
+```
+
+**CLI Arguments**
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--checkpoint` | `slm-training/best_model.pt` | Path to the PyTorch checkpoint |
+| `--output` | `slm-training/best_model.onnx` | Destination ONNX file |
+| `--max-seq-len` | `256` | Maximum sequence length for export validation |
+| `--trt` | off | Build TensorRT engine after export (optional) |
+
+**Notes**
+- Export uses `torch.onnx.export(..., dynamo=False)` for compatibility with
+  TorchScript-free GPT architectures.
+- The exported ONNX model is in inference mode and returns only the last-token
+  logits, matching `model.generate()` behavior.
+- Sequence lengths above the training `block_size` (256) are not supported by
+  the model architecture.
+
 ---
 
 ### 9. Benchmarks
@@ -1084,6 +1193,76 @@ Outputs `benchmarks/test_split_eval.json` with perplexity computed over the held
 - **SLM (757M):** Generates coherent empathetic responses with topical consistency. The scaled model maintains context better than smaller variants. On code prompts, it produces plausible completions.
 - **Qwen2.5-0.5B:** Generates coherent English and structured code. On empathetic prompts it gives supportive replies but is slower. On code prompts it produces syntactically correct completions.
 - **Speed:** SLM is 3.3x faster on CUDA. On CPU, Qwen would be slower due to larger model size, but the SLM's small size gives it even more advantage.
+
+### 9.7 Standard NLP Benchmarks
+
+Zero-shot multiple-choice evaluation on five common NLP benchmarks using lm-eval-harness-style methodology. The script falls back gracefully when benchmark datasets or optional dependencies are unavailable.
+
+#### Supported Benchmarks
+
+| Benchmark | Description | Split | Metric |
+|-----------|-------------|-------|--------|
+| HellaSwag | Commonsense NLI | validation | accuracy |
+| WinoGrande | Coreference resolution | test | accuracy |
+| ARC-Challenge | Science QA | validation | accuracy |
+| PIQA | Physical commonsense | validation | accuracy |
+| CommonsenseQA | Commonsense QA | validation | accuracy |
+
+#### Usage
+
+```bash
+# Evaluate local SLM checkpoint
+python benchmarks/evaluate_standard.py
+
+# Evaluate with specific benchmark selection
+python benchmarks/evaluate_standard.py \
+  --benchmarks hellaswag winogrande arc_challenge \
+  --few-shot 0 \
+  --batch-size 8 \
+  --device cpu
+
+# Evaluate via lm-eval-harness (requires lm-eval installed)
+python benchmarks/evaluate_standard.py \
+  --model Qwen/Qwen2.5-0.5B-Instruct \
+  --few-shot 0 \
+  --batch-size 8 \
+  --device cpu
+```
+
+#### CLI Arguments
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--benchmarks` | all 5 | Space-separated list of benchmarks |
+| `--few-shot` | 0 | Number of few-shot examples |
+| `--batch-size` | 8 | Batch size for evaluation |
+| `--model` | slm-scratch | Model name or checkpoint path |
+| `--checkpoint` | best_model.pt | Local checkpoint path |
+| `--device` | cpu | Device (cpu/cuda) |
+| `--output` | benchmarks/standard_nlp_eval.json | Output JSON path |
+| `--limit` | None | Limit examples per task |
+
+#### Output
+
+The script writes a JSON report to `benchmarks/standard_nlp_eval.json` with per-benchmark accuracy, timing, and error details. When dependencies are missing, it returns a structured error instead of crashing:
+
+```json
+{
+  "status": "error",
+  "error": "datasets library not installed. Install with: pip install datasets",
+  "benchmarks": {
+    "hellaswag": {"success": false, "error": "..."}
+  }
+}
+```
+
+#### Fallback Behavior
+
+1. **lm-eval installed:** Delegates to `lm-eval-harness` for standardized evaluation.
+2. **lm-eval missing, datasets installed:** Loads HuggingFace datasets and runs lightweight zero-shot MC evaluation using the local SLM checkpoint.
+3. **Neither available:** Returns a structured JSON error with install instructions.
+
+**Dependencies:** `lm-eval` (optional) and `datasets` (optional) enable full evaluation. The script remains importable and testable without them.
 
 ---
 
@@ -1248,101 +1427,134 @@ The harness reports pass/fail per step and exits non-zero if any step fails.
 
 ## 12. Docker Deployment
 
-The repository includes a Dockerfile and docker-compose.yml for reproducible, zero-config deployment.
+The repository includes a production-ready Dockerfile and `docker-compose.prod.yml` for serving the SLM API with monitoring and health checks.
 
-### 12.1 Dockerfile
+### 12.1 Production Dockerfile
 
 ```dockerfile
-# SLM Project - Docker Environment
+# SLM Project - Production Docker Environment
 # Build: docker build -t slm-project .
 # Run: docker run -p 8000:8000 slm-project
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    curl \
+    git curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
+RUN useradd -m -u 1000 slm && \
+    mkdir -p /app/slm-comparison /app/benchmarks /app/logs && \
+    chown -R slm:slm /app
 
-# Copy requirements first for layer caching
+WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=slm:slm . .
 
-# Copy project files
-COPY . .
+USER slm
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Create output directories
-RUN mkdir -p slm-comparison benchmarks
-
-# Default command: run the full pipeline
-CMD ["python", "run_all.py"]
+CMD ["python", "-m", "uvicorn", "slm_api:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-**Why this works:**
-- `python:3.11-slim` is a minimal Debian-based image (~120MB)
-- Dependencies are cached in a separate layer so `pip install` only runs when `requirements.txt` changes
-- The `CMD` runs the full benchmark pipeline by default
-- The `slm-comparison/` and `benchmarks/` directories are created at build time
-
-### 12.2 Docker Compose
+### 12.2 Production Docker Compose
 
 ```yaml
 version: '3.8'
 
 services:
   slm-api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./slm-training:/app/slm-training
-      - ./slm-ft:/app/slm-ft
-    command: python -m uvicorn slm_api:app --host 0.0.0.0 --port 8000
+      - ./slm-training:/app/slm-training:ro
+      - ./slm-ft:/app/slm-ft:ro
+      - ./logs:/app/logs
+    environment:
+      - API_KEY=${API_KEY:-change-me-to-a-real-key}
+      - SLM_CHECKPOINT=${SLM_CHECKPOINT:-slm-training/best_model.pt}
+      - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - WORKERS=${WORKERS:-1}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    command: >
+      python -m uvicorn slm_api:app
+      --host 0.0.0.0 --port 8000 --workers ${WORKERS:-1}
+      --log-level ${LOG_LEVEL:-info} --access-log
 
-  benchmark:
-    build: .
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
     volumes:
-      - ./slm-comparison:/app/slm-comparison
-      - ./benchmarks:/app/benchmarks
-    command: python run_all.py
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+    restart: unless-stopped
+    depends_on:
+      - slm-api
+
+volumes:
+  prometheus-data:
 ```
 
 ### 12.3 Build and Run
 
 ```bash
 # Build the image
-docker build -t slm-project .
+docker compose -f docker-compose.prod.yml build
 
-# Run benchmarks (CPU-only, ~2-3 minutes)
-docker run --rm -v $(pwd)/slm-comparison:/app/slm-comparison slm-project
+# Start production stack (API + Prometheus)
+docker compose -f docker-compose.prod.yml up -d
 
-# Run the API server
-docker-compose up slm-api
+# View logs
+docker compose -f docker-compose.prod.yml logs -f slm-api
+
+# Stop
+docker compose -f docker-compose.prod.yml down
 ```
 
-### 12.4 Docker Architecture Diagram
+### 12.4 Local Production Server
 
-```mermaid
-graph TB
-    subgraph Host[Host Machine]
-        subgraph Container[Docker Container]
-            direction TB
-            A[python:3.11-slim] --> B[Install Dependencies]
-            B --> C[Copy Project Files]
-            C --> D[Create Output Dirs]
-            D --> E[Run run_all.py]
-        end
-        V1[Volume: slm-training/] -->|Read| Container
-        V2[Volume: slm-ft/] -->|Read| Container
-        V3[Volume: slm-comparison/] -->|Write| Container
-        V4[Volume: benchmarks/] -->|Write| Container
-    end
-    Container -->|Results| Host
+```bash
+# Start the API locally with the production startup script
+make serve
+
+# Or with explicit environment variables
+SLM_CHECKPOINT=slm-training/best_model.pt API_KEY=my-key make serve
 ```
+
+### 12.5 Prometheus Metrics
+
+The API exposes a `/metrics` endpoint (port 8000) with the following metrics:
+- `slm_requests_total` - total requests by endpoint, status, and safety
+- `slm_request_duration_seconds` - request latency histogram
+- `slm_model_loaded` - gauge indicating if the model is loaded
+- `slm_generation_tokens_total` - total tokens generated
+
+Access Prometheus UI at `http://localhost:9090`.
 
 ## 13. API Server
 
@@ -1369,6 +1581,11 @@ docker-compose up slm-api
 | `/generate` | POST | Generate text from a prompt |
 | `/model/info` | GET | Model architecture details |
 | `/safety/info` | GET | Active guardrail filter counts |
+| `/v1/models` | GET | OpenAI-compatible model listing |
+| `/v1/completions` | POST | OpenAI-compatible legacy text completions |
+| `/v1/chat/completions` | POST | OpenAI-compatible chat completions with message history |
+| `/v1/completions/stream` | POST | SSE streaming legacy completions |
+| `/v1/chat/completions/stream` | POST | SSE streaming chat completions |
 
 ### 13.3 Safety & Guardrails
 
@@ -1440,6 +1657,8 @@ graph LR
         E2[/generate POST] --> R2[Input guardrails -> Generate -> Output guardrails -> Response]
         E3[/model/info GET] --> R3[Return architecture details]
         E4[/safety/info GET] --> R4[Return guardrail config]
+        E5[/v1/chat/completions POST] --> R5[OpenAI-compatible chat generation]
+        E6[/v1/completions POST] --> R6[OpenAI-compatible legacy completions]
     end
 
     subgraph Model[SLM Model]
@@ -1455,11 +1674,231 @@ graph LR
     end
 
     C1 -->|POST /generate| FastAPI
+    C1 -->|POST /v1/chat/completions| FastAPI
     FastAPI -->|Load & Generate| Model
     FastAPI -->|Filter| Guardrails
     Guardrails -->|Pass / Block| FastAPI
     Model -->|Completion + Metrics| FastAPI
     FastAPI -->|JSON Response| C1
+```
+
+### 13.6 OpenAI-Compatible API
+
+The server exposes OpenAI-compatible endpoints that work with standard OpenAI client libraries.
+
+**Available models:**
+
+```bash
+curl "http://localhost:8000/v1/models"
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "slm",
+      "object": "model",
+      "created": 1709452800,
+      "owned_by": "slm-project"
+    }
+  ]
+}
+```
+
+### 13.7 Legacy Completions (`POST /v1/completions`)
+
+```bash
+curl -X POST "http://localhost:8000/v1/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "slm",
+    "prompt": "def preprocess(text):",
+    "max_tokens": 50,
+    "temperature": 0.7,
+    "top_p": 1.0
+  }'
+```
+
+```json
+{
+  "id": "cmpl-abc123",
+  "object": "text_completion",
+  "created": 1709452800,
+  "model": "slm",
+  "choices": [
+    {
+      "text": "\n    Preprocess text using the provided model...",
+      "index": 0,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 4,
+    "completion_tokens": 35,
+    "total_tokens": 39
+  }
+}
+```
+
+### 13.8 Chat Completions (`POST /v1/chat/completions`)
+
+Supports full message history, system prompts, and function/tool calling.
+
+```bash
+curl -X POST "http://localhost:8000/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "slm",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Write a Python function to reverse a string."}
+    ],
+    "max_tokens": 128,
+    "temperature": 0.7,
+    "top_p": 1.0
+  }'
+```
+
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1709452800,
+  "model": "slm",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "def reverse_string(s):\n    return s[::-1]"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 15,
+    "total_tokens": 35
+  }
+}
+```
+
+**Tool calling (mock):**
+
+```bash
+curl -X POST "http://localhost:8000/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "slm",
+    "messages": [
+      {"role": "user", "content": "What is the weather in Paris?"}
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get current weather",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {"type": "string"}
+            },
+            "required": ["location"]
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto"
+  }'
+```
+
+```json
+{
+  "id": "chatcmpl-def456",
+  "object": "chat.completion",
+  "created": 1709452800,
+  "model": "slm",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_xyz789",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"location\": \"Paris\"}"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 35,
+    "completion_tokens": 25,
+    "total_tokens": 60
+  }
+}
+```
+
+### 13.9 Streaming Responses
+
+Both `/v1/completions/stream` and `/v1/chat/completions/stream` return Server-Sent Events (SSE).
+
+```bash
+curl -N -X POST "http://localhost:8000/v1/chat/completions/stream" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "slm",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
+```
+
+```
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1709452800,"model":"slm","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1709452800,"model":"slm","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1709452800,"model":"slm","choices":[{"index":0,"delta":{"content":"!"},"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+### 13.10 Client Library Usage
+
+The endpoints are compatible with the standard OpenAI Python SDK:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8000/v1", api_key="sk-placeholder")
+
+response = client.chat.completions.create(
+    model="slm",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello, how are you?"},
+    ],
+    max_tokens=128,
+)
+print(response.choices[0].message.content)
+
+# Streaming
+for chunk in client.chat.completions.create(
+    model="slm",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True,
+):
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
 ```
 
 ## 14. Testing & Quality
@@ -1794,6 +2233,52 @@ make harness-model  # full path
 ```
 
 The harness runs pytest, verify_setup, the live comparison generator, and pip-audit in sequence. It exits non-zero if any step fails.
+
+---
+
+## 18. Retrieval-Augmented Generation (RAG)
+
+A lightweight RAG pipeline lives in `slm-training/rag.py` with a CLI demo
+in `rag_demo.py`.  It uses only the Python stdlib — no scikit-learn, no
+vector database, no extra packages.
+
+### Pipeline
+
+1. **Chunking** — `chunk_document(text, chunk_size=200, overlap=40)` splits
+   a corpus into overlapping word chunks and returns `Document` objects.
+2. **Embedding** — `TFIDFIndex.fit(docs)` builds a sparse TF-IDF index over
+   the chunk vocabulary using smoothed inverse document frequency.
+3. **Retrieval** — `index.query(text, top_k=3)` encodes the query with the
+   same tokenizer and returns the top-k chunks ranked by cosine similarity.
+4. **Augmented generation** — `augmented_generation(query, results)` builds
+   a prompt that prepends retrieved passages to the question.
+
+### Usage
+
+```python
+from rag import build_index, augmented_generation
+
+index = build_index(text=my_corpus, source="my_doc")
+results = index.query("What is RAG?", top_k=3)
+prompt = augmented_generation("What is RAG?", results)
+print(prompt)
+```
+
+### CLI
+
+```bash
+python rag_demo.py --query "Why use RAG?" --top-k 5 --max-context 2000
+```
+
+Output shows retrieved chunks with scores and the full augmented prompt.
+
+### Tests
+
+```bash
+python -m pytest tests/test_rag.py -v
+```
+
+22 tests cover chunking, TF-IDF math, cosine similarity, and prompt assembly.
 
 ---
 

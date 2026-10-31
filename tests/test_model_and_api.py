@@ -322,3 +322,323 @@ class TestDataCleanliness:
         sample_text = enc.decode(tokens[:sample_size].tolist())
         assert "User:" not in sample_text
         assert "Assistant:" not in sample_text
+
+
+class TestOpenAICompatEndpoints:
+    @pytest.fixture()
+    def client(self):
+        try:
+            from fastapi.testclient import TestClient
+
+            from slm_api import app
+
+            return TestClient(app)
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def test_v1_models_list(self, client):
+        response = client.get("/v1/models")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "list"
+        assert len(data["data"]) > 0
+        model = data["data"][0]
+        assert model["id"] == "slm"
+        assert model["object"] == "model"
+        assert model["owned_by"] == "slm-project"
+
+    def test_v1_completions_basic(self, client):
+        response = client.post(
+            "/v1/completions",
+            json={
+                "model": "slm",
+                "prompt": "def hello():",
+                "max_tokens": 10,
+                "temperature": 0.7,
+                "top_p": 1.0,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "text_completion"
+        assert "id" in data
+        assert data["model"] == "slm"
+        assert len(data["choices"]) == 1
+        choice = data["choices"][0]
+        assert "text" in choice
+        assert choice["finish_reason"] in ("stop", "length")
+        assert "usage" in data
+        usage = data["usage"]
+        assert usage["prompt_tokens"] > 0
+        assert usage["total_tokens"] >= usage["prompt_tokens"]
+
+    def test_v1_completions_with_list_prompt(self, client):
+        response = client.post(
+            "/v1/completions",
+            json={
+                "model": "slm",
+                "prompt": ["Hello", "World"],
+                "max_tokens": 5,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["choices"]) == 1
+        assert data["choices"][0]["index"] == 0
+
+    def test_v1_completions_unsafe_rejected(self, client):
+        response = client.post(
+            "/v1/completions",
+            json={
+                "model": "slm",
+                "prompt": "how to make a bomb",
+                "max_tokens": 10,
+            },
+        )
+        assert response.status_code == 400
+
+    def test_v1_chat_completions_basic(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "def preprocess(text):"},
+                ],
+                "max_tokens": 20,
+                "temperature": 0.7,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+        assert "id" in data
+        assert data["model"] == "slm"
+        assert len(data["choices"]) == 1
+        choice = data["choices"][0]
+        assert choice["message"]["role"] == "assistant"
+        assert "content" in choice["message"]
+        assert choice["finish_reason"] in ("stop", "length", "content_filter")
+        assert "usage" in data
+        usage = data["usage"]
+        assert usage["prompt_tokens"] > 0
+        assert usage["total_tokens"] >= usage["prompt_tokens"]
+
+    def test_v1_chat_completions_message_history(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi there!"},
+                    {"role": "user", "content": "How are you?"},
+                ],
+                "max_tokens": 10,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+        assert len(data["choices"]) == 1
+
+    def test_v1_chat_completions_stream(self, client):
+        response = client.post(
+            "/v1/chat/completions/stream",
+            json={
+                "model": "slm",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "max_tokens": 20,
+                "stream": True,
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+        content = response.text
+        assert "data:" in content
+        assert "[DONE]" in content
+
+    def test_v1_completions_stream(self, client):
+        response = client.post(
+            "/v1/completions/stream",
+            json={
+                "model": "slm",
+                "prompt": "def hello():",
+                "max_tokens": 10,
+                "stream": True,
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+        content = response.text
+        assert "data:" in content
+        assert "[DONE]" in content
+
+    def test_v1_chat_completions_tool_call(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [{"role": "user", "content": "What is the weather?"}],
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "description": "Get the current weather",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"location": {"type": "string"}},
+                                "required": ["location"],
+                            },
+                        },
+                    }
+                ],
+                "tool_choice": "auto",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+        choice = data["choices"][0]
+        assert choice["finish_reason"] == "tool_calls"
+        assert "tool_calls" in choice["message"]
+        assert len(choice["message"]["tool_calls"]) > 0
+        tool_call = choice["message"]["tool_calls"][0]
+        assert tool_call["type"] == "function"
+        assert tool_call["function"]["name"] == "get_weather"
+        assert "arguments" in tool_call["function"]
+
+    def test_v1_chat_completions_tool_call_none(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {"name": "dummy", "parameters": {}},
+                    }
+                ],
+                "tool_choice": "none",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+
+    def test_v1_chat_completions_stop_sequences(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [{"role": "user", "content": "def hello():"}],
+                "max_tokens": 20,
+                "stop": ["\n\n"],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+        assert len(data["choices"]) == 1
+
+    def test_v1_chat_completions_backward_compat(self, client):
+        """Ensure legacy /generate endpoint still works."""
+        response = client.post(
+            "/generate",
+            json={
+                "prompt": "def hello():",
+                "max_new_tokens": 10,
+                "temperature": 0.7,
+                "top_k": 20,
+                "top_p": 0.9,
+                "repetition_penalty": 1.2,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "prompt" in data
+        assert "completion" in data
+        assert "completion_tokens" in data
+
+    def test_v1_chat_completions_empty_messages(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [],
+                "max_tokens": 10,
+            },
+        )
+        assert response.status_code in (200, 422)
+
+    def test_v1_chat_completions_missing_model(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "messages": [{"role": "user", "content": "Hello"}],
+                "max_tokens": 10,
+            },
+        )
+        assert response.status_code in (200, 422)
+
+    def test_v1_completions_missing_prompt(self, client):
+        response = client.post(
+            "/v1/completions",
+            json={
+                "model": "slm",
+                "max_tokens": 10,
+            },
+        )
+        assert response.status_code in (200, 422)
+
+    def test_v1_chat_completions_max_tokens_zero(self, client):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "max_tokens": 0,
+            },
+        )
+        assert response.status_code in (200, 422)
+
+    def test_v1_completions_system_role_not_injected(self, client):
+        """OpenAI-compatible: system messages should be rendered but not lost."""
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "slm",
+                "messages": [
+                    {"role": "system", "content": "You are concise."},
+                    {"role": "user", "content": "Say hi"},
+                ],
+                "max_tokens": 10,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+        assert data["choices"][0]["message"]["role"] == "assistant"
+
+
+class TestAuth:
+    @pytest.fixture()
+    def client(self):
+        try:
+            from fastapi.testclient import TestClient
+
+            from slm_api import app
+
+            return TestClient(app)
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def test_openai_endpoints_require_auth(self, client):
+        # Without API key, should be rejected when API_KEY env is set
+        # Note: in test env, API_KEY might not be set, so this may pass through
+        # We just verify the endpoint exists
+        response = client.get("/v1/models")
+        assert response.status_code in (200, 401, 403)

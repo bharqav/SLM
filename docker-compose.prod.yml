@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  slm-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./slm-training:/app/slm-training:ro
+      - ./slm-ft:/app/slm-ft:ro
+      - ./logs:/app/logs
+    environment:
+      - API_KEY=${API_KEY:-change-me-to-a-real-key}
+      - SLM_CHECKPOINT=${SLM_CHECKPOINT:-slm-training/best_model.pt}
+      - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - WORKERS=${WORKERS:-1}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    command: >
+      python -m uvicorn slm_api:app
+      --host 0.0.0.0
+      --port 8000
+      --workers ${WORKERS:-1}
+      --log-level ${LOG_LEVEL:-info}
+      --access-log
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+    restart: unless-stopped
+    depends_on:
+      - slm-api
+
+volumes:
+  prometheus-data:

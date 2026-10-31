@@ -22,6 +22,7 @@ from guardrails import (
     is_degenerate,
 )
 from model import GPT, GPTConfig
+from quantize import QuantizationInfo, quantize_model  # noqa: E402
 from slmlog import error, log, phase, warn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -101,6 +102,12 @@ def main():
     ap.add_argument("--top-k", type=int, default=50)
     ap.add_argument("--samples", type=int, default=1)
     ap.add_argument("--seed", type=int, default=1337)
+    ap.add_argument(
+        "--quantize",
+        choices=["int8", "int4", "gptq", "awq"],
+        default=None,
+        help="Post-training quantization method (requires CUDA for int8/int4).",
+    )
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -112,6 +119,23 @@ def main():
     except FileNotFoundError as e:
         error(str(e))
         return 1
+
+    qinfo: QuantizationInfo | None = None
+    if args.quantize:
+        qinfo = QuantizationInfo(
+            method=args.quantize,
+            applied=False,
+            device=device,
+            original_params=sum(p.numel() for p in model.parameters()),
+        )
+        model, qinfo = quantize_model(
+            model,
+            method=args.quantize,
+            device=device,
+            checkpoint_path=args.checkpoint,
+        )
+        log(str(qinfo))
+
     enc = get_encoder()
 
     prompts = [args.prompt] if args.prompt else TEST_PROMPTS
