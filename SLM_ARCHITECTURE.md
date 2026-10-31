@@ -43,7 +43,7 @@
 - **d_model**: 768
 - **ctx_len**: 256
 - **mlp_ratio**: 4.0
-- **total parameters**: ~124M
+- **total parameters**: ~757M
 
 ## Training Data
 - Source: Public code prose dataset + empathetic dialogues

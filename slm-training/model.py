@@ -18,9 +18,9 @@ from torch.nn import functional as F
 class GPTConfig:
     vocab_size: int = 50257
     block_size: int = 256
-    n_layer: int = 16
-    n_head: int = 16
-    n_embd: int = 1024
+    n_layer: int = 24
+    n_head: int = 24
+    n_embd: int = 1536
     dropout: float = 0.1
     bias: bool = True
 
@@ -104,13 +104,16 @@ class Block(nn.Module):
 
 class GPT(nn.Module):
     @classmethod
-    def from_config(cls, cfg: "GPTConfig") -> "GPT":
+    def from_config(
+        cls, cfg: "GPTConfig", use_gradient_checkpointing: bool = False
+    ) -> "GPT":
         """Construct a GPT from a GPTConfig (PyTorch convention)."""
-        return cls(cfg)
+        return cls(cfg, use_gradient_checkpointing=use_gradient_checkpointing)
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, use_gradient_checkpointing: bool = False):
         super().__init__()
         self.config = cfg
+        self.use_gradient_checkpointing = use_gradient_checkpointing
         self.transformer = nn.ModuleDict(
             dict(
                 wte=nn.Embedding(cfg.vocab_size, cfg.n_embd),
@@ -171,8 +174,12 @@ class GPT(nn.Module):
         pos = torch.arange(0, T, dtype=torch.long, device=idx.device)
 
         x = self.transformer.drop(self.transformer.wte(idx) + self.transformer.wpe(pos))
-        for block in self.transformer.h:
-            x = block(x)
+        if self.use_gradient_checkpointing and self.training:
+            for block in self.transformer.h:
+                x = torch.utils.checkpoint.checkpoint(block, x, use_reentrant=False)
+        else:
+            for block in self.transformer.h:
+                x = block(x)
         x = self.transformer.ln_f(x)
 
         if targets is not None:

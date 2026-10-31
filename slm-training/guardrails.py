@@ -109,3 +109,17 @@ def is_degenerate(text: str, max_repetition: float = 0.5, min_length: int = 8) -
     if len(words) < min_length:
         return True
     return repetition_ratio(text) > max_repetition
+
+
+def clean_dialogue_artifacts(text: str) -> str:
+    """Remove dialogue role prefixes like 'User:' and 'Assistant:' from generated text."""
+    import re
+
+    # Remove role prefixes anywhere in the text, including after EOS tokens.
+    text = re.sub(r"(?:<\|endoftext\|>|^)\s*User:\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(
+        r"(?:<\|endoftext\|>|^)\s*Assistant:\s*", "", text, flags=re.MULTILINE
+    )
+    # Clean up leftover blank lines and extra spaces.
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()

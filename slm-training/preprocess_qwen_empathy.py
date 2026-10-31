@@ -38,8 +38,8 @@ def main() -> None:
             rec = json.loads(line)
             prompt = rec["prompt"]
             response = rec["response"]
-            # Format as dialogue: User prompt, then Assistant response
-            text = f"User: {prompt}\nAssistant: {response}{EOS}"
+            # Format as plain dialogue without role labels
+            text = f"{prompt}\n{response}{EOS}"
             records.append(text)
 
     if not records:

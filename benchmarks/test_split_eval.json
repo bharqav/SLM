@@ -1,0 +1,11 @@
+{
+  "checkpoint": "C:\\SubD\\Transfer\\Projects\\SLM\\slm-training\\best_model.pt",
+  "test_data": "C:\\SubD\\Transfer\\Projects\\SLM\\slm-training\\empathy_val.bin",
+  "test_tokens": 88520,
+  "ctx_len": 256,
+  "stride": 256,
+  "perplexity": 12762.2822,
+  "eval_time_s": 153.97,
+  "step": 500,
+  "best_val_loss": 4.280331611633301
+}

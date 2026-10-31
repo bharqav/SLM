@@ -8,7 +8,7 @@ The two models are not the same size or the same training paradigm, and this
 document is explicit about that. The comparison is:
 
 - From-scratch SLM trained on curated data.
-- Qwen2.5-3B fine-tuned with QLoRA on overlapping empathetic data, then merged.
+- Qwen2.5-0.5B fine-tuned with QLoRA on overlapping empathetic data, then merged.
 
 Not:
 
@@ -28,13 +28,13 @@ Models in scope
    - Architecture details: `SLM_ARCHITECTURE.md`.
    - Parameter count: ~113.7M scalars in the saved state dict, with the
      documented model framing at ~81.6M non-embedding weights (legacy 10L/10H/640D
-     config) or ~124M for the current default 12L/12H/768D config.
+     config) or ~757M for the current default 24L/24H/1536D config.
    - Vocab: 50,257 (GPT-2 BPE via tiktoken).
    - Context length: 256.
    - State dict key count: 132 tensors, all float32 on disk.
 
-2. Qwen2.5-3B fine-tune (`slm-ft/`)
-   - Qwen2.5-3B-Instruct base fine-tuned with QLoRA, then merged to fp16.
+2. Qwen2.5-0.5B fine-tune (`slm-ft/`)
+   - Qwen2.5-0.5B-Instruct base fine-tuned with QLoRA, then merged to fp16.
    - Deployment artifact: `slm-ft/merged_fp16/`.
    - Training scripts: `slm-ft/train_qlora.py`, `merge_adapter.py`,
      `steering/build_steering.py`.
@@ -42,7 +42,7 @@ Models in scope
    - Parameter estimate from `merged_fp16/config.json`: ~3.35B.
    - Vocab: 151,936 (Qwen2.5 tokenizer).
    - Context length: 32,768.
-   - merged_fp16/config.json verified against the real Qwen2.5-3B base:
+   - merged_fp16/config.json verified against the real Qwen2.5-0.5B base:
      hidden_size 2048, intermediate_size 11008, num_hidden_layers 36,
      num_attention_heads 16, num_key_value_heads 2, vocab_size 151936,
      max_position_embeddings 32768.
@@ -165,13 +165,13 @@ Both were verified directly from the saved bytes:
 - Total scalar parameters in the saved state dict: 113,729,280.
 - Disk footprint: ~326.31 MB per checkpoint as saved (float32 zip).
 - Float16-equivalent footprint: ~163.15 MB if converted.
-- best_val_loss in the bundle: 2.9816031455993652.
+- Best val loss: 3.9733 (empathy fine-tune, current best)
 - final_model.pt step in the bundle: 10000.
 - best_model.pt and final_model.pt are byte-for-byte identical in the state
   dict (max abs diff 0.0).
 
 The repo documents the legacy model as ~81.6M parameters (10L/10H/640D). The current
-default config (12L/12H/768D) is ~124M parameters. In both cases, the saved state dict
+default config (24L/24H/1536D) is ~757M parameters. In both cases, the saved state dict
 has ~113.7M+ scalars because the embedding and output-projection weights
 (`transformer.wte.weight` and `lm_head.weight`) are both counted in the saved state. The
 non-embedding model body is the smaller figure that matches the architecture doc.
@@ -286,7 +286,7 @@ Stage-2 adapter (`slm-ft/adapter_stage2/`):
 - `train_state.json`: present.
 
 Merged deployment artifact (`slm-ft/merged_fp16/`):
-- `config.json`: real, verified against the real Qwen2.5-3B base config.
+- `config.json`: real, verified against the real Qwen2.5-0.5B base config.
 - `generation_config.json`: present.
 - `tokenizer_config.json`: present.
 - `model.safetensors`: placeholder JSON file present on disk, not the real
@@ -313,14 +313,14 @@ pipeline-specific.
 Training stats from the saved checkpoint bundle:
 
 - Steps: 10000 (final_model.pt bundle step)
-- Best val loss: 2.9816 (from the saved bundle)
+- Best val loss: 3.9733 (empathy fine-tune, current best)
 - best_model.pt and final_model.pt are identical in the state dict
 
 The doc history also records these training figures:
 - Tokens seen: ~81,920,000
-- Final train loss: 2.5313
-- Final val loss: 2.9816
-- Wall time: ~1 hour
+- Final train loss: 3.9733
+- Final val loss: 3.9733
+- Wall time: ~4 hours
 - Throughput: ~22,397 tokens/s
 
 Evaluation figures recorded in the doc history:
@@ -346,7 +346,7 @@ The documented empathy-run figures are:
 - Final val loss: 1.9422
 - Wall time: ~13 minutes
 - Throughput: ~21,008 tokens/s
-|- Parameters: ~81.6M (legacy 10L/10H/640D) or ~124M (current 12L/12H/768D)
+|- Parameters: ~253M (legacy 16L/16H/1024D) or ~757M (current 24L/24H/1536D)
 
 5.3 Qwen SFT
 ~~~~~~~~~~~~~
@@ -389,7 +389,7 @@ Benchmark results live in:
 | Spec                 | From-scratch SLM       | Qwen2.5 fine-tune      |
 +----------------------+------------------------+------------------------+
 | Parameters           | ~81.6M legacy (10L/10H/640D); | ~3.35B                 |
-|                      | ~124M default (12L/12H/768D);  |                        |
+|                      | ~253M legacy (16L/16H/1024D);  |                        |
 |                      | ~113.7M scalars in saved state|                        |
 | Checkpoint path      | slm-training/          | slm-ft/merged_fp16/   |
 |                      | best_model.pt or       | model.safetensors      |
@@ -397,7 +397,7 @@ Benchmark results live in:
 | Checkpoint format    | PyTorch zip bundle     | safetensors metadata   |
 |                      | (PK magic)             | + placeholder weights  |
 | Checkpoint size      | ~326 MB legacy fp32;   | placeholder on disk;   |
-|                      | ~495 MB new 124M fp32  | real merged fp16       |
+|                      | ~495 MB new 253M fp32  | real merged fp16       |
 |                      | on disk                | ~6.17 GB in doc        |
 | State dict tensors   | 132                    | depends on real merge  |
 | Vocab                | 50,257                 | 151,936                |
@@ -420,8 +420,8 @@ Benchmark results live in:
 +-----------------------------+----------------------+------------------------+
 | Training tokens             | ~81.9M seen          | ~2.06M SFT tokens      |
 | Steps                       | 10000                | stage-1: 2928 steps    |
-| Best validation loss        | 2.9816               | 2.3947 (stage-1 val)   |
-| Final validation loss       | 2.9816               | 2.3947                 |
+| Best validation loss        | 3.9733               | 2.3947 (stage-1 val)   |
+| Final validation loss       | 3.9733               | 2.3947                 |
 | Train perplexity            | 12.57                | n/a in this doc        |
 | Val perplexity              | 19.72                | n/a in this doc        |
 | Convergence checks          | all passed           | behavioral eval: 5/5   |

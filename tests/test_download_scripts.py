@@ -23,7 +23,7 @@ class TestDownloadScripts:
             cwd=str(PROJECT_ROOT),
         )
         assert result.returncode == 0
-        assert "Qwen2.5-3B-Instruct" in result.stdout
+        assert "Qwen2.5-0.5B" in result.stdout
 
     def test_download_empathetic_script_exists(self):
         script = SCRIPTS_DIR / "download_empathetic_dialogues.py"

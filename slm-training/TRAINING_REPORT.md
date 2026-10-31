@@ -146,7 +146,7 @@ files under `benchmarks/`. They were generated with the same decode settings use
 
 That is the point. The portfolio comparison is:
 - a small model trained from scratch on code prose
-- versus a larger model (Qwen2.5-3B) fine-tuned on empathetic dialog
+- versus a larger model (Qwen2.5-0.5B) fine-tuned on empathetic dialog
 
 Same prompts, same decode settings, different training histories.
 

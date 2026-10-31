@@ -40,10 +40,10 @@ class TestModelLoading:
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from model import GPT, GPTConfig
 
-        # best_model.pt was trained with 10/10/640 config; use matching config
-        cfg = GPTConfig(n_layer=10, n_head=10, n_embd=640)
-        model = GPT(cfg)
+        # Load config from checkpoint metadata so this stays correct across runs
         state = torch.load(str(slm_checkpoint), map_location="cpu", weights_only=False)
+        cfg = GPTConfig(**(state.get("model_config") or {}))
+        model = GPT(cfg)
         model.load_state_dict(state["model"])
         model.eval()
 
@@ -56,10 +56,10 @@ class TestModelLoading:
         from model import GPT, GPTConfig
         from tiktoken import get_encoding
 
-        # best_model.pt was trained with 10/10/640 config; use matching config
-        cfg = GPTConfig(n_layer=10, n_head=10, n_embd=640)
-        model = GPT(cfg)
+        # Load config from checkpoint metadata so this stays correct across runs
         state = torch.load(str(slm_checkpoint), map_location="cpu", weights_only=False)
+        cfg = GPTConfig(**(state.get("model_config") or {}))
+        model = GPT(cfg)
         model.load_state_dict(state["model"])
         model.eval()
 
@@ -81,9 +81,9 @@ class TestModelLoading:
         cfg = GPTConfig()
         d = cfg.to_dict()
         assert d["vocab_size"] == 50257
-        assert d["n_layer"] == 16
-        assert d["n_head"] == 16
-        assert d["n_embd"] == 1024
+        assert d["n_layer"] == 24
+        assert d["n_head"] == 24
+        assert d["n_embd"] == 1536
 
     def test_model_num_params(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
@@ -113,10 +113,10 @@ class TestModelLoading:
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from model import GPT, GPTConfig
 
-        # best_model.pt was trained with 10/10/640 config; use matching config
-        cfg = GPTConfig(n_layer=10, n_head=10, n_embd=640)
-        model = GPT(cfg)
+        # Load config from checkpoint metadata so this stays correct across runs
         state = torch.load(str(slm_checkpoint), map_location="cpu", weights_only=False)
+        cfg = GPTConfig(**(state.get("model_config") or {}))
+        model = GPT(cfg)
         model.load_state_dict(state["model"])
         model.train()
 
@@ -291,3 +291,34 @@ class TestEvaluateTestSplit:
         assert "perplexity" in data
         assert data["perplexity"] > 0
         assert "checkpoint" in data
+
+
+class TestDataCleanliness:
+    def test_empathy_train_bin_no_role_labels(self):
+        import numpy as np
+
+        data_path = PROJECT_ROOT / "slm-training" / "empathy_train.bin"
+        if not data_path.exists():
+            pytest.skip("empathy_train.bin not found")
+
+        tokens = np.memmap(str(data_path), dtype=np.uint16, mode="r")
+        # Decode a sample to check for role labels
+        enc = __import__("tiktoken").get_encoding("gpt2")
+        sample_size = min(5000, len(tokens))
+        sample_text = enc.decode(tokens[:sample_size].tolist())
+        assert "User:" not in sample_text
+        assert "Assistant:" not in sample_text
+
+    def test_empathy_val_bin_no_role_labels(self):
+        import numpy as np
+
+        data_path = PROJECT_ROOT / "slm-training" / "empathy_val.bin"
+        if not data_path.exists():
+            pytest.skip("empathy_val.bin not found")
+
+        tokens = np.memmap(str(data_path), dtype=np.uint16, mode="r")
+        enc = __import__("tiktoken").get_encoding("gpt2")
+        sample_size = min(5000, len(tokens))
+        sample_text = enc.decode(tokens[:sample_size].tolist())
+        assert "User:" not in sample_text
+        assert "Assistant:" not in sample_text

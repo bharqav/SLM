@@ -9,7 +9,7 @@
       "tok_per_s": 12.9
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I'm sorry to hear that you've been feeling down. It's important to take care of your mental health, and I'm here to listen if you want to talk about what might be bothering you. Sometimes just having someone to share your feelings with can help. If you're open to it, we could also discuss some strategies or activities that might help improve your mood. Is there anything specific that",
       "tokens": 80,
       "latency_s": 14.283,
@@ -26,7 +26,7 @@
       "tok_per_s": 15.0
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I'm here to support you and help where I can. It sounds like you might be feeling overwhelmed or stuck. Here are some suggestions that might help:\n\n1. **Take a Break**: If you feel like you're not able to continue, it's important to take a break. Give yourself permission to step away from the task for a short while.\n\n2. **Break the Task into Smaller",
       "tokens": 80,
       "latency_s": 14.382,
@@ -43,7 +43,7 @@
       "tok_per_s": 14.6
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I'm really sorry to hear that you're feeling anxious about your job. It's important to take some time to address and manage these feelings. Here are a few steps you might consider:\n\n1. **Identify the Source of Anxiety**: Try to pinpoint what is causing your anxiety. Is it related to workload, performance, management, or something else?\n\n2. **Communicate with Your Manager**:",
       "tokens": 80,
       "latency_s": 14.372,
@@ -60,7 +60,7 @@
       "tok_per_s": 13.9
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I'm sorry to hear that you and your partner are having conflicts. It's important to address these issues in a constructive way to improve your relationship. Here are some steps you might consider:\n\n1. **Communicate Openly**: Try to have open and honest conversations about what's bothering you. Use \"I\" statements to express how you feel without blaming or accusing the other person.\n\n2. **",
       "tokens": 80,
       "latency_s": 14.363,
@@ -77,7 +77,7 @@
       "tok_per_s": 13.5
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I'm sorry to hear that you're feeling lonely. It's important to know that you're not alone in experiencing these feelings. Loneliness can be a complex and challenging emotion, but there are many ways to cope with it and find connection.\n\nHere are some suggestions that might help:\n\n1. **Connect with Others**: Try to reach out to friends or family members who you trust and feel comfortable talking",
       "tokens": 80,
       "latency_s": 14.383,
@@ -94,7 +94,7 @@
       "tok_per_s": 13.0
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I'm very sorry to hear about your loss. Losing a loved one can be an incredibly difficult and painful experience. If you need someone to talk to or just want to share your feelings, I'm here for you. Remember that it's okay to take time to grieve and process your emotions. Many people find comfort in talking to friends, family members, or a professional counselor who specializes in grief",
       "tokens": 80,
       "latency_s": 14.347,
@@ -111,7 +111,7 @@
       "tok_per_s": 14.7
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "It's common to feel overwhelmed by stress, especially in today's fast-paced world. Here are some strategies that might help you manage and cope with stress:\n\n1. **Mindfulness and Meditation**: These practices can help you stay grounded in the present moment. Even a few minutes of mindfulness meditation each day can be beneficial.\n\n2. **Physical Activity**: Exercise is a great way to release stress. It",
       "tokens": 80,
       "latency_s": 14.354,
@@ -128,7 +128,7 @@
       "tok_per_s": 15.0
     },
     "qwen": {
-      "label": "Qwen2.5-3B-Instruct",
+      "label": "Qwen2.5-0.5B-Instruct",
       "text": "I understand that feeling of fear and uncertainty can be overwhelming. It's important to remember that everyone has their own timeline for finding love, and it's okay to take time to focus on self-improvement and personal growth before looking for a partner.\n\nHere are some suggestions that might help:\n\n1. **Self-Improvement**: Focus on your personal development. Whether it's learning a new skill,",
       "tokens": 80,
       "latency_s": 14.347,

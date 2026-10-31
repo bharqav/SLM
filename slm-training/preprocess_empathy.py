@@ -8,10 +8,10 @@ Output: slm-training/empathy_train.bin + empathy_val.bin
         Flat token stream separated by <|endoftext|> (id 50256).
 
 Each conversation is formatted as:
-    User: <user message>
-    Assistant: <assistant message>
-    User: <user message>
-    Assistant: <assistant message>
+    <user message>
+    <assistant message>
+    <user message>
+    <assistant message>
     <|endoftext|>
 """
 
@@ -34,14 +34,11 @@ def format_conversation(messages: list[dict]) -> str:
     """Convert chat messages to a plain-text training record."""
     parts = []
     for msg in messages:
-        role = msg.get("role", "")
+        msg.get("role", "")
         content = msg.get("content", "").strip()
         if not content:
             continue
-        if role == "user":
-            parts.append(f"User: {content}")
-        elif role == "assistant":
-            parts.append(f"Assistant: {content}")
+        parts.append(content)
     return "\n".join(parts)
 
 

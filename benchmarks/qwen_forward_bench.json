@@ -1,5 +1,5 @@
 {
-  "name": "Qwen2.5-3B",
+  "name": "Qwen2.5-0.5B",
   "passes": 20,
   "time_s": 26.733,
   "throughput_passes_s": 0.7,

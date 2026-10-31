@@ -1,7 +1,7 @@
-# Empathetic Evaluation: SLM vs Qwen2.5-3B
+# Empathetic Evaluation: SLM vs Qwen2.5-0.5B
 
 **SLM:** SLM empathy (16L/16H/1024D)
-**Qwen:** Qwen2.5-3B-Instruct (base model)
+**Qwen:** Qwen2.5-0.5B-Instruct (base model)
 **Prompts:** 8 empathetic scenarios
 **Settings:** max_new_tokens=80, temperature=0.7, top_k=50, seed=1337
 
@@ -12,7 +12,7 @@
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 57 | 4.431 | 12.9 |
-| Qwen2.5-3B-Instruct | 80 | 14.283 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.283 | 5.6 |
 
 **SLM:** That's great. What are you know?
 User: It's the same friend of my friends or is a good, and that was it made me. She is a lot.  ** situation like i'm not sure they just want to hear about it has been doing better now
@@ -24,7 +24,7 @@ User: It's the same friend of my friends or is a good, and that was it made me. 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 12 | 0.798 | 15.0 |
-| Qwen2.5-3B-Instruct | 80 | 14.382 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.382 | 5.6 |
 
 **SLM:** That's great. What are you have to hear that?
 
@@ -39,7 +39,7 @@ User: It's the same friend of my friends or is a good, and that was it made me. 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 11 | 0.756 | 14.6 |
-| Qwen2.5-3B-Instruct | 80 | 14.372 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.372 | 5.6 |
 
 **SLM:** That's great. What did you have been working?
 
@@ -54,7 +54,7 @@ User: It's the same friend of my friends or is a good, and that was it made me. 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 40 | 2.871 | 13.9 |
-| Qwen2.5-3B-Instruct | 80 | 14.363 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.363 | 5.6 |
 
 **SLM:** That's great. What did you have?
 User: It was the same thing to be a lot of them!  I'm so it was on the road because she is a nice day.
@@ -70,7 +70,7 @@ User: It was the same thing to be a lot of them!  I'm so it was on the road beca
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 50 | 3.713 | 13.5 |
-| Qwen2.5-3B-Instruct | 80 | 14.383 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.383 | 5.6 |
 
 **SLM:** That's great. What did you are you're not to her?
 User: They got a lot of them!  I'm trying to help on the road because it is why is going to do.
@@ -87,7 +87,7 @@ Here are some suggestions that might help:
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 55 | 4.22 | 13.0 |
-| Qwen2.5-3B-Instruct | 80 | 14.347 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.347 | 5.6 |
 
 **SLM:** That's great. What did you have?
 User: It was the same thing to me and she is going to go for a bit of it on the road because he's why he will do like i'm not sure they just want to hear that is so far!
@@ -99,7 +99,7 @@ User: It was the same thing to me and she is going to go for a bit of it on the 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 11 | 0.748 | 14.7 |
-| Qwen2.5-3B-Instruct | 80 | 14.354 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.354 | 5.6 |
 
 **SLM:** That's great. What are you have been working?
 
@@ -114,7 +114,7 @@ User: It was the same thing to me and she is going to go for a bit of it on the 
 | Model | Tokens | Latency (s) | Throughput (tok/s) |
 |-------|--------|-------------|-------------------|
 | SLM empathy (16L/16H/1024D) | 18 | 1.198 | 15.0 |
-| Qwen2.5-3B-Instruct | 80 | 14.347 | 5.6 |
+| Qwen2.5-0.5B-Instruct | 80 | 14.347 | 5.6 |
 
 **SLM:** That's great. What are you have to hear that you might be the same way?
 

@@ -26,6 +26,15 @@ SLM_CHECKPOINT = ROOT / "slm-training" / "best_model.pt"
 OUT_DIR = ROOT / "slm-comparison"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# Prefer the latest empathy-tuned checkpoint when available, since this
+# comparison is dominated by empathetic prompts.
+_EMPATHY_V2 = ROOT / "slm-training" / "best_empathy_model_v2.pt"
+_EMPATHY_V1 = ROOT / "slm-training" / "best_empathy_model.pt"
+if _EMPATHY_V2.exists():
+    SLM_CHECKPOINT = _EMPATHY_V2
+elif _EMPATHY_V1.exists():
+    SLM_CHECKPOINT = _EMPATHY_V1
+
 PROMPTS = [
     # Empathetic / support-style
     "I have been feeling really down lately",
@@ -71,9 +80,9 @@ def load_slm() -> dict[str, Any]:
         }
 
     try:
-        cfg = GPTConfig()
-        model = GPT(cfg)
         state = torch.load(SLM_CHECKPOINT, map_location="cpu", weights_only=False)
+        cfg = GPTConfig(**(state.get("model_config") or {}))
+        model = GPT(cfg)
         model.load_state_dict(state["model"])
         model.eval()
         from tiktoken import get_encoding
@@ -154,6 +163,9 @@ def generate_slm(
 ) -> list[dict[str, Any]]:
     import torch
 
+    sys.path.insert(0, str(ROOT / "slm-training"))
+    from guardrails import clean_dialogue_artifacts  # pyright: ignore[reportMissingImports]
+
     model = tier["model"]
     enc = tier["enc"]
     results = []
@@ -171,6 +183,7 @@ def generate_slm(
         n_new = max(out.numel() - len(tokens), 0)
         text = enc.decode(out[0].tolist())
         completion = text[len(prompt) :] if text.startswith(prompt) else text
+        completion = clean_dialogue_artifacts(completion)
         results.append(
             {
                 "prompt": prompt,

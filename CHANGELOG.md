@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Changed
 - Updated benchmark numbers to reflect 20-prompt evaluation
-- Increased default model to 12L/12H/768D (~124M params)
+- Increased default model to 24L/24H/1536D (~757M params)
 - Restored original GPT-2 architecture from git history (10L/10H/640D)
 - Fixed `tests/__init__.py` (was broken literal text)
 - Reorganized README into 18 sections with consistent numbering

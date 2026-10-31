@@ -1,4 +1,4 @@
-"""Build the empathetic-SFT corpus for the Qwen2.5-3B QLoRA fine-tune.
+"""Build the empathetic-SFT corpus for the Qwen2.5-0.5B QLoRA fine-tune.
 
 Sources (downloaded/verified by hand, see README):
 - ESConv (thu-coai/esconv on HF): 910 multi-turn emotional-support dialogs (JSON in `text`).

@@ -10,7 +10,13 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
 
-from guardrails import check_input, check_output, is_degenerate, repetition_ratio  # noqa: E402
+from guardrails import (  # noqa: E402
+    check_input,
+    check_output,
+    clean_dialogue_artifacts,
+    is_degenerate,
+    repetition_ratio,
+)
 
 
 class TestRepetitionRatio:
@@ -92,3 +98,29 @@ class TestCheckOutput:
         result = check_output("Here are the steps to make a bomb.")
         assert result.safe is False
         assert "Refused" in result.reason
+
+
+class TestCleanDialogueArtifacts:
+    def test_strips_user_prefix(self):
+        text = "User: I am sad\nIt's okay to feel that way."
+        cleaned = clean_dialogue_artifacts(text)
+        assert "User:" not in cleaned
+
+    def test_strips_assistant_prefix(self):
+        text = "Assistant: I understand.\nTell me more."
+        cleaned = clean_dialogue_artifacts(text)
+        assert "Assistant:" not in cleaned
+
+    def test_strips_inline_role_labels(self):
+        text = "That sounds hard.\nUser: Can you help?\nAssistant: I am here."
+        cleaned = clean_dialogue_artifacts(text)
+        assert "User:" not in cleaned
+        assert "Assistant:" not in cleaned
+
+    def test_preserves_clean_text(self):
+        text = "I am here for you. That sounds really difficult."
+        cleaned = clean_dialogue_artifacts(text)
+        assert cleaned == text
+
+    def test_empty_string(self):
+        assert clean_dialogue_artifacts("") == ""

@@ -1,7 +1,7 @@
 """Merge a trained QLoRA adapter into fp16 full weights for deployment.
 
 Usage:
-    .venv/Scripts/python merge_adapter.py --base Qwen/Qwen2.5-3B-Instruct \
+    .venv/Scripts/python merge_adapter.py --base Qwen/Qwen2.5-0.5B-Instruct \
         --adapter adapter --out merged_fp16
 
 Peft loads the adapter on a CPU float16 copy of the base (fits in RAM),
@@ -20,7 +20,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="Qwen/Qwen2.5-3B-Instruct")
+    ap.add_argument("--base", default="Qwen/Qwen2.5-0.5B-Instruct")
     ap.add_argument("--adapter", default="adapter")
     ap.add_argument("--out", default="merged_fp16")
     args = ap.parse_args()

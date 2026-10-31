@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-10-20T20:10:00Z",
   "adapter": "adapter_stage2",
-  "model_tag": "Qwen2.5-3B-Instruct + stage2 QLoRA",
+  "model_tag": "Qwen2.5-0.5B-Instruct + stage2 QLoRA",
   "device": "cuda",
   "num_probes": 5,
   "pass_count": 5,

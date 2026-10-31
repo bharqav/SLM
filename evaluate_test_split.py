@@ -73,8 +73,8 @@ def main() -> int:
     )
     ap.add_argument(
         "--test-data",
-        default=str(ROOT / "slm-training" / "val.bin"),
-        help="Use val.bin as test proxy",
+        default=str(ROOT / "slm-training" / "empathy_val.bin"),
+        help="Use empathy_val.bin as test proxy",
     )
     ap.add_argument("--ctx-len", type=int, default=256)
     ap.add_argument("--stride", type=int, default=256)
@@ -83,7 +83,7 @@ def main() -> int:
     print("[evaluate_test_split] Loading model...")
     t0 = time.perf_counter()
     state = load_checkpoint(Path(args.checkpoint))
-    cfg = GPTConfig()
+    cfg = GPTConfig(**(state.get("model_config") or {}))
     model = GPT(cfg)
     model.load_state_dict(state["model"])
     model.eval()

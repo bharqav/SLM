@@ -1,48 +1,168 @@
 {
   "model": "slm-scratch",
-  "params": 81564800,
-  "step": 10000,
-  "best_val_loss": 2.9816031455993652,
+  "step": 200,
+  "best_val_loss": 4.369908809661865,
+  "params": 757547520,
   "results": [
-    {
-      "prompt": "def preprocess(text):",
-      "prompt_tokens": 6,
-      "completion_tokens": 40,
-      "completion": "\n    \"\"\"\n    Preprocesses text and decode images to image.\n\n    Args:\n       text (str): Text to pre",
-      "latency_s": 0.9213,
-      "tokens_per_second": 43.4
-    },
     {
       "prompt": "I have been feeling really down lately",
       "prompt_tokens": 7,
-      "completion_tokens": 40,
-      "completion": "<|endoftext|>The \"no-op\" property can be either \"no\" or \"no\" (e.g. \"no-op\",\n\"any\") or \"all\" (e.g",
-      "latency_s": 0.8901,
-      "tokens_per_second": 44.9
+      "completion_tokens": 80,
+      "completion": ".\nOh, I'm sorry that is a great.My friend was a good lot of my kids last week when I was the house and I feel so sorry to see.\nOh no, that is a good, you do you have a good time?\nI got my dog is my wife.\nWhat is your own friend,",
+      "latency_s": 18.2374,
+      "tokens_per_second": 4.4
     },
     {
-      "prompt": "class ChatMessage:",
-      "prompt_tokens": 4,
-      "completion_tokens": 40,
-      "completion": "\n    \"\"\"Get message content\"\"\"<|endoftext|>def get_message_content(self) -> ChatMessage:\n    \"\"\"Get message content\"\"\"<|endoftext|>def get_message_content(",
-      "latency_s": 0.8792,
-      "tokens_per_second": 45.5
+      "prompt": "The best way to handle stress is",
+      "prompt_tokens": 7,
+      "completion_tokens": 80,
+      "completion": "very good to be more than your feelings for the moment.\nyes I was in my job. But I was a great friends.\nDid you do?\nYes, but I was so I was a few years.\nI am sorry to be a good to get it out, did you get a lot of money.I'm so",
+      "latency_s": 17.3884,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "I do not think I can keep going",
+      "prompt_tokens": 8,
+      "completion_tokens": 80,
+      "completion": "on my money.\nThat's really good of the time, but I think you are the job.\nThat is so that, I can be very good!\nOh, I am glad you are trying to be there, I can't take you are having to help.I was happy when I was so many people. I had to get back",
+      "latency_s": 17.6852,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "I just need someone to listen to me",
+      "prompt_tokens": 8,
+      "completion_tokens": 80,
+      "completion": "to the rest of the same time in the time\nI hope you get. I'm going on a good day.\nI'm not sure I think. I know how long have to be able to do that I am so I am not.\nI know. I am glad you can be hard to do with it out.I had my dog",
+      "latency_s": 17.6498,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "I'm scared about my future",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ".\nI bet!I was very nervous about my dog and i was so mad at the other day and I am going on me feel so good.\nOh, what do you?\nI am so glad I was in a bad.\nThat's why?\nI am worried about it.  I am so sorry to",
+      "latency_s": 17.4333,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "I feel like nobody understands me",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ".\nOh, that must be so hard! Is there you do?\nWhen we're feeling good to feel the other people can take care of the first time.\nI'm not, or take care about your future and take your emotions. I can get to be able to do?\nyes, I can be able to hear that you feel like",
+      "latency_s": 17.5138,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "What should I do when I feel overwhelmed?",
+      "prompt_tokens": 9,
+      "completion_tokens": 80,
+      "completion": "I am glad they're just not like you're feeling.I was so I was quite a lot of my family and I was a kid because I was a lot of the time!\nYes, you're feeling?\nYes, but I was a good time.\nI bet they still have been the same.I",
+      "latency_s": 17.8847,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "I've been having trouble sleeping at night",
+      "prompt_tokens": 8,
+      "completion_tokens": 80,
+      "completion": ".\nThat's awesome! I hope you going to hear that way!\nYes, I was in a little little bit of the job.\nI can see how are you.I was very much?\nYou are you did you feel like that?\nI have to be so many people.\nYes, but",
+      "latency_s": 17.7328,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "I lost someone important to me",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ". I would be able to go on a few days.\nYes. I'm glad you can feel better about it.I did it\nOh thats not sure you do that way!\nI was just been feeling this week.\nOh, I hope that will be so sorry, you will be very difficult to hear that you're feeling",
+      "latency_s": 17.2688,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "Here is how the model works:",
+      "prompt_tokens": 7,
+      "completion_tokens": 80,
+      "completion": "I did not do do?\nYes, and I was in a bit and now when I was not to get a job.\nThat is really good to hear that must be really good idea.\nYes i hope so much.\nthat is a good idea, I'm sure they are not.I just started to be really bad.",
+      "latency_s": 17.6169,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "def preprocess(text):",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ", the same time.\nOh, what did you're you. You must be the future.I'm not so hard work!\nOh that you do. What is?I found it was going to my girlfriend.\nOh, I'm sure you are you?\nYes, but i was very proud of my mom",
+      "latency_s": 17.563,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "return {",
+      "prompt_tokens": 2,
+      "completion_tokens": 80,
+      "completion": "for a few days.  I think I was a bit. I have a good time.\nYou should be really good way to see it.I was so I was a new car I was really bad.\nThat's good.  What kind of you.I'm not sure you?\nThat's great thing!\nUser",
+      "latency_s": 16.7268,
+      "tokens_per_second": 4.8
     },
     {
       "prompt": "async function fetchUserData(",
       "prompt_tokens": 7,
-      "completion_tokens": 40,
-      "completion": "userData, userData, params = {})<|endoftext|>/**\n * @method\n * @name bitteam#fetchDepositAddress\n * @description fetch the deposit address for a currency associated",
-      "latency_s": 0.9875,
-      "tokens_per_second": 40.5
+      "completion_tokens": 80,
+      "completion": "up for a bit. I was very happy.\nI am so sorry. I was very happy for me.\nNo problem. I had the past.\nI was really was my cat just to get a lot.\nOh thats good to have been very nice. You should be a fun.\nYes they are you have never been very",
+      "latency_s": 17.8069,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "class ChatMessage:",
+      "prompt_tokens": 4,
+      "completion_tokens": 80,
+      "completion": "Yeah.\nYes, but I was happy a few years. I'm not sure.\nYes, that's amazing!It was a big week, I think I was going to see a job, but I was in my kids. I was a little bad.\nOh man! I'm glad to take the first time. That's so sorry",
+      "latency_s": 17.3246,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "const response = await fetch(",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ".\nWow, that can be so you can be a bad.\nI am not really good news!I was really very bad\nOh, that! I hate anything bad!I was the store, I was in my mom was very happy when I was really a week\nOh yeah, what happened?",
+      "latency_s": 17.356,
+      "tokens_per_second": 4.6
+    },
+    {
+      "prompt": "def train_model(dataset):",
+      "prompt_tokens": 9,
+      "completion_tokens": 80,
+      "completion": ".\nYes!My mom was really nice week!\nThat must be the end of them. What did you're feeling you get?\nYes, I was very hard to be able to get to get him.\nI hope you are you, that's important to talk about your own health.I was so mad for",
+      "latency_s": 17.8562,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "import torch.nn as nn",
+      "prompt_tokens": 7,
+      "completion_tokens": 80,
+      "completion": "!\nThat is great!I love my dog was a little big job but it was so nice to get a bit!\nNice, that's really nice!  Are you?\nYes, I am excited, and the kids I'm going on the other people don't have been there.\nThat is so good.",
+      "latency_s": 17.8833,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "# TODO: implement this function",
+      "prompt_tokens": 7,
+      "completion_tokens": 80,
+      "completion": ". I was a bad.\nOh i hope you do not?\nYes, they are doing what is okay!\nYes.I was a little nice of a few days ago!\nYes, I hope you. I am doing?\nI'm not a bit of a bit, but I am not alone.\nAssistant",
+      "latency_s": 17.6161,
+      "tokens_per_second": 4.5
+    },
+    {
+      "prompt": "if __name__ == '__main__':",
+      "prompt_tokens": 10,
+      "completion_tokens": 80,
+      "completion": "in the worst, and I was going to a bit at all the other day.\nThat sounds like that way.\nI am so sorry.I was able to be very nice to get so many people.\nOh no, I'm sorry about it is very bad. I am doing you can be so I love with this week.<|endoftext|>User",
+      "latency_s": 17.9895,
+      "tokens_per_second": 4.4
     },
     {
       "prompt": "SELECT * FROM users WHERE",
       "prompt_tokens": 5,
-      "completion_tokens": 40,
-      "completion": " clause\n                                      ",
-      "latency_s": 0.9802,
-      "tokens_per_second": 40.8
+      "completion_tokens": 80,
+      "completion": ".\nYes. I don't do it a bit bit more. I am so many of the other people. It's been a good thing to do.I was really nice to be a new job, and I was a bit of money.\nWhy did you get it?\nI was really gross. I was just had a long year and",
+      "latency_s": 17.3046,
+      "tokens_per_second": 4.6
     }
   ]
 }

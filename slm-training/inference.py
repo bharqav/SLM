@@ -15,7 +15,12 @@ import time
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from guardrails import check_input, check_output, is_degenerate
+from guardrails import (
+    check_input,
+    check_output,
+    clean_dialogue_artifacts,
+    is_degenerate,
+)
 from model import GPT, GPTConfig
 from slmlog import error, log, phase, warn
 
@@ -37,13 +42,13 @@ def load_model(checkpoint, device):
         raise FileNotFoundError(f"checkpoint not found: {path}")
     ck = torch.load(path, map_location=device, weights_only=False)
 
-    old_cfg = ck["model_config"]
+    old_cfg = ck.get("model_config") or {}
     cfg = GPTConfig(
-        vocab_size=old_cfg["vocab_size"],
-        block_size=old_cfg.get("block_size", 1024),
-        n_layer=old_cfg.get("n_layer", 8),
-        n_head=old_cfg.get("n_head", 4),
-        n_embd=old_cfg.get("n_embd", 1024),
+        vocab_size=old_cfg.get("vocab_size", 50257),
+        block_size=old_cfg.get("block_size", 256),
+        n_layer=old_cfg.get("n_layer", 12),
+        n_head=old_cfg.get("n_head", 12),
+        n_embd=old_cfg.get("n_embd", 768),
         dropout=old_cfg.get("dropout", 0.0),
     )
 
@@ -136,6 +141,7 @@ def main():
             dt = time.time() - t0
             text = enc.decode(out[0].tolist())
             completion = text[len(prompt) :]
+            completion = clean_dialogue_artifacts(completion)
             total_tokens += args.tokens
             total_time += dt
 

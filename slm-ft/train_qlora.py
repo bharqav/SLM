@@ -1,4 +1,4 @@
-"""QLoRA fine-tune of Qwen2.5-3B-Instruct on the empathetic-SFT corpus.
+"""QLoRA fine-tune of Qwen2.5-0.5B-Instruct on the empathetic-SFT corpus.
 
 Target hardware: 8.5GB VRAM laptop GPU (RTX 5060, Blackwell sm_120).
 Loads base in 4-bit NF4 (bitsandbytes), trains LoRA adapters only
@@ -30,7 +30,7 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
-BASE = "Qwen/Qwen2.5-3B-Instruct"
+BASE = "Qwen/Qwen2.5-0.5B-Instruct"
 FULL_SEQ_LEN = 1024
 
 

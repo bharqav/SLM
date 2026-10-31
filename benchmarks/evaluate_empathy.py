@@ -1,5 +1,5 @@
 """
-Evaluate the empathetic SLM fine-tune against Qwen2.5-3B base on empathetic prompts.
+Evaluate the empathetic SLM fine-tune against Qwen2.5-0.5B base on empathetic prompts.
 
 Outputs:
     benchmarks/empathy_eval.json
@@ -103,8 +103,8 @@ def generate_qwen(tokenizer, model, prompt: str) -> tuple[str, float, int]:
 def load_qwen():
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B-Instruct")
-    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-3B-Instruct")
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
     model.eval()
     return tokenizer, model
 
@@ -131,7 +131,7 @@ def main() -> None:
         return
 
     # Load Qwen once
-    print("Loading Qwen2.5-3B-Instruct...")
+    print("Loading Qwen2.5-0.5B-Instruct...")
     qwen_tokenizer, qwen_model = load_qwen()
 
     for prompt in PROMPTS:
@@ -160,7 +160,7 @@ def main() -> None:
                     "tok_per_s": round(slm_tokens / max(slm_dt, 1e-6), 1),
                 },
                 "qwen": {
-                    "label": "Qwen2.5-3B-Instruct",
+                    "label": "Qwen2.5-0.5B-Instruct",
                     "text": qwen_text[:500],
                     "tokens": qwen_tokens,
                     "latency_s": round(qwen_dt, 3),
@@ -179,10 +179,10 @@ def main() -> None:
     )
 
     lines = [
-        "# Empathetic Evaluation: SLM vs Qwen2.5-3B",
+        "# Empathetic Evaluation: SLM vs Qwen2.5-0.5B",
         "",
         f"**SLM:** {slm_label}",
-        "**Qwen:** Qwen2.5-3B-Instruct (base model)",
+        "**Qwen:** Qwen2.5-0.5B-Instruct (base model)",
         f"**Prompts:** {len(PROMPTS)} empathetic scenarios",
         f"**Settings:** max_new_tokens={MAX_NEW_TOKENS}, temperature={TEMPERATURE}, top_k={TOP_K}, seed={SEED}",
         "",

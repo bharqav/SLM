@@ -21,6 +21,18 @@ def now_ms() -> float:
     return time.perf_counter() * 1000.0
 
 
+def clean_dialogue_artifacts(text: str) -> str:
+    """Remove dialogue role prefixes like 'User:' and 'Assistant:' from generated text."""
+    import re
+
+    text = re.sub(r"(?:<\|endoftext\|>|^)\s*User:\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(
+        r"(?:<\|endoftext\|>|^)\s*Assistant:\s*", "", text, flags=re.MULTILINE
+    )
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 # ---------------------------------------------------------------------------
 # Tier 1: from-scratch SLM
 # ---------------------------------------------------------------------------
@@ -79,7 +91,7 @@ def load_slm_tier(checkpoint: str = "best_model.pt") -> dict[str, Any]:
         "step": ck.get("step"),
         "best_val_loss": ck.get("best_val_loss"),
         "device": device,
-        "params_estimate": "124M",
+        "params_estimate": "757M",
         "tokenizer": "tiktoken gpt2",
         "peak_device_memory_bytes": peak_mem_bytes,
         "seed_used": seed,
@@ -134,6 +146,7 @@ def bench_slm_decode(
 
         text = enc.decode(out[0].tolist())
         completion = text[len(prompt) :] if text.startswith(prompt) else text
+        completion = clean_dialogue_artifacts(completion)
         n_new = len(out[0].tolist()) - len(ids)
         total_tokens += max(n_new, 0)
         total_time_s += dt
@@ -163,7 +176,7 @@ def bench_slm_decode(
 
 
 # ---------------------------------------------------------------------------
-# Tier 2: Qwen2.5-3B QLoRA fine-tune (merged fp16)
+# Tier 2: Qwen2.5-0.5B base
 # ---------------------------------------------------------------------------
 
 QWEN_DIR = PROJECT_ROOT / "slm-ft" / "merged_fp16"
@@ -180,24 +193,16 @@ def load_qwen_tier() -> dict[str, Any]:
             "load_success": False,
             "load_latency_ms": round(now_ms() - t0, 1),
             "error": f"transformers import failed: {exc}",
-        }
-
-    if not QWEN_DIR.exists():
-        return {
-            "name": "qwen-qlora",
-            "load_success": False,
-            "load_latency_ms": round(now_ms() - t0, 1),
-            "error": f"checkpoint dir missing: {QWEN_DIR}",
+            "samples": [],
         }
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            str(QWEN_DIR), trust_remote_code=False
-        )
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=False)
         model = AutoModelForCausalLM.from_pretrained(
-            str(QWEN_DIR),
-            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            model_name,
+            dtype=torch.float16 if device == "cuda" else torch.float32,
             device_map="auto" if device == "cuda" else "cpu",
             trust_remote_code=False,
         )
@@ -208,6 +213,7 @@ def load_qwen_tier() -> dict[str, Any]:
             "load_success": False,
             "load_latency_ms": round(now_ms() - t0, 1),
             "error": repr(exc),
+            "samples": [],
         }
 
     peak_mem_bytes = 0
@@ -221,14 +227,14 @@ def load_qwen_tier() -> dict[str, Any]:
         "name": "qwen-qlora",
         "load_success": True,
         "load_latency_ms": round(now_ms() - t0, 1),
-        "checkpoint": str(QWEN_DIR),
+        "checkpoint": model_name,
         "device": device,
-        "params_estimate": "3B (base) + LoRA adapters",
+        "params_estimate": "0.5B base",
         "tokenizer": "Qwen2.5 tokenizer",
         "peak_device_memory_bytes": peak_mem_bytes,
         "model_ref": model,
         "tokenizer_ref": tokenizer,
-        "generation_config": _read_generation_config(),
+        "generation_config": {},
     }
 
 
@@ -254,6 +260,7 @@ def bench_qwen_decode(
             "name": tier["name"],
             "decode_success": False,
             "error": tier.get("error"),
+            "samples": [],
         }
 
     model = tier["model_ref"]
@@ -288,6 +295,7 @@ def bench_qwen_decode(
 
         generated = out[0].tolist()
         text = tokenizer.decode(generated[input_len:], skip_special_tokens=True)
+        text = clean_dialogue_artifacts(text)
         n_new = len(generated) - input_len
         total_tokens += max(n_new, 0)
         total_time_s += dt
@@ -345,7 +353,6 @@ COMPARISON_PROMPTS = CODE_COMPLETION_PROMPTS + EMPATHETIC_REPLY_PROMPTS
 
 def load_slm_pt_only(checkpoint: str = "best_model.pt") -> dict[str, Any]:
     t0 = now_ms()
-    import pickle
 
     import torch
 
@@ -361,8 +368,26 @@ def load_slm_pt_only(checkpoint: str = "best_model.pt") -> dict[str, Any]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     try:
-        with open(ckpt_path, "rb") as fh:
-            ck = pickle.load(fh)
+        ck = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "name": "slm-scratch",
+            "checkpoint": checkpoint,
+            "load_success": False,
+            "load_latency_ms": round(now_ms() - t0, 1),
+            "error": repr(exc),
+        }
+
+    try:
+        sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
+        from model import GPT, GPTConfig
+
+        cfg = GPTConfig(**(ck.get("model_config") or {}))
+        model = GPT(cfg)
+        model.load_state_dict(ck["model"])
+        model.eval()
+        if device == "cuda":
+            model = model.to("cuda")
     except Exception as exc:  # noqa: BLE001
         return {
             "name": "slm-scratch",
@@ -392,10 +417,10 @@ def load_slm_pt_only(checkpoint: str = "best_model.pt") -> dict[str, Any]:
         "step": ck.get("step"),
         "best_val_loss": ck.get("best_val_loss"),
         "device": device,
-        "params_estimate": "124M",
+        "params_estimate": "757M",
         "tokenizer": "tiktoken gpt2",
         "peak_device_memory_bytes": peak_mem_bytes,
-        "model_ref": ck.get("model"),
+        "model_ref": model,
         "ck_ref": ck,
         "enc_ref": enc,
     }
@@ -413,6 +438,7 @@ def bench_slm_pt_decode(
             "name": tier["name"],
             "decode_success": False,
             "error": tier.get("error"),
+            "samples": [],
         }
 
     import torch
@@ -423,6 +449,7 @@ def bench_slm_pt_decode(
             "name": tier["name"],
             "decode_success": False,
             "error": "no model_ref attached",
+            "samples": [],
         }
     device = tier["device"]
     enc = tier.get("enc_ref") or tiktoken_ref()
@@ -452,6 +479,7 @@ def bench_slm_pt_decode(
 
         text = enc.decode(out[0].tolist())
         completion = text[len(prompt) :] if text.startswith(prompt) else text
+        completion = clean_dialogue_artifacts(completion)
         n_new = len(out[0].tolist()) - len(ids)
         total_tokens += max(n_new, 0)
         total_time_s += dt

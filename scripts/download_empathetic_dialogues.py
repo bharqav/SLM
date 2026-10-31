@@ -12,11 +12,6 @@ import argparse
 import sys
 from pathlib import Path
 
-try:
-    from datasets import load_dataset
-except ImportError as exc:
-    sys.exit(f"Required package missing: {exc}. Install with: pip install datasets")
-
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Download EmpatheticDialogues dataset")
@@ -25,6 +20,11 @@ def main() -> int:
     )
     ap.add_argument("--split", default="train", help="Dataset split to download")
     args = ap.parse_args()
+
+    try:
+        from datasets import load_dataset
+    except ImportError as exc:
+        sys.exit(f"Required package missing: {exc}. Install with: pip install datasets")
 
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)

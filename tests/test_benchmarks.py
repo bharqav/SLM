@@ -116,7 +116,7 @@ class TestBenchmarkReport:
     def test_forward_pass_table_present(self, benchmark_report):
         assert "Forward-Pass Throughput Benchmarks" in benchmark_report
         assert "SLM from-scratch" in benchmark_report and "10L" in benchmark_report
-        assert "Qwen2.5-3B-Instruct" in benchmark_report
+        assert "Qwen2.5-0.5B-Instruct" in benchmark_report
 
     def test_generation_table_present(self, benchmark_report):
         assert "Text Generation Benchmarks" in benchmark_report
@@ -135,7 +135,7 @@ class TestReadme:
         expected_sections = [
             "Project Structure",
             "From-Scratch SLM",
-            "Qwen2.5-3B Fine-Tune",
+            "Qwen2.5-0.5B Comparison Baseline",
             "Comparison Methodology",
             "Data Pipeline",
             "Architecture Diagrams",

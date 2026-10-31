@@ -76,26 +76,26 @@ def build_args():
     ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--grad-accum-steps", type=int, default=8)
     ap.add_argument("--block-size", type=int, default=256)
-    ap.add_argument("--n-layer", type=int, default=12)
-    ap.add_argument("--n-head", type=int, default=12)
-    ap.add_argument("--n-embd", type=int, default=768)
+    ap.add_argument("--n-layer", type=int, default=24)
+    ap.add_argument("--n-head", type=int, default=24)
+    ap.add_argument("--n-embd", type=int, default=1536)
     ap.add_argument("--dropout", type=float, default=0.1)
-    ap.add_argument("--learning-rate", type=float, default=6e-4)
-    ap.add_argument("--min-lr", type=float, default=1e-5)
-    ap.add_argument("--warmup-steps", type=int, default=1000)
-    ap.add_argument("--max-steps", type=int, default=10000)
+    ap.add_argument("--learning-rate", type=float, default=1.5e-4)
+    ap.add_argument("--min-lr", type=float, default=1.5e-5)
+    ap.add_argument("--warmup-steps", type=int, default=100)
+    ap.add_argument("--max-steps", type=int, default=2000)
     ap.add_argument("--weight-decay", type=float, default=0.1)
     ap.add_argument("--beta1", type=float, default=0.9)
     ap.add_argument("--beta2", type=float, default=0.95)
     ap.add_argument("--grad-clip", type=float, default=1.0)
-    ap.add_argument("--eval-interval", type=int, default=500)
+    ap.add_argument("--eval-interval", type=int, default=200)
     ap.add_argument("--eval-iters", type=int, default=40)
-    # 200, not the 1000 originally specified: a step takes 50-100s on this CPU,
-    # so 1000 steps is 14-28 hours of unsaved work on a machine that will be
-    # interrupted. At ~20s to write a checkpoint this costs well under 1% of
-    # throughput and bounds worst-case loss to a few hours.
-    ap.add_argument("--checkpoint-interval", type=int, default=200)
-    ap.add_argument("--log-interval", type=int, default=100)
+    ap.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=200,
+    )
+    ap.add_argument("--log-interval", type=int, default=50)
     ap.add_argument(
         "--patience-steps",
         type=int,
@@ -110,6 +110,11 @@ def build_args():
         default="auto",
         choices=["auto", "float32", "bfloat16", "float16"],
         help="auto = bfloat16 on CUDA if supported, else float32",
+    )
+    ap.add_argument(
+        "--gradient-checkpointing",
+        action="store_true",
+        help="enable gradient checkpointing to reduce peak VRAM",
     )
     ap.add_argument(
         "--compile",
@@ -360,7 +365,9 @@ def main():
         n_embd=args.n_embd,
         dropout=args.dropout,
     )
-    model = GPT.from_config(cfg).to(device)
+    model = GPT.from_config(
+        cfg, use_gradient_checkpointing=args.gradient_checkpointing
+    ).to(device)
 
     import contextlib
 
@@ -423,7 +430,23 @@ def main():
     ckpt_path = latest_checkpoint()
     if ckpt_path and args.resume:
         ck = load_checkpoint_safely(ckpt_path)
-        if ck is None:
+        resume_blocked = False
+        if ck is not None:
+            ck_cfg = ck.get("model_config")
+            if ck_cfg:
+                ck_dict = ck_cfg if isinstance(ck_cfg, dict) else ck_cfg.to_dict()
+                if (
+                    ck_dict.get("n_layer") != cfg.n_layer
+                    or ck_dict.get("n_head") != cfg.n_head
+                    or ck_dict.get("n_embd") != cfg.n_embd
+                ):
+                    warn(
+                        f"Checkpoint architecture ({ck_dict.get('n_layer')}L/{ck_dict.get('n_head')}H/{ck_dict.get('n_embd')}D) "
+                        f"does not match current model ({cfg.n_layer}L/{cfg.n_head}H/{cfg.n_embd}D); skipping resume."
+                    )
+                    resume_blocked = True
+                    ck = None
+        if ck is None and not resume_blocked:
             # Corruption recovery: fall back to the previous checkpoint.
             others = sorted(
                 glob.glob(CKPT_GLOB),

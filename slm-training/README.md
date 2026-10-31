@@ -2,7 +2,7 @@
 
 A small language model trained from scratch on the *prose inside code*,
 docstrings, comments and README text scraped from top-starred GitHub
-repositories. ~124M parameters (12L/12H/768D), GPT-2 architecture, trained on a laptop CPU.
+repositories. ~757M parameters (24L/24H/1536D), GPT-2 architecture, trained with gradient checkpointing on CUDA.
 
 No GPU, no cloud bill, no pretrained weights. The whole pipeline is six Python
 files.

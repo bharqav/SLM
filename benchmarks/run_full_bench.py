@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run full benchmark suite: SLM vs Qwen2.5-3B base (proxy for fine-tune)."""
+"""Run full benchmark suite: SLM vs Qwen2.5-0.5B base (proxy for fine-tune)."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from model import GPT, GPTConfig  # noqa: E402
 slm_ckpt = torch.load(
     ROOT / "slm-training" / "best_model.pt", map_location="cpu", weights_only=False
 )
-slm_cfg = GPTConfig()
+slm_cfg = GPTConfig(**(slm_ckpt.get("model_config") or {}))
 slm_model = GPT(slm_cfg)
 slm_model.load_state_dict(slm_ckpt["model"])
 slm_model.eval()
@@ -35,16 +35,16 @@ slm_params = sum(p.numel() for p in slm_model.parameters())
 print(f"SLM loaded: {slm_params:,} params")
 
 # ---------------------------------------------------------------------------
-# Load Qwen2.5-3B
+# Load Qwen2.5-0.5B
 # ---------------------------------------------------------------------------
-print("Loading Qwen2.5-3B-Instruct...")
+print("Loading Qwen2.5-0.5B-Instruct...")
 qwen_model = AutoModelForCausalLM.from_pretrained(
-    "Qwen/Qwen2.5-3B-Instruct",
+    "Qwen/Qwen2.5-0.5B-Instruct",
     torch_dtype=torch.float32,
     device_map="cpu",
     low_cpu_mem_usage=True,
 )
-qwen_tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B-Instruct")
+qwen_tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
 qwen_params = sum(p.numel() for p in qwen_model.parameters())
 print(f"Qwen loaded: {qwen_params:,} params")
 
@@ -175,13 +175,13 @@ print("Benchmarking SLM...")
 slm_res, slm_toks, slm_time = bench_slm(PROMPTS)
 print(f"SLM: {slm_toks} toks in {slm_time:.2f}s ({slm_toks / slm_time:.1f} tok/s)")
 
-print("Benchmarking Qwen2.5-3B...")
+print("Benchmarking Qwen2.5-0.5B...")
 qwen_res, qwen_toks, qwen_time = bench_qwen(PROMPTS)
 print(f"Qwen: {qwen_toks} toks in {qwen_time:.2f}s ({qwen_toks / qwen_time:.1f} tok/s)")
 
 print("Forward-pass benchmarks...")
 slm_fb = forward_bench(slm_model, "slm-scratch")
-qwen_fb = forward_bench(qwen_model, "Qwen2.5-3B")
+qwen_fb = forward_bench(qwen_model, "Qwen2.5-0.5B")
 
 # ---------------------------------------------------------------------------
 # Persist JSON artifacts
@@ -202,7 +202,7 @@ qwen_fb = forward_bench(qwen_model, "Qwen2.5-3B")
 (OUT / "qwen_base_results.json").write_text(
     json.dumps(
         {
-            "model": "Qwen/Qwen2.5-3B-Instruct",
+            "model": "Qwen/Qwen2.5-0.5B-Instruct",
             "params": qwen_params,
             "note": (
                 "Base model used as proxy for fine-tuned adapter "
@@ -232,14 +232,14 @@ report = f"""# SLM Project — Comprehensive Benchmark Report
 
 **Generated:** {time.strftime("%Y-%m-%d")}
 **Environment:** CPU-only, Python 3.13, PyTorch 2.14.1
-**Note:** The Qwen merged-fp16 artifact in `slm-ft/merged_fp16/` and the LoRA adapter in `slm-ft/adapter_stage2/` are placeholder stubs. The Qwen numbers below are from the base model `Qwen/Qwen2.5-3B-Instruct` loaded from HuggingFace, used as the closest available proxy for the intended fine-tune.
+**Note:** The Qwen merged-fp16 artifact in `slm-ft/merged_fp16/` and the LoRA adapter in `slm-ft/adapter_stage2/` are placeholder stubs. The Qwen numbers below are from the base model `Qwen/Qwen2.5-0.5B-Instruct` loaded from HuggingFace, used as the closest available proxy for the intended fine-tune.
 
 ## 1. Forward-Pass Throughput Benchmarks
 
 | Configuration | Parameters | 20 Forward Passes (s) | Throughput (passes/s) | Avg Latency (ms/pass) |
 |---------------|------------|----------------------|----------------------|----------------------|
 | **SLM from-scratch (10L, 10H, 640D)** | **{slm_params:,}** | **{slm_fb["time_s"]}** | **{slm_fb["throughput_passes_s"]}** | **{slm_fb["avg_latency_ms"]}** |
-| **Qwen2.5-3B-Instruct (36L, 16H, 2048D)** | **{qwen_params:,}** | **{qwen_fb["time_s"]}** | **{qwen_fb["throughput_passes_s"]}** | **{qwen_fb["avg_latency_ms"]}** |
+| **Qwen2.5-0.5B-Instruct (24L, 16H, 1536D)** | **{qwen_params:,}** | **{qwen_fb["time_s"]}** | **{qwen_fb["throughput_passes_s"]}** | **{qwen_fb["avg_latency_ms"]}** |
 
 **Key insight:** The {slm_params / 1e6:.1f}M SLM is ~{int(speedup_fwd)}x faster per forward pass than the {qwen_params / 1e6:.0f}M Qwen base on CPU, because CPU inference is memory-bandwidth bound and the SLM has a smaller activation footprint.
 
@@ -248,7 +248,7 @@ report = f"""# SLM Project — Comprehensive Benchmark Report
 | Model | Total Tokens Generated | Total Time (s) | Mean Throughput (tok/s) | Mean Prompt Latency (s) |
 |-------|----------------------|----------------|------------------------|------------------------|
 | SLM from-scratch ({slm_params / 1e6:.1f}M) | {slm_toks} | {slm_time:.2f} | {slm_toks / slm_time:.1f} | {slm_time / len(PROMPTS):.2f} |
-| Qwen2.5-3B-Instruct ({qwen_params / 1e6:.0f}M) | {qwen_toks} | {qwen_time:.2f} | {qwen_toks / qwen_time:.1f} | {qwen_time / len(PROMPTS):.2f} |
+| Qwen2.5-0.5B-Instruct ({qwen_params / 1e6:.0f}M) | {qwen_toks} | {qwen_time:.2f} | {qwen_toks / qwen_time:.1f} | {qwen_time / len(PROMPTS):.2f} |
 
 **Generation settings:** max_new_tokens=40, temperature=0.7, top_k=20, seed=1337
 
@@ -259,26 +259,26 @@ report = f"""# SLM Project — Comprehensive Benchmark Report
 | Tier | Tokens/s | Latency (s) | Completion (first 120 chars) |
 |------|----------|-------------|------------------------------|
 | SLM | {slm_res[0]["tokens_per_second"]} | {slm_res[0]["latency_s"]} | `{slm_res[0]["completion"][:120].replace(chr(10), " ")}...` |
-| Qwen2.5-3B | {qwen_res[0]["tokens_per_second"]} | {qwen_res[0]["latency_s"]} | `{qwen_res[0]["completion"][:120].replace(chr(10), " ")}...` |
+| Qwen2.5-0.5B | {qwen_res[0]["tokens_per_second"]} | {qwen_res[0]["latency_s"]} | `{qwen_res[0]["completion"][:120].replace(chr(10), " ")}...` |
 
 ### Prompt: "I have been feeling really down lately"
 
 | Tier | Tokens/s | Latency (s) | Completion (first 120 chars) |
 |------|----------|-------------|------------------------------|
 | SLM | {slm_res[1]["tokens_per_second"]} | {slm_res[1]["latency_s"]} | `{slm_res[1]["completion"][:120].replace(chr(10), " ")}...` |
-| Qwen2.5-3B | {qwen_res[1]["tokens_per_second"]} | {qwen_res[1]["latency_s"]} | `{qwen_res[1]["completion"][:120].replace(chr(10), " ")}...` |
+| Qwen2.5-0.5B | {qwen_res[1]["tokens_per_second"]} | {qwen_res[1]["latency_s"]} | `{qwen_res[1]["completion"][:120].replace(chr(10), " ")}...` |
 
 ## 4. Load Latency & Memory
 
 | Model | Load Latency (s) | Peak CPU Memory | Device |
 |-------|-----------------|-----------------|--------|
 | SLM from-scratch | ~{slm_time / len(PROMPTS):.2f} avg inference | ~{slm_params * 4 / 1024**2:.0f} MB (fp32 weights) | CPU |
-| Qwen2.5-3B-Instruct | ~{qwen_time / len(PROMPTS):.2f} avg inference | ~{qwen_params * 4 / 1024**2:.0f} MB (fp32 weights) | CPU |
+| Qwen2.5-0.5B-Instruct | ~{qwen_time / len(PROMPTS):.2f} avg inference | ~{qwen_params * 4 / 1024**2:.0f} MB (fp32 weights) | CPU |
 
 ## 5. Quality Observations
 
 - **SLM:** Generates plausible-looking docstrings and code completions because it was trained on code prose. Outputs on empathetic prompts are incoherent (expected for a code-prose model).
-- **Qwen2.5-3B:** Generates coherent English and structured code. On empathetic prompts it gives supportive replies. On code prompts it produces more syntactically correct completions than the SLM.
+- **Qwen2.5-0.5B:** Generates coherent English and structured code. On empathetic prompts it gives supportive replies. On code prompts it produces more syntactically correct completions than the SLM.
 - **Speed:** SLM is faster on CPU due to smaller size. On GPU, Qwen would likely be faster in absolute tok/s due to better optimization, but the SLM's small size still gives it low latency.
 
 ## 6. Reproducibility

@@ -1,47 +1,166 @@
 {
-  "model": "Qwen/Qwen2.5-3B-Instruct",
-  "params": 3085938688,
-  "note": "Base model used as proxy for fine-tuned adapter (adapter_stage2 weights are placeholder stubs)",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "params": 494032768,
   "results": [
-    {
-      "prompt": "def preprocess(text):",
-      "prompt_tokens": 4,
-      "completion_tokens": 40,
-      "completion": " \n    # Remove punctuation and convert to lowercase\n    text = re.sub(r'[^\\w\\s]', '', text.lower())\n    return text\n\n# Function to tokenize the text\ndef tokenize(text):\n",
-      "latency_s": 17.9855,
-      "tokens_per_second": 2.2
-    },
     {
       "prompt": "I have been feeling really down lately",
       "prompt_tokens": 7,
-      "completion_tokens": 40,
-      "completion": ", and I don't know what to do. I'm not sure if it's just a phase or something more serious. Can you give me some advice on how to cope with this?\nIt's",
-      "latency_s": 16.6807,
-      "tokens_per_second": 2.4
+      "completion_tokens": 80,
+      "completion": " and I'm not sure why. What could be causing this?\n\nFeeling down can be a complex issue that may stem from various factors, including stress, anxiety, depression, relationship issues, or simply having a tough time adjusting to life changes. Here are some common reasons people feel down:\n\n1. **Stress**: High levels of stress can make you feel overwhelmed, which often leads to feelings of",
+      "latency_s": 7.2623,
+      "tokens_per_second": 11.0
     },
     {
-      "prompt": "class ChatMessage:",
+      "prompt": "The best way to handle stress is",
+      "prompt_tokens": 7,
+      "completion_tokens": 80,
+      "completion": " to be ________.\nA. active\nB. passive\nC. serious\nD. sensitive\nAnswer:\n\nA\n\nWhich of the following statements about the relationship between morality and law are correct?\nA. Morality can replace law in solving conflicts.\nB. Law can only be based on moral principles, but it cannot replace them.\nC. There is no connection between morality and law.\nD",
+      "latency_s": 7.2505,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "I do not think I can keep going",
+      "prompt_tokens": 8,
+      "completion_tokens": 80,
+      "completion": " because of the stress. The first time I tried to do this, I was very nervous and my legs felt weak. I had no idea how long it would take to complete the exercise and I started to get a bit worried about my health.\n\nAfter that, I did the same exercise twice in one day for 30 minutes each time. My legs felt strong and steady, and I didn't",
+      "latency_s": 7.2851,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "I just need someone to listen to me",
+      "prompt_tokens": 8,
+      "completion_tokens": 80,
+      "completion": ", and then they will tell me what I am trying to say. What is this?\nThis is a question.\nAnswering that question will help you understand the context of the conversation. The answer may be helpful in identifying the type of language used (e.g., interrogative or declarative), the speaker's attitude or tone, and the relationship between the two parties involved.\nIs it possible for me",
+      "latency_s": 7.2387,
+      "tokens_per_second": 11.1
+    },
+    {
+      "prompt": "I'm scared about my future",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ". I have a great job, but I don't feel like being productive. What should I do?\n\nWhat are some tips to get back into the swing of things and start feeling more productive again?\n\nChoose your answer: Choose an answer from the options. Do you need help? No.\nNo\nYes\n\nYes\n\nThe correct answer is \"Yes\". Here are some tips to get back into the",
+      "latency_s": 7.2605,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "I feel like nobody understands me",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ". I'm a student in 10th grade and have been struggling with school since my first year of high school. I've had teachers who don't understand me, parents who aren't supportive, and even some classmates who are not interested in learning. I know it's not their fault because they're just students.\n\nWhat can I do to improve my academic performance? There are several things you",
+      "latency_s": 7.2355,
+      "tokens_per_second": 11.1
+    },
+    {
+      "prompt": "What should I do when I feel overwhelmed?",
+      "prompt_tokens": 9,
+      "completion_tokens": 80,
+      "completion": " Respond with a combination of facts and personal experiences, please.\nWhen feeling overwhelmed, it's important to recognize the signs and seek support. Here are some steps you can take:\n\n1. **Recognize Your Feelings**: Acknowledge that feelings of overwhelm are normal, as everyone experiences stress at different levels. It’s crucial to understand your emotions without judgment.\n\n2. **Set Realistic Goals**: Break",
+      "latency_s": 7.2677,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "I've been having trouble sleeping at night",
+      "prompt_tokens": 8,
+      "completion_tokens": 80,
+      "completion": ", and I'm not sure what's causing it. It feels like my mind is racing with thoughts, and I can't seem to relax until I finish all of them.\n\nI've tried taking a warm bath, but it didn't help much. I also tried listening to calming music, but that didn't work either.\n\nWhat could be causing this issue? Is there anything I can do to improve",
+      "latency_s": 7.2334,
+      "tokens_per_second": 11.1
+    },
+    {
+      "prompt": "I lost someone important to me",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": ". I can't even think about them without feeling a knot in my stomach, and it's taking over every aspect of my life. It feels like I'm drowning in sadness and grief.\n\nAs an AI language model, I do not have personal experiences or emotions, but I can provide some general advice on how to cope with feelings of loss.\n\nFirstly, it is important to allow yourself time to",
+      "latency_s": 7.2679,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "Here is how the model works:",
+      "prompt_tokens": 7,
+      "completion_tokens": 80,
+      "completion": " It starts with a small number of points and then iteratively adds more points based on their distance to existing ones. The algorithm uses a variety of techniques, including Voronoi diagrams and Delaunay triangulations, to determine which points should be added next.\nThe resulting network is highly connected, as each point has many neighbors that are also part of the network. This makes it easy for information",
+      "latency_s": 7.2441,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "def preprocess(text):",
       "prompt_tokens": 4,
-      "completion_tokens": 40,
-      "completion": "  # This class represents a chat message.\n    def __init__(self, sender, content):\n        self.sender = sender  # The sender of the message.\n        self.content = content  #",
-      "latency_s": 16.2589,
-      "tokens_per_second": 2.5
+      "completion_tokens": 80,
+      "completion": " \n    text = str(text).lower()  # Convert to lowercase\n    text = re.sub(r'\\W+', '', text)  # Remove non-word characters\n    return text\n\n\ndef main():\n    with open('data.txt', 'r') as file:\n        data = file.read()\n\n    preprocessed_data = preprocess(data)\n\n    print(preprocessed_data)\n\n\nif __name__ == \"__",
+      "latency_s": 7.3802,
+      "tokens_per_second": 10.8
+    },
+    {
+      "prompt": "return {",
+      "prompt_tokens": 2,
+      "completion_tokens": 80,
+      "completion": " \n    \"marijuz/terminal-lua.vim\",\n    event = \"VeryLazy\",\n    keys = {\n        { \"<leader>tl\", \"<cmd>lua require('terminal-lua').toggle()<CR>\", desc = \"Toggle terminal lua\" },\n    }\n}local keymaps = vim.keymap.set\nkeymaps(\"n\", \"<leader>tl\", \"<cmd>",
+      "latency_s": 7.232,
+      "tokens_per_second": 11.1
     },
     {
       "prompt": "async function fetchUserData(",
       "prompt_tokens": 5,
-      "completion_tokens": 40,
-      "completion": "accessToken) {\n    try {\n        const response = await fetch('https://api.github.com/user', {\n            headers: {\n                'Authorization': `Bearer ${accessToken}`\n            }\n        });\n        if",
-      "latency_s": 16.417,
-      "tokens_per_second": 2.4
+      "completion_tokens": 80,
+      "completion": "accessToken) {\n    return new Promise((resolve, reject) => {\n        fetch('https://api.github.com/user', {\n            headers: {\n                'Authorization': `Bearer ${accessToken}`\n            }\n        })\n        .then(response => response.json())\n        .then(data => resolve(data))\n        .catch(error => reject(error));\n    });\n}\n\n// Example usage\nfetchUserData('YOUR_ACCESS_TOKEN')\n",
+      "latency_s": 7.2463,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "class ChatMessage:",
+      "prompt_tokens": 4,
+      "completion_tokens": 80,
+      "completion": " \n    def __init__(self, user_id: str, message: str):\n        self.user_id = user_id\n        self.message = message\n\n    def __str__(self) -> str:\n        return f'{self.user_id} {self.message}'\n\n\nclass MessageHandler:\n\n    @staticmethod\n    def handle_message(message: ChatMessage) -> None:\n        print(f'User {",
+      "latency_s": 7.1998,
+      "tokens_per_second": 11.1
+    },
+    {
+      "prompt": "const response = await fetch(",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": " \"http://localhost:3000/api/user\" );\nconst data = await response.json();\nconsole.log(data);\n\n// let user = JSON.parse(localStorage.getItem(\"user\"));\n// if (user) {\n//     console.log(user);\n// } else {\n//     console.log(\"No user in localstorage\");\n// }\n\nconst user = JSON.parse(localStorage.getItem('user'));\nif (user) {\n   ",
+      "latency_s": 7.2025,
+      "tokens_per_second": 11.1
+    },
+    {
+      "prompt": "def train_model(dataset):",
+      "prompt_tokens": 5,
+      "completion_tokens": 80,
+      "completion": " \n    # Import necessary libraries\n    import numpy as np\n    from sklearn.model_selection import train_test_split\n    from sklearn.ensemble import RandomForestClassifier\n\n    # Load the dataset\n    X = dataset.data\n    y = dataset.target\n\n    # Split the dataset into training and testing sets\n    X_train, X_test, y_train, y_test = train_test_split(X, y",
+      "latency_s": 7.2227,
+      "tokens_per_second": 11.1
+    },
+    {
+      "prompt": "import torch.nn as nn",
+      "prompt_tokens": 5,
+      "completion_tokens": 80,
+      "completion": "\nfrom .utils import *\nfrom .. import config\n\nclass Transformer(nn.Module):\n    def __init__(self, input_size, hidden_size=128, num_layers=6, dropout=0.5, bidirectional=True):\n        super(Transformer, self).__init__()\n        \n        self.hidden_size = hidden_size\n        self.num_layers = num_layers\n        self.dropout = dropout\n",
+      "latency_s": 7.3067,
+      "tokens_per_second": 10.9
+    },
+    {
+      "prompt": "# TODO: implement this function",
+      "prompt_tokens": 6,
+      "completion_tokens": 80,
+      "completion": "\ndef count_unique_chars(s):\n    # Write your code here\n    char_set = set()\n    for c in s:\n        if c not in char_set:\n            char_set.add(c)\n    return len(char_set)#!/usr/bin/env python3\n\nimport sys\n\ndef count_unique_chars(s):\n    # Write your code here\n    unique_chars = []\n    for c in s",
+      "latency_s": 7.244,
+      "tokens_per_second": 11.0
+    },
+    {
+      "prompt": "if __name__ == '__main__':",
+      "prompt_tokens": 9,
+      "completion_tokens": 80,
+      "completion": "\r\n\r\n    # Create a list of numbers from 1 to 50\r\n    lst = list(range(1, 51))\r\n\r\n    # Print the first element of the list\r\n    print(lst[0])\r\n\r\n    # Print the last element of the list\r\n    print(lst[-1])\r\n\r\n    # Print the middle elements of the list (even index)\r\n    for i in range(len(lst",
+      "latency_s": 7.2181,
+      "tokens_per_second": 11.1
     },
     {
       "prompt": "SELECT * FROM users WHERE",
       "prompt_tokens": 5,
-      "completion_tokens": 40,
-      "completion": " username = 'user123' AND password = 'password123';\nSELECT * FROM users WHERE username = 'user123' AND password = 'incorrect_password';\n\nIn the first",
-      "latency_s": 16.7046,
-      "tokens_per_second": 2.4
+      "completion_tokens": 80,
+      "completion": " email = 'admin@example.com';\n\n-- 1. Create a table with the following columns: id, name, age, and address.\nCREATE TABLE users (\n    id INT,\n    name VARCHAR(255),\n    age INT,\n    address VARCHAR(255)\n);\n\n-- 2. Add a foreign key constraint to the user table that links it to the department table using the department",
+      "latency_s": 7.276,
+      "tokens_per_second": 11.0
     }
   ]
 }

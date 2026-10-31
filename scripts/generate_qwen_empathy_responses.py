@@ -1,5 +1,5 @@
 """
-Generate high-quality empathetic responses from Qwen2.5-3B-Instruct
+Generate high-quality empathetic responses from Qwen2.5-0.5B-Instruct
 to use as training data for the small SLM (knowledge distillation).
 
 Outputs:
@@ -77,9 +77,9 @@ SEEDS = [1337, 2024, 4096, 7777, 12345]
 
 
 def main() -> None:
-    print("Loading Qwen2.5-3B-Instruct...")
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B-Instruct")
-    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-3B-Instruct")
+    print("Loading Qwen2.5-0.5B-Instruct...")
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
     model.eval()
 
     records = []

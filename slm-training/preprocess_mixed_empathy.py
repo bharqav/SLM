@@ -30,14 +30,11 @@ def format_conversation(messages: list[dict]) -> str:
     """Convert chat messages to a plain-text training record."""
     parts = []
     for msg in messages:
-        role = msg.get("role", "")
+        msg.get("role", "")
         content = msg.get("content", "").strip()
         if not content:
             continue
-        if role == "user":
-            parts.append(f"User: {content}")
-        elif role == "assistant":
-            parts.append(f"Assistant: {content}")
+        parts.append(content)
     return "\n".join(parts)
 
 
@@ -82,7 +79,7 @@ def main() -> None:
                 if not line:
                     continue
                 rec = json.loads(line)
-                text = f"User: {rec['prompt']}\nAssistant: {rec['response']}"
+                text = f"{rec['prompt']}\n{rec['response']}"
                 qwen_texts.append(text)
         print(f"  {len(qwen_texts):,} Qwen-generated conversations")
 
