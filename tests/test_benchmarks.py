@@ -17,7 +17,14 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
 @pytest.fixture()
 def comparison_json():
     path = PROJECT_ROOT / "slm-comparison" / "comparison_samples.json"
-    assert path.exists(), f"missing artifact: {path}"
+    if not path.exists():
+        # Generated artifact (gitignored): absent on a clean checkout until the
+        # live comparison runs. Skip rather than error, matching how the other
+        # generated-artifact tests behave.
+        pytest.skip(
+            f"generated artifact not present: {path} "
+            "(run `python slm-comparison/generate_live_comparison.py` first)"
+        )
     with path.open(encoding="utf-8") as fh:
         return json.load(fh)
 
