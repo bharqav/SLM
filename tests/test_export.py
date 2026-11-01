@@ -15,6 +15,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CHECKPOINT = PROJECT_ROOT / "slm-training" / "best_model.pt"
 
 
+@pytest.fixture()
+def slm_checkpoint() -> Path:
+    """Skip tests that need the trained checkpoint (gitignored, ~1 GB)."""
+    if not CHECKPOINT.exists():
+        pytest.skip(f"SLM checkpoint not found: {CHECKPOINT}")
+    return CHECKPOINT
+
+
 class TestExportOnnx:
     """Tests for the ONNX export function."""
 
@@ -176,7 +184,7 @@ class TestBuildTensorRT:
 class TestMainCLI:
     """Tests for the CLI entry point."""
 
-    def test_default_checkpoint(self):
+    def test_default_checkpoint(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from export_onnx import main
 
@@ -188,7 +196,7 @@ class TestMainCLI:
         _, kwargs = mock_export.call_args
         assert kwargs["checkpoint"] == PROJECT_ROOT / "slm-training" / "best_model.pt"
 
-    def test_trt_flag_enables_tensorrt(self):
+    def test_trt_flag_enables_tensorrt(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from export_onnx import main
 
@@ -207,7 +215,7 @@ class TestMainCLI:
         rc = main(["--checkpoint", str(missing)])
         assert rc == 1
 
-    def test_custom_output_path(self):
+    def test_custom_output_path(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
         from export_onnx import main
 

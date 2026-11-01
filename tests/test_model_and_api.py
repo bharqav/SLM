@@ -161,14 +161,14 @@ class TestAPIServer:
         assert "status" in data
         assert "model_loaded" in data
 
-    def test_model_info_endpoint(self, client):
+    def test_model_info_endpoint(self, client, slm_checkpoint):
         response = client.get("/model/info")
         assert response.status_code == 200
         data = response.json()
         assert "params" in data
         assert data["params"] > 0
 
-    def test_generate_endpoint(self, client):
+    def test_generate_endpoint(self, client, slm_checkpoint):
         response = client.post(
             "/generate",
             json={
@@ -259,6 +259,27 @@ class TestVerifySetup:
         assert result.returncode in (0, 1)
         assert "SLM checkpoint" in result.stdout
 
+    def test_missing_checkpoint_is_a_warning_not_an_error(
+        self, tmp_path, capsys, monkeypatch
+    ):
+        """A fresh clone has no 1 GB checkpoint; the gate must still pass.
+
+        `best_model.pt` is gitignored, so a clean checkout cannot have it.  If
+        that were a hard error, the documented fast check
+        (`python harness.py --skip-model`) would fail for every new user.
+        """
+        import verify_setup
+
+        (tmp_path / "README.md").write_text("placeholder status\n", encoding="utf-8")
+        monkeypatch.setattr(verify_setup, "PROJECT_ROOT", tmp_path)
+
+        rc = verify_setup.verify()
+        out = capsys.readouterr().out
+
+        assert rc == 0, out
+        assert "missing SLM checkpoint" in out
+        assert "ERRORS" not in out
+
 
 class TestEvaluateTestSplit:
     def test_evaluate_script_exists(self):
@@ -347,7 +368,7 @@ class TestOpenAICompatEndpoints:
         assert model["object"] == "model"
         assert model["owned_by"] == "slm-project"
 
-    def test_v1_completions_basic(self, client):
+    def test_v1_completions_basic(self, client, slm_checkpoint):
         response = client.post(
             "/v1/completions",
             json={
@@ -372,7 +393,7 @@ class TestOpenAICompatEndpoints:
         assert usage["prompt_tokens"] > 0
         assert usage["total_tokens"] >= usage["prompt_tokens"]
 
-    def test_v1_completions_with_list_prompt(self, client):
+    def test_v1_completions_with_list_prompt(self, client, slm_checkpoint):
         response = client.post(
             "/v1/completions",
             json={
@@ -397,7 +418,7 @@ class TestOpenAICompatEndpoints:
         )
         assert response.status_code == 400
 
-    def test_v1_chat_completions_basic(self, client):
+    def test_v1_chat_completions_basic(self, client, slm_checkpoint):
         response = client.post(
             "/v1/chat/completions",
             json={
@@ -425,7 +446,7 @@ class TestOpenAICompatEndpoints:
         assert usage["prompt_tokens"] > 0
         assert usage["total_tokens"] >= usage["prompt_tokens"]
 
-    def test_v1_chat_completions_message_history(self, client):
+    def test_v1_chat_completions_message_history(self, client, slm_checkpoint):
         response = client.post(
             "/v1/chat/completions",
             json={
@@ -510,7 +531,7 @@ class TestOpenAICompatEndpoints:
         assert tool_call["function"]["name"] == "get_weather"
         assert "arguments" in tool_call["function"]
 
-    def test_v1_chat_completions_tool_call_none(self, client):
+    def test_v1_chat_completions_tool_call_none(self, client, slm_checkpoint):
         response = client.post(
             "/v1/chat/completions",
             json={
@@ -529,7 +550,7 @@ class TestOpenAICompatEndpoints:
         data = response.json()
         assert data["object"] == "chat.completion"
 
-    def test_v1_chat_completions_stop_sequences(self, client):
+    def test_v1_chat_completions_stop_sequences(self, client, slm_checkpoint):
         response = client.post(
             "/v1/chat/completions",
             json={
@@ -544,7 +565,7 @@ class TestOpenAICompatEndpoints:
         assert data["object"] == "chat.completion"
         assert len(data["choices"]) == 1
 
-    def test_v1_chat_completions_backward_compat(self, client):
+    def test_v1_chat_completions_backward_compat(self, client, slm_checkpoint):
         """Ensure legacy /generate endpoint still works."""
         response = client.post(
             "/generate",
@@ -574,7 +595,7 @@ class TestOpenAICompatEndpoints:
         )
         assert response.status_code in (200, 422)
 
-    def test_v1_chat_completions_missing_model(self, client):
+    def test_v1_chat_completions_missing_model(self, client, slm_checkpoint):
         response = client.post(
             "/v1/chat/completions",
             json={
@@ -605,7 +626,7 @@ class TestOpenAICompatEndpoints:
         )
         assert response.status_code in (200, 422)
 
-    def test_v1_completions_system_role_not_injected(self, client):
+    def test_v1_completions_system_role_not_injected(self, client, slm_checkpoint):
         """OpenAI-compatible: system messages should be rendered but not lost."""
         response = client.post(
             "/v1/chat/completions",
@@ -642,3 +663,115 @@ class TestAuth:
         # We just verify the endpoint exists
         response = client.get("/v1/models")
         assert response.status_code in (200, 401, 403)
+
+
+class TestServerConfiguration:
+    """Environment-driven configuration: RATE_LIMIT, SLM_CHECKPOINT, MODEL_DEVICE."""
+
+    @pytest.fixture()
+    def api(self):
+        try:
+            import slm_api
+        except ImportError:
+            pytest.skip("fastapi/slowapi not installed")
+        return slm_api
+
+    def test_rate_limit_accepts_limits_syntax(self, api):
+        assert api._parse_rate_limit("60/minute") == "60/minute"
+        assert api._parse_rate_limit("1000/hour") == "1000/hour"
+        assert api._parse_rate_limit("  10/second  ") == "10/second"
+
+    def test_empty_rate_limit_disables_limiting(self, api):
+        assert api._parse_rate_limit("") == ""
+        assert api._parse_rate_limit("   ") == ""
+
+    def test_invalid_rate_limit_fails_loudly(self, api):
+        with pytest.raises(ValueError, match="Invalid RATE_LIMIT"):
+            api._parse_rate_limit("bogus")
+
+    def test_rate_limit_decorator_is_noop_when_disabled(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_RATE_LIMIT", "")
+
+        async def endpoint(request):
+            return "ok"
+
+        assert api._rate_limit()(endpoint) is endpoint
+
+    def test_rate_limit_decorator_applies_when_enabled(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_RATE_LIMIT", "60/minute")
+
+        async def endpoint(request):
+            return "ok"
+
+        assert api._rate_limit()(endpoint) is not endpoint
+
+    def test_device_resolver_rejects_unknown_device(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_DEVICE_ENV", "tpu")
+        with pytest.raises(ValueError, match="MODEL_DEVICE"):
+            api._resolve_device()
+
+    def test_device_resolver_rejects_cuda_without_gpu(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_DEVICE_ENV", "cuda")
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+        with pytest.raises(RuntimeError, match="CUDA is not available"):
+            api._resolve_device()
+
+    def test_device_resolver_auto_detects(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_DEVICE_ENV", "")
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+        assert api._resolve_device() == "cpu"
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+        assert api._resolve_device() == "cuda"
+
+    def test_checkpoint_env_var_is_used(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_model", None)
+        monkeypatch.setattr(api, "_CHECKPOINT", "env-selected.pt")
+        with pytest.raises(FileNotFoundError, match="env-selected.pt"):
+            api.load_model()
+
+    def test_explicit_checkpoint_overrides_env(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_model", None)
+        monkeypatch.setattr(api, "_CHECKPOINT", "env-selected.pt")
+        with pytest.raises(FileNotFoundError, match="explicit.pt"):
+            api.load_model("explicit.pt")
+
+    def test_checkpoint_resolver_absolute_path_used_verbatim(
+        self, api, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(api, "PROJECT_ROOT", tmp_path)
+        target = tmp_path / "abs.pt"
+        assert api._resolve_checkpoint(str(target)) == target
+
+    def test_checkpoint_resolver_documented_project_root_form(
+        self, api, tmp_path, monkeypatch
+    ):
+        # README documents SLM_CHECKPOINT=slm-training/best_model.pt
+        monkeypatch.setattr(api, "PROJECT_ROOT", tmp_path)
+        (tmp_path / "slm-training").mkdir()
+        (tmp_path / "slm-training" / "best_model.pt").write_bytes(b"x")
+        assert api._resolve_checkpoint("slm-training/best_model.pt") == (
+            tmp_path / "slm-training" / "best_model.pt"
+        )
+
+    def test_checkpoint_resolver_bare_filename_falls_back(
+        self, api, tmp_path, monkeypatch
+    ):
+        # Bare filename must keep working: <root>/best_model.pt is absent, so
+        # fall back to <root>/slm-training/best_model.pt.
+        monkeypatch.setattr(api, "PROJECT_ROOT", tmp_path)
+        assert api._resolve_checkpoint("best_model.pt") == (
+            tmp_path / "slm-training" / "best_model.pt"
+        )
+
+    def test_checkpoint_resolver_prefers_project_root_when_present(
+        self, api, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(api, "PROJECT_ROOT", tmp_path)
+        (tmp_path / "dup.pt").write_bytes(b"x")
+        assert api._resolve_checkpoint("dup.pt") == tmp_path / "dup.pt"
+
+    def test_checkpoint_resolver_real_documented_value(self, api):
+        resolved = api._resolve_checkpoint("slm-training/best_model.pt")
+        assert resolved == api.PROJECT_ROOT / "slm-training" / "best_model.pt"
+        if resolved.exists():
+            assert resolved.stat().st_size > 1_000_000

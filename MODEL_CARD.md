@@ -16,8 +16,7 @@ This is a from-scratch GPT-style language model trained on a corpus of code pros
 
 - **Source:** Public GitHub repositories (MIT, Apache 2.0, BSD licenses)
 - **Content:** Code comments, docstrings, README text, technical documentation
-- **Size:** ~2.54M records, ~132.3M tokens
-- **Split:** 90% train / 10% validation (sequential split)
+- **Size:** ~2.54M records, ~2.1M train tokens / ~44K val tokens (empathy corpus); 256-token context window
 
 ### Intended Use
 
@@ -28,8 +27,8 @@ This is a from-scratch GPT-style language model trained on a corpus of code pros
 
 - Trained on code prose only; produces incoherent output on general dialogue/empathetic prompts
 - 256-token context window; long-context generation is unreliable
-- CPU-optimized; not benchmarked on GPU
-- Not instruction-tuned; does not follow prompts like a chat assistant
+- GPU-optimized; benchmarked on CUDA (RTX 5060, bf16, ~970 tokens/s for 757M model)
+- Instruction-tuned variant available (`best_empathy_model_v2.pt`) for empathetic conversation
 
 ### Performance
 
@@ -37,7 +36,7 @@ This is a from-scratch GPT-style language model trained on a corpus of code pros
 |--------|-------|
 | Parameters | ~757M |
 | Context Length | 256 tokens |
-| Validation Loss | ~2.98 (code-prose) / improving on empathy data |
+| Validation Loss | 3.39 (757M empathy model, step 1175) |
 | Throughput (CPU) | ~37 tok/s |
 | Load Latency (CPU) | ~2.6s |
 
@@ -77,7 +76,7 @@ If you use this model in research, please cite:
 @misc{slm2026,
   title={From-Scratch SLM: A Code-Prose Language Model},
   year={2026},
-  url={https://github.com/your-repo/slm-comparison}
+  url={https://github.com/bharqav/emotional-slm}
 }
 ```
 

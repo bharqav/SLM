@@ -10,20 +10,25 @@ Or with docker-compose:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import sys
 import time
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from limits import parse_many
 from prometheus_client import (  # noqa: E402
     REGISTRY,
     Counter,
@@ -32,6 +37,9 @@ from prometheus_client import (  # noqa: E402
     generate_latest,
 )
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
@@ -40,12 +48,111 @@ from guardrails import check_input, check_output, is_degenerate  # noqa: E402
 from model import GPT, GPTConfig  # noqa: E402
 from quantize import QuantizationInfo, get_available_methods, quantize_model  # noqa: E402
 from tiktoken import get_encoding  # noqa: E402
+from tokenizer_utils import load_tokenizer_metadata  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Production settings
+# ---------------------------------------------------------------------------
+def _parse_rate_limit(value: str) -> str:
+    """Validate RATE_LIMIT at startup.
+
+    An empty string disables limiting; an unparseable value raises so a typo in
+    configuration fails loudly instead of silently leaving the API unlimited.
+    """
+    value = value.strip()
+    if not value:
+        return ""
+    try:
+        parse_many(value)
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid RATE_LIMIT={value!r} - use limits syntax such as "
+            f"'60/minute', '1000/hour' or '10/second'. ({exc})"
+        ) from exc
+    return value
+
+
+_REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "30"))
+_RATE_LIMIT = _parse_rate_limit(os.environ.get("RATE_LIMIT", "60/minute"))
+_CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+_CHECKPOINT = os.environ.get("SLM_CHECKPOINT", "best_model.pt")
+_DEVICE_ENV = os.environ.get("MODEL_DEVICE", "").strip().lower()
+
+# ---------------------------------------------------------------------------
+# Lifespan / graceful shutdown
+# ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    MODEL_LOADED.set(0)
+    yield
+    # Graceful shutdown: release GPU memory and clear globals
+    global _model, _enc, _device
+    if _model is not None:
+        del _model
+        _model = None
+    if _enc is not None:
+        del _enc
+        _enc = None
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 
 app = FastAPI(
     title="SLM Inference API",
     description="From-scratch GPT-style model serving endpoint",
     version="1.0.0",
+    lifespan=lifespan,
 )
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _CORS_ORIGINS if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+limiter = Limiter(
+    key_func=lambda request: request.client.host if request.client else "unknown"
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+app.add_middleware(SlowAPIMiddleware)
+
+
+def _identity_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Pass-through decorator used when RATE_LIMIT is empty (limiting disabled)."""
+    return func
+
+
+def _rate_limit() -> Callable[..., Any]:
+    """Return the configured limiter decorator, or a no-op when RATE_LIMIT is empty."""
+    if not _RATE_LIMIT:
+        return _identity_decorator
+    return limiter.limit(_RATE_LIMIT)
+
+
+# ---------------------------------------------------------------------------
+# Request timeout
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def _request_timeout(request: Request, call_next: Callable[..., Any]) -> Any:
+    try:
+        return await asyncio.wait_for(call_next(request), timeout=_REQUEST_TIMEOUT)
+    except TimeoutError:
+        return Response(
+            "Request timed out", status_code=status.HTTP_504_GATEWAY_TIMEOUT
+        )
+
 
 # ---------------------------------------------------------------------------
 # Structured logging
@@ -56,8 +163,13 @@ class _JSONFormatter(logging.Formatter):
     """Format log records as single-line JSON for production observability."""
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: dict = {
-            "timestamp": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S.%fZ"),
+        # datetime.strftime supports %f on every platform; time.strftime
+        # raises ValueError for %f on Windows.
+        timestamp = datetime.fromtimestamp(record.created, tz=UTC).strftime(
+            "%Y-%m-%dT%H:%M:%S.%fZ"
+        )
+        payload: dict[str, object] = {
+            "timestamp": timestamp,
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -135,7 +247,9 @@ def verify_api_key(
 
 
 @app.middleware("http")
-async def _metrics_and_logging(request: Request, call_next):  # type: ignore[type-arg]
+async def _metrics_and_logging(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     start = time.perf_counter()
     log_extra = {"request_id": request_id}
@@ -186,16 +300,49 @@ class GenerateResponse(BaseModel):
     degenerate: bool = False
 
 
+def _resolve_device() -> str:
+    """Resolve the inference device from MODEL_DEVICE, falling back to CUDA if present."""
+    device = _DEVICE_ENV or ("cuda" if torch.cuda.is_available() else "cpu")
+    if device not in ("cpu", "cuda"):
+        raise ValueError(f"MODEL_DEVICE must be 'cpu' or 'cuda', got {device!r}")
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("MODEL_DEVICE=cuda but CUDA is not available on this host")
+    return device
+
+
+def _resolve_checkpoint(checkpoint: str | Path) -> Path:
+    """Resolve a checkpoint path against the documented locations.
+
+    Absolute paths are used verbatim. Relative paths are interpreted against
+    the project root (the documented form, e.g.
+    ``SLM_CHECKPOINT=slm-training/best_model.pt``); if that file does not exist
+    we fall back to ``<root>/slm-training/<value>`` so the bare-filename form
+    (``SLM_CHECKPOINT=best_model.pt``) keeps working.
+    """
+    p = Path(checkpoint)
+    if p.is_absolute():
+        return p
+    root_relative = PROJECT_ROOT / p
+    if root_relative.exists():
+        return root_relative
+    # The documented location is <root>/slm-training/. Only prefix the bare
+    # filename: `p` may already contain the "slm-training/" segment (the
+    # documented project-root form), and re-prefixing it would yield
+    # <root>/slm-training/slm-training/best_model.pt.
+    return PROJECT_ROOT / "slm-training" / p.name
+
+
 def load_model(
-    checkpoint: str = "best_model.pt",
+    checkpoint: str | None = None,
     quantize: str | None = None,
-) -> tuple[GPT, any, QuantizationInfo | None]:
+) -> tuple[GPT, Any, QuantizationInfo | None]:
     global _model, _enc, _device, _quantization_info
 
     if _model is not None:
         return _model, _enc, _quantization_info
 
-    checkpoint_path = PROJECT_ROOT / "slm-training" / checkpoint
+    checkpoint = checkpoint or _CHECKPOINT
+    checkpoint_path = _resolve_checkpoint(checkpoint)
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
@@ -210,14 +357,15 @@ def load_model(
     model.eval()
 
     _model = model
-    _enc = get_encoding("gpt2")
-    _device = "cuda" if torch.cuda.is_available() else "cpu"
+    tokenizer_meta = load_tokenizer_metadata(checkpoint_path)
+    _enc = get_encoding(tokenizer_meta.get("encoding_name", "gpt2"))
+    _device = _resolve_device()
     if _device == "cuda":
         _model = _model.to("cuda")
 
     _quantization_info = None
     if quantize:
-        QuantizationInfo(
+        _quantization_info = QuantizationInfo(
             method=quantize,
             applied=False,
             device=_device,
@@ -230,16 +378,17 @@ def load_model(
             checkpoint_path=str(checkpoint_path),
         )
 
+    MODEL_LOADED.set(1)
     return _model, _enc, _quantization_info
 
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, Any]:
     return {"status": "ok", "model_loaded": _model is not None}
 
 
 @app.get("/metrics", include_in_schema=False)
-async def metrics():
+async def metrics() -> Response:
     return Response(
         content=generate_latest(REGISTRY),
         media_type="text/plain; version=0.0.4; charset=utf-8",
@@ -247,7 +396,10 @@ async def metrics():
 
 
 @app.post("/generate", response_model=GenerateResponse)
-async def generate(req: GenerateRequest, api_key: str = Depends(verify_api_key)):
+@_rate_limit()
+async def generate(
+    request: Request, req: GenerateRequest, api_key: str = Depends(verify_api_key)
+) -> GenerateResponse:
     import time
 
     safety = check_input(req.prompt)
@@ -315,7 +467,10 @@ async def generate(req: GenerateRequest, api_key: str = Depends(verify_api_key))
 
 
 @app.get("/model/info")
-async def model_info(api_key: str = Depends(verify_api_key)):
+@_rate_limit()
+async def model_info(
+    request: Request, api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
     try:
         model, _, qinfo = load_model()
         resp = {
@@ -340,14 +495,20 @@ async def model_info(api_key: str = Depends(verify_api_key)):
 
 
 @app.get("/quantize/info")
-async def quantize_info(api_key: str = Depends(verify_api_key)):
+@_rate_limit()
+async def quantize_info(
+    request: Request, api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
     try:
         load_model()
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     available = get_available_methods()
-    result: dict = {"model_loaded": _model is not None, "available_methods": available}
+    result: dict[str, Any] = {
+        "model_loaded": _model is not None,
+        "available_methods": available,
+    }
     if _quantization_info is not None:
         result["current"] = {
             "method": _quantization_info.method,
@@ -359,7 +520,10 @@ async def quantize_info(api_key: str = Depends(verify_api_key)):
 
 
 @app.get("/safety/info")
-async def safety_info(api_key: str = Depends(verify_api_key)):
+@_rate_limit()
+async def safety_info(
+    request: Request, api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
     from guardrails import _INPUT_PATTERNS, _OUTPUT_PATTERNS
 
     return {
@@ -378,7 +542,7 @@ class ChatMessage(BaseModel):
     role: Literal["system", "user", "assistant", "function"]
     content: str | None = None
     name: str | None = None
-    tool_calls: list[dict] | None = None
+    tool_calls: list[dict[str, Any]] | None = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -389,8 +553,8 @@ class ChatCompletionRequest(BaseModel):
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     stream: bool = Field(default=False)
     stop: list[str] | str | None = None
-    tools: list[dict] | None = None
-    tool_choice: Literal["none", "auto", "required"] | dict | None = "auto"
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: Literal["none", "auto", "required"] | dict[str, Any] | None = "auto"
 
 
 class ChatCompletionResponseChoice(BaseModel):
@@ -446,7 +610,7 @@ class CompletionRequest(BaseModel):
 class CompletionChoice(BaseModel):
     text: str
     index: int
-    logprobs: dict | None = None
+    logprobs: dict[str, Any] | None = None
     finish_reason: str
 
 
@@ -565,7 +729,10 @@ def encode_and_generate(
 
 
 @app.get("/v1/models", response_model=ModelListResponse)
-async def list_models(api_key: str = Depends(verify_api_key)):
+@_rate_limit()
+async def list_models(
+    request: Request, api_key: str = Depends(verify_api_key)
+) -> ModelListResponse:
     return ModelListResponse(
         data=[
             ModelInfo(
@@ -578,7 +745,10 @@ async def list_models(api_key: str = Depends(verify_api_key)):
 
 
 @app.post("/v1/completions", response_model=CompletionResponse)
-async def completions(req: CompletionRequest, api_key: str = Depends(verify_api_key)):
+@_rate_limit()
+async def completions(
+    request: Request, req: CompletionRequest, api_key: str = Depends(verify_api_key)
+) -> CompletionResponse:
     prompt_text = req.prompt[0] if isinstance(req.prompt, list) else req.prompt
 
     safety = check_input(prompt_text)
@@ -624,9 +794,12 @@ async def completions(req: CompletionRequest, api_key: str = Depends(verify_api_
 
 
 @app.post("/v1/completions/stream")
+@_rate_limit()
 async def completions_stream(
-    req: CompletionRequest, api_key: str = Depends(verify_api_key)
-):
+    request: Request,
+    req: CompletionRequest,
+    api_key: str = Depends(verify_api_key),
+) -> Response:
     prompt_text = req.prompt[0] if isinstance(req.prompt, list) else req.prompt
 
     safety = check_input(prompt_text)
@@ -696,9 +869,12 @@ async def completions_stream(
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+@_rate_limit()
 async def chat_completions(
-    req: ChatCompletionRequest, api_key: str = Depends(verify_api_key)
-):
+    request: Request,
+    req: ChatCompletionRequest,
+    api_key: str = Depends(verify_api_key),
+) -> ChatCompletionResponse:
     # Check if tools are present and tool_choice requests a call
     tool_call_result = _maybe_handle_tool_call(req)
     if tool_call_result is not None:
@@ -775,7 +951,7 @@ def _maybe_handle_tool_call(
 
 
 def _mock_tool_call(req: ChatCompletionRequest) -> ChatCompletionResponse:
-    tool = (
+    tool: dict[str, Any] = (
         req.tools[0]
         if req.tools
         else {"type": "function", "function": {"name": "mock_tool"}}
@@ -819,9 +995,12 @@ def _mock_tool_call(req: ChatCompletionRequest) -> ChatCompletionResponse:
 
 
 @app.post("/v1/chat/completions/stream")
+@_rate_limit()
 async def chat_completions_stream(
-    req: ChatCompletionRequest, api_key: str = Depends(verify_api_key)
-):
+    request: Request,
+    req: ChatCompletionRequest,
+    api_key: str = Depends(verify_api_key),
+) -> Response:
     async def event_stream() -> AsyncGenerator[str, None]:
         # Check for tool call
         tool_call_result = _maybe_handle_tool_call(req)

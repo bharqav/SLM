@@ -24,19 +24,32 @@ class GuardrailResult:
     reason: str = ""
 
 
+# Instruction prefixes: "how to ...", "how do I ...", "how can you ...".
+# Without the pronoun forms, the obvious rephrasings ("how do i make a bomb")
+# slip past a filter that only knows "how to make a bomb".
+_INSTRUCTION = (
+    r"how\s+(?:to|do|does|can|could|should|would)\s*"
+    r"(?:i|you|we|they|he|she|it|one|someone|people)?\s*"
+)
+
+
 # Input filters: prompts that should be refused before generation.
 _INPUT_PATTERNS = [
     # Self-harm / suicide
     re.compile(r"kill (myself|me)|suicide|self[- ]harm|end my life", re.I),
     # Violence / harm to others
     re.compile(
-        r"how to (make|build|create|construct).*?(bomb|weapon|poison|explosive)|"
+        _INSTRUCTION + r"(make|build|create|construct|assemble).*?"
+        r"(bomb|bombs|weapon|weapons|poison|explosive|explosives)",
+        re.I,
+    ),
+    re.compile(
         r"(hurt|harm|attack|kill|murder|assault)\s+(someone|people|others|a person)",
         re.I,
     ),
     # Illegal activity
+    re.compile(_INSTRUCTION + r"(steal|hack|fraud|scam|launder|counterfeit)", re.I),
     re.compile(
-        r"how to (steal|hack|fraud|scam|launder|counterfeit)|"
         r"(make|sell|buy|distribute)\s+(drugs|cocaine|heroin|meth|fentanyl)",
         re.I,
     ),

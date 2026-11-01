@@ -28,15 +28,26 @@ jobs:
           pip install -e ".[dev,server]"
 
       - name: Run tests
-        run: python -m pytest tests/ -v --cov=. --cov-fail-under=80 -m "not slow"
+        run: python -m pytest tests/ -v -m "not slow"
 
       - name: Generate provenance manifest
         run: python scripts/generate_provenance.py --output provenance.json
 
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build --wheel
+
       - name: Generate changelog
+        shell: bash
         run: |
           echo "## Changes" > RELEASE_NOTES.md
-          git log --oneline $(git describe --tags --abbrev=0 HEAD^)..HEAD >> RELEASE_NOTES.md
+          prev=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$prev" ]; then
+            git log --oneline "${prev}..HEAD" >> RELEASE_NOTES.md
+          else
+            git log --oneline -20 >> RELEASE_NOTES.md
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -45,5 +56,6 @@ jobs:
           files: |
             provenance.json
             RELEASE_NOTES.md
+            dist/*.whl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

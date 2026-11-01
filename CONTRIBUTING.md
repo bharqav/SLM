@@ -11,7 +11,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](https://www.c
 ### Reporting Bugs
 
 Before creating a bug report:
-1. Check the [issue tracker](https://github.com/your-repo/slm-comparison/issues) to see if the bug has already been reported
+1. Check the [issue tracker](https://github.com/bharqav/emotional-slm/issues) to see if the bug has already been reported
 2. Collect relevant information (environment, Python version, error messages, steps to reproduce)
 
 When filing a bug report, include:

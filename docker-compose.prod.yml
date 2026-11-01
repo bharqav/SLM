@@ -17,6 +17,9 @@ services:
       - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - WORKERS=${WORKERS:-1}
+      - RATE_LIMIT=${RATE_LIMIT:-60/minute}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-30}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

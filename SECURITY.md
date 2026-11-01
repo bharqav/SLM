@@ -10,7 +10,7 @@ If you discover a security vulnerability in this project, please report it respo
 
 1. **Do NOT** open a public GitHub issue for security vulnerabilities
 2. **Do NOT** post details of the vulnerability in public forums or social media
-3. **DO** email the maintainers directly at security@example.com (replace with actual contact)
+3. **DO** email the maintainers directly at bhargavpodapati28@gmail.com
 
 Include the following information:
 - Description of the vulnerability

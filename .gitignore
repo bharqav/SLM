@@ -37,6 +37,15 @@ Thumbs.db
 *.pth
 !slm-training/empathetic_model.pt
 !requirements.txt
+# ONNX exports (external-data files run to ~1 GB and exceed GitHub's
+# 100 MB per-file limit; regenerate with `make export-onnx`)
+*.onnx
+*.onnx.data
+
+# Tokenizer metadata sidecars (written next to checkpoints by train.py and
+# read by slm_api.py). Derived from the gitignored checkpoints, so they are
+# regenerated locally rather than committed.
+*.tokenizer.json
 
 # Data
 raw_data.txt

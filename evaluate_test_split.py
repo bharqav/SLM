@@ -15,6 +15,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any, cast
 
 import torch
 
@@ -24,10 +25,12 @@ sys.path.insert(0, str(ROOT / "slm-training"))
 from model import GPT, GPTConfig  # noqa: E402
 
 
-def load_checkpoint(path: Path) -> dict:
+def load_checkpoint(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"checkpoint not found: {path}")
-    return torch.load(path, map_location="cpu", weights_only=False)
+    return cast(
+        dict[str, Any], torch.load(path, map_location="cpu", weights_only=False)
+    )
 
 
 def load_data(path: Path) -> torch.Tensor:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -32,6 +33,10 @@ class TestEvaluateStandard:
             "arc_challenge",
             "piqa",
             "commonsense_qa",
+            "mmlu",
+            "humaneval",
+            "math",
+            "gsm8k",
         }
         assert set(mod.STANDARD_BENCHMARKS) == expected
 
@@ -255,3 +260,56 @@ class TestEvaluateStandard:
         ctx, choices, label_idx = mod._format_example("commonsense_qa", ex)
         assert choices == ["London", "Paris", "Berlin", "Madrid", "Rome"]
         assert label_idx == 1
+
+    def test_format_example_mmlu(self):
+        mod = _import_evaluate_standard()
+        ex = {
+            "question": "What is the capital of France?",
+            "choices": ["London", "Paris", "Berlin", "Madrid"],
+            "answer": 1,
+        }
+        ctx, choices, label_idx = mod._format_example("mmlu", ex)
+        assert ctx == "What is the capital of France?"
+        assert choices == ["London", "Paris", "Berlin", "Madrid"]
+        assert label_idx == 1
+
+    def test_extract_math_answer(self):
+        mod = _import_evaluate_standard()
+        assert mod._extract_math_answer("The answer is 42.") == "42"
+        assert mod._extract_math_answer("-3.14") == "-3.14"
+        assert mod._extract_math_answer("1,000") == "1000"
+
+    def test_extract_gsm8k_answer(self):
+        mod = _import_evaluate_standard()
+        assert mod._extract_gsm8k_answer("The answer is 15.") == "15"
+        assert mod._extract_gsm8k_answer("#### 42") == "42"
+        assert mod._extract_gsm8k_answer("no numbers here") is None
+
+    def test_run_generation_eval_smoke(self):
+        mod = _import_evaluate_standard()
+        mock_load: dict[str, Any] = {
+            "name": "slm-scratch",
+            "load_success": True,
+            "load_latency_ms": 100.0,
+            "model_ref": MagicMock(),
+            "enc_ref": MagicMock(),
+            "device": "cpu",
+        }
+        mock_torch = MagicMock()
+        with (
+            patch.object(mod, "_try_import_datasets", return_value=MagicMock()),
+            patch.object(mod, "_try_import_torch", return_value=mock_torch),
+        ):
+            ds_mock = MagicMock()
+            ds_mock.load_dataset.return_value.select.return_value = [
+                {"question": "2+2?", "answer": "4"},
+                {"question": "3+3?", "answer": "6"},
+            ]
+            mod._try_import_datasets.return_value = ds_mock
+            mock_load["model_ref"].generate.return_value = MagicMock(
+                tolist=lambda: list(range(20))
+            )
+            result = mod._run_generation_eval(mock_load, "gsm8k", limit=2)
+            assert result["success"] is True
+            assert "mode" in result
+            assert result["mode"] == "generation"

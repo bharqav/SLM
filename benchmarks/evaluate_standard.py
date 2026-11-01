@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -17,6 +18,10 @@ STANDARD_BENCHMARKS = [
     "arc_challenge",
     "piqa",
     "commonsense_qa",
+    "mmlu",
+    "humaneval",
+    "math",
+    "gsm8k",
 ]
 
 
@@ -59,6 +64,22 @@ def _try_import_torch() -> Any:
         return torch
     except ImportError:
         return None
+
+
+def _extract_math_answer(text: str) -> str:
+    text = text.strip()
+    m = re.search(r"(-?[0-9][0-9\s,.]*)\b", text)
+    if m:
+        return m.group(1).strip().replace(",", "")
+    return text
+
+
+def _extract_gsm8k_answer(text: str) -> str | None:
+    text = text.strip()
+    m = re.search(r"(-?[0-9][0-9\s,.]*)\b", text)
+    if m:
+        return m.group(1).strip().replace(",", "")
+    return None
 
 
 def _load_slm(checkpoint: str, device: str) -> dict[str, Any]:
@@ -226,6 +247,10 @@ def _format_example(task: str, ex: dict) -> tuple[str, list[str], int]:
         ctx = ex["question"]
         choices = ex["choices"]["text"]
         label_idx = ex["choices"]["label"].index(ex["answerKey"])
+    elif task == "mmlu":
+        ctx = ex["question"]
+        choices = ex["choices"]
+        label_idx = int(ex["answer"])
     else:
         raise ValueError(f"Unknown task: {task}")
     return ctx, choices, label_idx
@@ -271,24 +296,32 @@ def _run_fallback_eval(
 
     model = tier["model_ref"]
     tokenizer_or_enc = tier.get("tokenizer_ref") or tier.get("enc_ref")
+    assert tokenizer_or_enc is not None
     device = tier.get("device", "cpu")
     max_len = _get_max_ctx_len(model)
 
-    TASK_DATASET = {
+    MC_TASKS = {
         "hellaswag": ("hellaswag", "default"),
         "winogrande": ("winogrande", "winogrande_xl"),
         "arc_challenge": ("ai2_arc", "ARC-Challenge"),
         "piqa": ("piqa", "plain_text"),
         "commonsense_qa": ("commonsense_qa", "default"),
+        "mmlu": ("mmlu", "all"),
     }
+    GEN_TASKS = {"humaneval", "math", "gsm8k"}
 
     results: dict[str, Any] = {}
+    gen_tasks: list[str] = []
+
     for task in tasks:
-        if task not in TASK_DATASET:
+        if task in GEN_TASKS:
+            gen_tasks.append(task)
+            continue
+        if task not in MC_TASKS:
             results[task] = {"success": False, "error": f"unknown task: {task}"}
             continue
 
-        ds_name, config = TASK_DATASET[task]
+        ds_name, config = MC_TASKS[task]
         t0 = time.perf_counter()
         try:
             ds = datasets.load_dataset(ds_name, config, split="validation")
@@ -343,7 +376,131 @@ def _run_fallback_eval(
             "time_s": round(dt, 2),
         }
 
+    for task in gen_tasks:
+        results[task] = _run_generation_eval(tier, task, limit)
+
     return {"success": True, "results": results}
+
+
+def _run_generation_eval(
+    tier: dict[str, Any],
+    task: str,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    datasets = _try_import_datasets()
+    torch = _try_import_torch()
+    if datasets is None:
+        return {
+            "success": False,
+            "error": "datasets library not installed. Install with: pip install datasets",
+        }
+    if torch is None:
+        return {
+            "success": False,
+            "error": "torch not installed",
+        }
+    if not tier.get("load_success"):
+        return {
+            "success": False,
+            "error": f"model load failed: {tier.get('error')}",
+        }
+
+    model = tier["model_ref"]
+    tokenizer_or_enc = tier.get("tokenizer_ref") or tier.get("enc_ref")
+    assert tokenizer_or_enc is not None
+    device = tier.get("device", "cpu")
+    max_len = _get_max_ctx_len(model)
+
+    TASK_CONFIG = {
+        "humaneval": ("openai_humaneval", "default"),
+        "math": ("competition_math", "Algebra"),
+        "gsm8k": ("gsm8k", "main"),
+    }
+    if task not in TASK_CONFIG:
+        return {"success": False, "error": f"unknown generation task: {task}"}
+
+    ds_name, config = TASK_CONFIG[task]
+    t0 = time.perf_counter()
+    try:
+        ds = datasets.load_dataset(ds_name, config, split="test")
+    except Exception:
+        try:
+            ds = datasets.load_dataset(ds_name, config, split="validation")
+        except Exception as exc:
+            return {"success": False, "error": f"dataset load failed: {repr(exc)}"}
+    if limit is not None:
+        ds = ds.select(range(min(limit, len(ds))))
+
+    correct = 0
+    total = 0
+    errors = 0
+    generations: list[str] = []
+
+    for ex in ds:
+        total += 1
+        try:
+            gold_answer = ""
+            if task == "humaneval":
+                prompt_text = ex["prompt"]
+                gold = ex["canonical_solution"].strip()
+            elif task == "math":
+                prompt_text = ex["problem"]
+                gold = ex["solution"].strip()
+                gold_answer = _extract_math_answer(gold)
+            else:  # gsm8k
+                prompt_text = ex["question"]
+                gold = ex["answer"].strip()
+                gold_answer = _extract_gsm8k_answer(gold)
+
+            if hasattr(tokenizer_or_enc, "encode"):
+                ids = tokenizer_or_enc.encode(prompt_text, add_special_tokens=False)
+            else:
+                ids = tokenizer_or_enc.encode_ordinary(prompt_text)
+            ids = ids[:max_len]
+            if len(ids) < 1:
+                errors += 1
+                continue
+            x = torch.tensor([ids], dtype=torch.long, device=device)
+            with torch.no_grad():
+                out = model.generate(
+                    x,
+                    max_new_tokens=128,
+                    temperature=0.0,
+                    top_k=1,
+                    top_p=1.0,
+                    repetition_penalty=1.0,
+                )
+            completion = tokenizer_or_enc.decode(out[0].tolist()[len(ids) :])
+            generations.append(completion)
+
+            if task == "humaneval":
+                pred = completion.strip()
+                if pred == gold:
+                    correct += 1
+            elif task == "math":
+                pred_answer = _extract_math_answer(completion)
+                if pred_answer and pred_answer.lower() == gold_answer.lower():
+                    correct += 1
+            else:  # gsm8k
+                pred_answer = _extract_gsm8k_answer(completion)
+                if pred_answer and pred_answer == gold_answer:
+                    correct += 1
+        except Exception:
+            errors += 1
+
+    dt = time.perf_counter() - t0
+    result: dict[str, Any] = {
+        "success": True,
+        "accuracy": round(correct / max(total, 1), 4),
+        "correct": correct,
+        "total": total,
+        "errors": errors,
+        "time_s": round(dt, 2),
+        "mode": "generation",
+    }
+    if generations:
+        result["sample"] = generations[0]
+    return result
 
 
 def evaluate(
@@ -482,10 +639,20 @@ def main() -> int:
 
     for task, bench in report.get("benchmarks", {}).items():
         if bench.get("success"):
-            print(
-                f"  {task}: acc={bench.get('accuracy')} "
-                f"({bench.get('correct')}/{bench.get('total')})"
-            )
+            mode = bench.get("mode", "")
+            if mode == "generation":
+                sample = bench.get("sample")
+                sample_str = f" sample={sample[:80]}..." if sample else ""
+                print(
+                    f"  {task}: acc={bench.get('accuracy')} "
+                    f"({bench.get('correct')}/{bench.get('total')}) "
+                    f"[generation]{sample_str}"
+                )
+            else:
+                print(
+                    f"  {task}: acc={bench.get('accuracy')} "
+                    f"({bench.get('correct')}/{bench.get('total')})"
+                )
         else:
             print(f"  {task}: FAILED - {bench.get('error')}")
 

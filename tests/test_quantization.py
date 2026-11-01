@@ -24,6 +24,7 @@ from quantize import (  # noqa: E402
     _quantize_gptq_stub,
     _quantize_int4,
     _quantize_int8,
+    _replace_linear_layers,
     get_available_methods,
     quantize_model,
 )
@@ -41,7 +42,8 @@ class TinyModel(nn.Module):
         self.linear = nn.Linear(in_features, out_features)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.linear(x)
+        # torch's stubs type ``nn.Module.__call__`` as returning ``Any``.
+        return self.linear(x)  # type: ignore[no-any-return]
 
 
 @pytest.fixture()
@@ -385,3 +387,135 @@ class TestQuantizeModelMethods:
                     device="cuda",
                     custom_option=True,
                 )
+
+
+# ---------------------------------------------------------------------------
+# _count_params – degenerate model
+# ---------------------------------------------------------------------------
+
+
+class TestCountParamsDegenerate:
+    def test_returns_zero_when_parameters_raise(self):
+        class _Broken:
+            def parameters(self):
+                raise RuntimeError("no parameters")
+
+        assert _count_params(_Broken()) == 0
+
+
+# ---------------------------------------------------------------------------
+# _replace_linear_layers
+# ---------------------------------------------------------------------------
+
+
+class _RecordingLinear(nn.Linear):
+    """Replacement layer that records the shapes it was built with."""
+
+    def __init__(self, in_features: int, out_features: int, **kwargs):
+        super().__init__(in_features, out_features)
+        self.received = (in_features, out_features)
+
+
+class TestReplaceLinearLayers:
+    def test_replaces_linear_with_custom_layer(self, tiny_model):
+        _replace_linear_layers(tiny_model, _RecordingLinear)
+        assert isinstance(tiny_model.linear, _RecordingLinear)
+        assert tiny_model.linear.received == (8, 4)
+
+    def test_preserves_weights_and_bias(self, tiny_model):
+        before_w = tiny_model.linear.weight.data.clone()
+        before_b = tiny_model.linear.bias.data.clone()
+        _replace_linear_layers(tiny_model, _RecordingLinear)
+        assert torch.allclose(tiny_model.linear.weight.data, before_w)
+        assert torch.allclose(tiny_model.linear.bias.data, before_b)
+
+    def test_replaces_nested_linear_layers(self):
+        class _Nested(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.block = nn.Sequential(nn.Linear(4, 4), nn.ReLU(), nn.Linear(4, 4))
+
+        model = _Nested()
+        _replace_linear_layers(model, _RecordingLinear)
+        assert isinstance(model.block[0], _RecordingLinear)
+        assert isinstance(model.block[2], _RecordingLinear)
+        assert isinstance(model.block[1], nn.ReLU)
+
+    def test_model_without_linear_layers_is_noop(self):
+        class _Plain(nn.Module):
+            pass
+
+        _replace_linear_layers(_Plain(), _RecordingLinear)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# INT8 / INT4 – CUDA + bitsandbytes import and failure paths
+# ---------------------------------------------------------------------------
+
+
+class TestBitsandbytesImportPaths:
+    def test_int8_warns_when_bnb_not_installed(self, tiny_model):
+        info = QuantizationInfo(
+            "int8", False, "cuda", original_params=_count_params(tiny_model)
+        )
+        with (
+            mock.patch("torch.cuda.is_available", return_value=True),
+            mock.patch.dict(sys.modules, {"bitsandbytes": None}),
+        ):
+            model_out, info = _quantize_int8(tiny_model, "cuda", info)
+        assert model_out is tiny_model
+        assert info.applied is False
+        assert any("bitsandbytes" in w for w in info.warnings)
+
+    def test_int4_warns_when_bnb_not_installed(self, tiny_model):
+        info = QuantizationInfo(
+            "int4", False, "cuda", original_params=_count_params(tiny_model)
+        )
+        with (
+            mock.patch("torch.cuda.is_available", return_value=True),
+            mock.patch.dict(sys.modules, {"bitsandbytes": None}),
+        ):
+            model_out, info = _quantize_int4(tiny_model, "cuda", info)
+        assert model_out is tiny_model
+        assert info.applied is False
+        assert any("bitsandbytes" in w for w in info.warnings)
+
+    def test_int8_reports_replacement_failure(self, tiny_model):
+        info = QuantizationInfo(
+            "int8", False, "cuda", original_params=_count_params(tiny_model)
+        )
+        with (
+            mock.patch("torch.cuda.is_available", return_value=True),
+            mock.patch.dict(
+                sys.modules,
+                {"bitsandbytes": mock.MagicMock(), "bitsandbytes.nn": mock.MagicMock()},
+            ),
+            mock.patch(
+                "quantize._replace_linear_layers",
+                side_effect=RuntimeError("replacement exploded"),
+            ),
+        ):
+            model_out, info = _quantize_int8(tiny_model, "cuda", info)
+        assert model_out is tiny_model
+        assert info.applied is False
+        assert any("failed" in w for w in info.warnings)
+
+    def test_int4_reports_replacement_failure(self, tiny_model):
+        info = QuantizationInfo(
+            "int4", False, "cuda", original_params=_count_params(tiny_model)
+        )
+        with (
+            mock.patch("torch.cuda.is_available", return_value=True),
+            mock.patch.dict(
+                sys.modules,
+                {"bitsandbytes": mock.MagicMock(), "bitsandbytes.nn": mock.MagicMock()},
+            ),
+            mock.patch(
+                "quantize._replace_linear_layers",
+                side_effect=RuntimeError("replacement exploded"),
+            ),
+        ):
+            model_out, info = _quantize_int4(tiny_model, "cuda", info)
+        assert model_out is tiny_model
+        assert info.applied is False
+        assert any("failed" in w for w in info.warnings)

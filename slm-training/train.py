@@ -28,6 +28,7 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from model import GPT, GPTConfig
 from slmlog import critical, error, fmt_dur, human, log, phase, warn
+from tokenizer_utils import save_tokenizer_metadata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TRAIN_BIN = os.path.join(HERE, "train.bin")
@@ -259,6 +260,11 @@ def save_checkpoint(path, model, opt, step, best_val, history, cfg, args, stats)
         tmp,
     )
     os.replace(tmp, path)
+    # Sidecar describing how to tokenize for this checkpoint; slm_api reads it
+    # so the serving path never has to guess the encoding or the EOT id.
+    save_tokenizer_metadata(
+        path, vocab_size=cfg.vocab_size, eot_token=cfg.vocab_size - 1
+    )
 
 
 def save_model_only(path, model, step, best_val, cfg, history):
@@ -276,6 +282,9 @@ def save_model_only(path, model, step, best_val, cfg, history):
         tmp,
     )
     os.replace(tmp, path)
+    save_tokenizer_metadata(
+        path, vocab_size=cfg.vocab_size, eot_token=cfg.vocab_size - 1
+    )
 
 
 def rotate_checkpoints(keep=KEEP_CHECKPOINTS):

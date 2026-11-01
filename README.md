@@ -580,13 +580,13 @@ cross-platform but return the unmodified model.
 
 ```bash
 # Quantize at inference time (INT8 on CUDA)
-python -m slm_training.inference --checkpoint best_model.pt --quantize int8
+python -m slm-training.inference --checkpoint best_model.pt --quantize int8
 
 # INT4 requires CUDA
-python -m slm_training.inference --checkpoint best_model.pt --quantize int4
+python -m slm-training.inference --checkpoint best_model.pt --quantize int4
 
 # GPTQ / AWQ stubs work anywhere
-python -m slm_training.inference --checkpoint best_model.pt --quantize gptq
+python -m slm-training.inference --checkpoint best_model.pt --quantize gptq
 ```
 
 **Python API:**
@@ -1121,6 +1121,10 @@ print(out[0].shape)  # (1, 1, 50257)
 | `--trt` | off | Build TensorRT engine after export (optional) |
 
 **Notes**
+- ONNX exports are not committed to this repository. `make export-onnx` writes
+  `best_model.onnx` plus an external-data sidecar (`best_model.onnx.data`) that
+  runs to roughly 1 GB, which exceeds GitHub's 100 MB per-file limit. Both are
+  covered by `.gitignore`; regenerate them locally with the commands above.
 - Export uses `torch.onnx.export(..., dynamo=False)` for compatibility with
   TorchScript-free GPT architectures.
 - The exported ONNX model is in inference mode and returns only the last-token
@@ -1481,6 +1485,9 @@ services:
       - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - WORKERS=${WORKERS:-1}
+      - RATE_LIMIT=${RATE_LIMIT:-60/minute}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-30}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -1556,6 +1563,29 @@ The API exposes a `/metrics` endpoint (port 8000) with the following metrics:
 
 Access Prometheus UI at `http://localhost:9090`.
 
+### 12.6 Server Environment Variables
+
+All runtime settings are read from the environment. Copy `.env.example` to `.env` and adjust.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `API_KEY` | `change-me-to-a-real-key` | Bearer token required on every endpoint (`Authorization: Bearer <key>`). When left at the default, auth is **disabled** (local dev only) - always set a real key before exposing the server. |
+| `SLM_CHECKPOINT` | `slm-training/best_model.pt` | Path to the checkpoint, relative to the project root. |
+| `MODEL_DEVICE` | auto | `cpu` or `cuda`. Defaults to CUDA when available, else CPU. |
+| `LOG_LEVEL` | `INFO` | Python log level for the structured JSON log stream. |
+| `RATE_LIMIT` | `60/minute` | Per-client-IP request limit on generation endpoints, in `limits` syntax (`60/minute`, `1000/hour`, `10/second`). Exceeding it returns HTTP 429. Set to an empty string to disable. |
+| `CORS_ORIGINS` | `*` | Comma-separated list of allowed browser origins. Use `https://app.example.com` in production instead of `*`. |
+| `REQUEST_TIMEOUT` | `30` | Seconds before an in-flight request is cancelled and the client receives HTTP 504. Increase for long `max_new_tokens` on CPU. |
+| `WORKERS` | `1` | Uvicorn worker processes (set by `docker-compose.prod.yml` / `start_server.sh`). Keep at 1 - each worker holds its own copy of the model. |
+
+`MODEL_DEVICE` is validated at load time: an unsupported value or `cuda` on a host without a GPU fails the request with a clear error instead of silently falling back.
+
+```bash
+# Local run with explicit settings
+API_KEY=secret RATE_LIMIT="10/minute" CORS_ORIGINS="http://localhost:3000" \
+  python -m uvicorn slm_api:app --host 0.0.0.0 --port 8000
+```
+
 ## 13. API Server
 
 The repository includes a FastAPI server (`slm_api.py`) for serving the from-scratch SLM model over HTTP.
@@ -1586,6 +1616,8 @@ docker-compose up slm-api
 | `/v1/chat/completions` | POST | OpenAI-compatible chat completions with message history |
 | `/v1/completions/stream` | POST | SSE streaming legacy completions |
 | `/v1/chat/completions/stream` | POST | SSE streaming chat completions |
+
+Every endpoint except `/health` and `/metrics` requires `Authorization: Bearer <API_KEY>` (disabled when `API_KEY` is left at its default). Generation endpoints are rate limited per client IP (HTTP 429 when the `RATE_LIMIT` budget is exhausted) and every request is cancelled with HTTP 504 once `REQUEST_TIMEOUT` elapses. CORS is restricted to `CORS_ORIGINS`. See §12.6 for all settings.
 
 ### 13.3 Safety & Guardrails
 
@@ -2149,8 +2181,8 @@ The comparison samples and documentation are derived from both models and carry 
 
 ```bash
 # 1. Clone and setup
-git clone https://github.com/your-repo/slm-comparison.git
-cd slm-comparison
+git clone https://github.com/bharqav/emotional-slm.git
+cd emotional-slm
 python -m venv .venv
 .venv\Scripts\activate
 
@@ -2233,6 +2265,12 @@ make harness-model  # full path
 ```
 
 The harness runs pytest, verify_setup, the live comparison generator, and pip-audit in sequence. It exits non-zero if any step fails.
+
+On a fresh clone, `verify_setup` reports the missing 1 GB SLM checkpoint as a
+**warning**, not an error, because `best_model.pt` is gitignored until you run
+`make train`.  The same applies to the fine-tuning stage artifacts under
+`slm-ft/`.  Only genuine repo-integrity problems (e.g. a missing `README.md`)
+are hard errors, so `python harness.py --skip-model` passes on a clean checkout.
 
 ---
 

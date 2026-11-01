@@ -31,6 +31,7 @@
 *.bin binary
 *.safetensors binary
 *.onnx binary
+*.onnx.data binary
 *.h5 binary
 *.pb binary
 

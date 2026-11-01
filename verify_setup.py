@@ -10,15 +10,16 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-def check_json(path: Path) -> dict | None:
+def check_json(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
     except Exception:
         return None
 
@@ -28,10 +29,18 @@ def verify() -> int:
     errors = []
     warnings = []
 
-    # Check SLM checkpoint
+    # Check SLM checkpoint.
+    #
+    # This artifact is ~1 GB and deliberately gitignored: a fresh clone does not
+    # have it until `make train` runs. Treat its absence as a warning with
+    # guidance rather than a hard error, so the documented fast check
+    # (`python harness.py --skip-model`) passes on a clean checkout.
     slm_ckpt = PROJECT_ROOT / "slm-training" / "best_model.pt"
     if not slm_ckpt.exists():
-        errors.append(f"missing SLM checkpoint: {slm_ckpt}")
+        warnings.append(
+            f"missing SLM checkpoint: {slm_ckpt} "
+            "(expected on a fresh clone; run `make train` to produce it)"
+        )
     else:
         # Check if it's a placeholder JSON or real PyTorch checkpoint
         try:
