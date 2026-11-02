@@ -13,7 +13,7 @@ TRAIN_PID_FILE = PROJECT_ROOT / "slm-training" / "train.pid"
 CHECKPOINT_PATTERN = "checkpoint_step_*.pt"
 
 
-def get_last_step():
+def get_last_step() -> int | None:
     """Get the last step number from training log."""
     try:
         with open(TRAIN_LOG, encoding="utf-8") as f:
@@ -29,13 +29,15 @@ def get_last_step():
     return None
 
 
-def is_training_running():
+def is_training_running() -> bool:
     """Check if training process is running using PID file (Windows)."""
     if not TRAIN_PID_FILE.exists():
         return False
     try:
         pid = int(TRAIN_PID_FILE.read_text(encoding="utf-8").strip())
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        # `windll` only exists on Windows; getattr keeps this importable and
+        # type-checkable on other platforms (AttributeError is caught below).
+        kernel32 = getattr(ctypes, "windll").kernel32
         SYNCHRONIZE = 0x100000
         handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
         if handle:
@@ -46,7 +48,7 @@ def is_training_running():
         return False
 
 
-def run_evaluation():
+def run_evaluation() -> None:
     """Run evaluation scripts."""
     print("\n[monitor] Training appears complete. Running evaluation...")
 
@@ -105,7 +107,7 @@ def run_evaluation():
     print("\n[monitor] Evaluation complete.")
 
 
-def main():
+def main() -> None:
     print("[monitor] Starting training monitor...")
     last_step = get_last_step()
     print(f"[monitor] Current last step: {last_step}")

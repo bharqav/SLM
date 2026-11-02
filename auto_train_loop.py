@@ -13,7 +13,7 @@ BEST_EMPATHY = PROJECT_ROOT / "slm-training" / "best_empathy_model_v2.pt"
 TRAIN_SCRIPT = PROJECT_ROOT / "slm-training" / "train.py"
 
 
-def cleanup_pid_file():
+def cleanup_pid_file() -> None:
     """Remove PID file if training is no longer running."""
     if TRAIN_PID_FILE.exists():
         try:
@@ -23,7 +23,7 @@ def cleanup_pid_file():
             pass
 
 
-def get_last_step():
+def get_last_step() -> int | None:
     try:
         with open(TRAIN_LOG, encoding="utf-8") as f:
             lines = f.readlines()
@@ -38,16 +38,18 @@ def get_last_step():
     return None
 
 
-def is_training_running():
+def is_training_running() -> bool:
     """Check if training process is running using PID file."""
     if not TRAIN_PID_FILE.exists():
         return False
     try:
         pid = int(TRAIN_PID_FILE.read_text(encoding="utf-8").strip())
-        # Check if process exists (Windows-specific)
+        # Check if process exists (Windows-specific). `windll` only exists on
+        # Windows; getattr keeps this importable and type-checkable elsewhere
+        # (AttributeError is caught below).
         import ctypes
 
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        kernel32 = getattr(ctypes, "windll").kernel32
         SYNCHRONIZE = 0x100000
         handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
         if handle:
@@ -58,7 +60,7 @@ def is_training_running():
         return False
 
 
-def wait_for_training(max_steps=None, timeout=7200):
+def wait_for_training(max_steps: int | None = None, timeout: float = 7200) -> bool:
     """Wait for training to complete."""
     print("[auto_train] Waiting for training to complete...")
     start = time.time()
@@ -72,7 +74,8 @@ def wait_for_training(max_steps=None, timeout=7200):
                 import json
 
                 config = json.load(f)
-                max_steps = config.get("training", {}).get("max_steps", 2000)
+                configured = config.get("training", {}).get("max_steps")
+                max_steps = configured if isinstance(configured, int) else 2000
         except Exception:
             max_steps = 2000
 
@@ -104,7 +107,7 @@ def wait_for_training(max_steps=None, timeout=7200):
     return False
 
 
-def run_evaluation():
+def run_evaluation() -> None:
     """Run evaluation and comparison."""
     print("\n[auto_train] === Running Evaluation ===")
 
@@ -148,7 +151,7 @@ def run_evaluation():
             print(f"[auto_train] ERROR: {script.name}: {e}")
 
 
-def get_best_val_loss():
+def get_best_val_loss() -> float | None:
     """Extract best val loss from training log."""
     try:
         with open(TRAIN_LOG, encoding="utf-8") as f:
@@ -164,7 +167,11 @@ def get_best_val_loss():
     return None
 
 
-def start_training(max_steps=2000, resume=False, config_override=None):
+def start_training(
+    max_steps: int = 2000,
+    resume: bool = False,
+    config_override: list[str] | None = None,
+) -> subprocess.Popen[bytes]:
     """Start a new training run."""
     print(
         f"\n[auto_train] === Starting Training (max_steps={max_steps}, resume={resume}) ==="
@@ -235,7 +242,7 @@ def start_training(max_steps=2000, resume=False, config_override=None):
     return process
 
 
-def main():
+def main() -> None:
     print("[auto_train] Starting auto-training loop...")
 
     # Check if training is already running

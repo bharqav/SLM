@@ -50,6 +50,7 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
+    "pip-audit>=2.5.0",
 ]
 all = [
     "slm-project[server]",
@@ -155,15 +156,49 @@ warn_unused_ignores = true
 no_implicit_optional = true
 show_error_codes = true
 
+# `slm-training`, `slm-comparison`, and `slm-ft` are hyphenated directory
+# names, so mypy cannot build an importable module name for them and aborts
+# the entire run ("is not a valid Python package name"). Their modules are
+# loaded at runtime via sys.path manipulation (see the overrides below), so
+# excluding the directories costs no checking. `benchmarks/` and `scripts/`
+# are research tooling that is not shipped in the wheel and depends on
+# optional libraries (transformers, datasets, lm-eval) whose type stubs are
+# incomplete; the strict gate therefore matches `harness.py --lint`, which
+# scopes mypy to the shipped surface. `slm-ft/.venv` is a nested virtualenv
+# and must never be walked.
+exclude = [
+    "(^|/)slm-comparison/",
+    "(^|/)slm-training/",
+    "(^|/)slm-ft/",
+    "(^|/)benchmarks/",
+    "(^|/)scripts/",
+    "(^|/)\\.venv/",
+    "(^|/)build/",
+    "(^|/)dist/",
+]
+
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 
-# These modules are imported at runtime via sys.path manipulation in slm_api.py,
-# which mypy cannot follow; treat them as untyped rather than erroring.
+# These modules live in hyphenated directories (`slm-training/`,
+# `benchmarks/`) and are imported at runtime via sys.path manipulation in
+# slm_api.py and the tests, which mypy cannot follow; treat them as untyped
+# rather than erroring.
 [[tool.mypy.overrides]]
-module = ["evaluate_standard", "guardrails", "inference", "model", "quantize", "slmlog", "tokenizer_utils"]
+module = [
+    "evaluate_standard",
+    "export_onnx",
+    "guardrails",
+    "inference",
+    "model",
+    "quantize",
+    "rag",
+    "slmlog",
+    "tokenizer_utils",
+    "train",
+]
 ignore_missing_imports = true
 
 [tool.setuptools]

@@ -47,8 +47,8 @@ format-check: ## Check formatting without modifying files
 typecheck: ## Run mypy type checker
 	mypy .
 
-security: ## Run pip-audit security scan
-	python -m pip_audit
+security: ## Run pip-audit security scan (declared requirements)
+	python -m pip_audit --requirement requirements.txt
 
 api: ## Start FastAPI server
 	python -m uvicorn slm_api:app --host $(API_HOST) --port $(API_PORT) --reload

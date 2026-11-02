@@ -1973,6 +1973,14 @@ mypy .                # Type checking (strict mode)
 
 Or use `make lint`, `make format`, `make typecheck`.
 
+`mypy .` type-checks the shipped surface: the root modules, `tests/`, and the
+installed packages it can import. Hyphenated directories (`slm-training/`,
+`slm-comparison/`), the research tooling in `benchmarks/` and `scripts/`, and
+virtualenvs are excluded (see `[tool.mypy]` in `pyproject.toml`). The harness
+applies the same scope: `python harness.py --lint` runs ruff and mypy over
+`harness.py`, `run_all.py`, `verify_setup.py`, `evaluate_test_split.py`,
+`slm_api.py`, and `tests/`.
+
 ### 14.4 Pre-Commit Hooks
 
 ```bash
@@ -2265,6 +2273,15 @@ make harness-model  # full path
 ```
 
 The harness runs pytest, verify_setup, the live comparison generator, and pip-audit in sequence. It exits non-zero if any step fails.
+
+The security step audits the **declared dependencies** in `requirements.txt`
+(`pip-audit --requirement requirements.txt`) rather than the whole interpreter,
+so the result is reproducible on any machine. A bare `pip-audit` reports every
+package in the active environment, including unrelated globally-installed ones.
+
+`pip-audit` is part of the `dev` extra (`pip install -e ".[dev]"`) and of the
+`Testing and quality` section of `requirements.txt`; `make security` runs the
+same scoped scan.
 
 On a fresh clone, `verify_setup` reports the missing 1 GB SLM checkpoint as a
 **warning**, not an error, because `best_model.pt` is gitignored until you run

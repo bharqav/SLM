@@ -83,8 +83,14 @@ def main() -> int:
     if not args.skip_model:
         failures += run_step("run_all.py", [sys.executable, "run_all.py"])
 
-    # 7. Security scan
-    failures += run_step("pip-audit", [sys.executable, "-m", "pip_audit"])
+    # 7. Security scan. Scoped to the declared requirements so the result is
+    #    reproducible no matter which interpreter runs the harness: a bare
+    #    `pip_audit` audits the entire environment and reports unrelated
+    #    globally-installed packages (e.g. pypdf, mini-jepa) as failures.
+    failures += run_step(
+        "pip-audit",
+        [sys.executable, "-m", "pip_audit", "--requirement", "requirements.txt"],
+    )
 
     # Summary
     print("\n" + "=" * 60)
