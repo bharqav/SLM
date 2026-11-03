@@ -221,5 +221,17 @@ where = ["."]
 include = ["slm*", "tests*"]
 
 [tool.setuptools.package-data]
-"slm-training" = ["*.py", "*.json", "*.md"]
-"slm-ft" = ["*.py", "*.json", "*.md", "**/*.py"]
+# Explicit file lists keep the wheel reproducible: a bare "*.json" also pulls
+# in gitignored training outputs (losses.json, training_stats.json, ...)
+# that exist only on a machine that has trained a model. The adapter configs
+# are listed so `slm-ft` ships enough to follow its own README.
+"slm-training" = ["*.md", "preprocess_stats.json", "scrape_stats.json"]
+"slm-ft" = [
+    "*.py",
+    "*.md",
+    "behavioral_eval.json",
+    "**/*.py",
+    "adapter/*.json",
+    "adapter_stage2/*.json",
+    "merged_fp16/*.json",
+]
