@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-215%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-283%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -1961,7 +1961,7 @@ python -m pytest tests/ -v
 python -m pytest tests/ -v --cov=. --cov-fail-under=80
 ```
 
-Coverage is enforced at 80% in CI. Run `make test` for the full suite with coverage report.
+Coverage is gated at 80% by `make test` (and `make test-all`). CI reports coverage without gating, so a clean checkout that skips the artifact-dependent tests still uploads a report. Run `make test` for the full suite with coverage report.
 
 ### 14.3 Linting & Type Checking
 
@@ -1975,8 +1975,9 @@ Or use `make lint`, `make format`, `make typecheck`.
 
 `mypy .` type-checks the shipped surface: the root modules, `tests/`, and the
 installed packages it can import. Hyphenated directories (`slm-training/`,
-`slm-comparison/`), the research tooling in `benchmarks/` and `scripts/`, and
-virtualenvs are excluded (see `[tool.mypy]` in `pyproject.toml`). The harness
+`slm-comparison/`, `slm-ft/`), the research tooling in `benchmarks/` and
+`scripts/`, and virtualenvs are excluded (see `[tool.mypy]` in
+`pyproject.toml`). The harness
 applies the same scope: `python harness.py --lint` runs ruff and mypy over
 `harness.py`, `run_all.py`, `verify_setup.py`, `evaluate_test_split.py`,
 `slm_api.py`, and `tests/`.
