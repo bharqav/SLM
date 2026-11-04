@@ -1937,23 +1937,33 @@ for chunk in client.chat.completions.create(
 
 ### 14.1 Test Suite
 
-The project uses pytest with 65 passing tests:
+The suite defines 278 test functions across 13 files. Parametrization expands
+these to 287 collected cases; 285 run by default because the 2 slow tests in
+`test_model_and_api.py` are deselected by `addopts` (`-m 'not slow'`):
 
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -v                    # 285 passed
+python -m pytest tests/ -m slow -v            # the 2 long-running tests
+python -m pytest tests/ --cov=. --cov-fail-under=80
 ```
 
-**Test categories:**
-- `TestComparisonArtifact` (8 tests) — Validates JSON schema, tier load status, prompt coverage, generation metrics
-- `TestBenchmarkReport` (4 tests) — Validates benchmark report tables, proxy disclosures, reproducibility commands
-- `TestReadme` (6 tests) — Validates README sections, mermaid diagrams, honest caveats, badges, docs references
-- `TestModelLoading` (9 tests) — Validates checkpoint integrity, model loading, generation, config, optimizers
-- `TestAPIServer` (5 tests) — Validates FastAPI endpoints (/health, /model/info, /generate, safety, stress)
-- `TestGuardrails` (14 tests) — Validates input/output filters, degeneracy checks, clean_dialogue_artifacts
-- `TestVerifySetup` (2 tests) — Validates verify_setup.py script
-- `TestEvaluateTestSplit` (2 tests) — Validates evaluate_test_split.py script
-- `TestDownloadScripts` (5 tests) — Validates download scripts, experiment tracker, provenance generator
-- `TestDataCleanliness` (2 tests) — Validates empathy binary files contain no role-label leakage
+**Coverage by area** (test functions per file):
+
+| Test file | Tests | What it validates |
+|---|---|---|
+| `test_model_and_api.py` | 57 | Model loading, generation, FastAPI endpoints, rate limiting, CORS, metrics, request timeouts |
+| `test_quantization.py` | 42 | INT8/INT4 CPU dispatch, GPTQ/AWQ stubs, bitsandbytes import paths |
+| `test_safety.py` | 41 | Prompt injection, jailbreak attempts, toxicity filters, output filtering |
+| `test_rag.py` | 22 | TF-IDF indexing, document chunking, cosine similarity retrieval |
+| `test_guardrails.py` | 21 | Dialogue cleaning, degeneracy checks, artifact removal |
+| `test_benchmarks.py` | 19 | Comparison artifact schema, benchmark tables, README structure |
+| `test_evaluate_standard.py` | 15 | Standard evaluation metrics |
+| `test_harness.py` | 15 | Training harness orchestration and monitoring |
+| `test_inference.py` | 14 | Inference entry points |
+| `test_export.py` | 13 | ONNX export and tokenizer metadata |
+| `test_tokenizer_utils.py` | 7 | Tokenizer save/load metadata |
+| `test_download_scripts.py` | 6 | Download scripts, experiment tracker, provenance |
+| `test_slmlog.py` | 6 | Structured pipeline logging |
 
 ### 14.2 Coverage
 

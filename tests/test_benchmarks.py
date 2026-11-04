@@ -6,8 +6,10 @@ Run:
 
 from __future__ import annotations
 
+import ast
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -137,6 +139,22 @@ class TestBenchmarkReport:
         assert "generate_live_comparison.py" in benchmark_report
 
 
+def _count_test_functions(path):
+    """Count the test functions pytest collects from a module (no parametrization)."""
+    tree = ast.parse(pathlib.Path(path).read_text(encoding="utf-8"))
+    count = 0
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+            count += 1
+        elif isinstance(node, ast.ClassDef):
+            count += sum(
+                1
+                for item in node.body
+                if isinstance(item, ast.FunctionDef) and item.name.startswith("test_")
+            )
+    return count
+
+
 class TestReadme:
     def test_sections_present(self, readme):
         expected_sections = [
@@ -183,3 +201,25 @@ class TestReadme:
         assert "CONTRIBUTING.md" in readme
         assert "SECURITY.md" in readme
         assert "CHANGELOG.md" in readme
+
+    def test_test_suite_counts_match(self, readme):
+        """README test counts must match the test functions actually present."""
+        tests_dir = PROJECT_ROOT / "tests"
+        actual = {
+            path.name: _count_test_functions(path)
+            for path in sorted(tests_dir.glob("test_*.py"))
+        }
+
+        parts = readme.split("**Coverage by area**")
+        assert len(parts) == 2, "README must contain the 'Coverage by area' table"
+        section = parts[1].split("\n### ", 1)[0]
+        rows = re.findall(r"^\| `([^`]+)` \| (\d+) \|", section, re.MULTILINE)
+        assert rows, "README 'Coverage by area' table is empty"
+        claimed = {name: int(count) for name, count in rows}
+        assert claimed == actual, (
+            f"README test table is stale; update it to match the suite: {actual}"
+        )
+
+        total = re.search(r"(\d+) test functions", readme)
+        assert total, "README must state the total test-function count"
+        assert int(total.group(1)) == sum(actual.values())
