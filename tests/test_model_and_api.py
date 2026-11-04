@@ -280,6 +280,26 @@ class TestVerifySetup:
         assert "missing SLM checkpoint" in out
         assert "ERRORS" not in out
 
+    def test_missing_readme_is_a_warning_not_an_error(
+        self, tmp_path, capsys, monkeypatch
+    ):
+        """A wheel install has no repo layout; the gate must still pass.
+
+        `verify_setup.py` is shipped as the `slm-verify` console script, so it
+        also runs from site-packages where no `README.md` exists.  That is an
+        environment fact, not a broken checkout, so it must not be a hard error.
+        """
+        import verify_setup
+
+        monkeypatch.setattr(verify_setup, "PROJECT_ROOT", tmp_path)
+
+        rc = verify_setup.verify()
+        out = capsys.readouterr().out
+
+        assert rc == 0, out
+        assert "missing README.md" in out
+        assert "ERRORS" not in out
+
 
 class TestEvaluateTestSplit:
     def test_evaluate_script_exists(self):

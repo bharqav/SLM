@@ -132,10 +132,18 @@ def verify() -> int:
             f"  OK: behavioral eval (passed={passed}, probes={behavioral.get('total_probes')})"
         )
 
-    # Check README
+    # Check README.
+    #
+    # A wheel install has no repository layout (the script lives in
+    # site-packages), so a missing README is a warning rather than a hard error.
+    # Inside a checkout the check still runs and still requires the placeholder
+    # note, which is the property we actually care about.
     readme = PROJECT_ROOT / "README.md"
     if not readme.exists():
-        errors.append("missing README.md")
+        warnings.append(
+            "missing README.md (expected when running from an installed wheel; "
+            "clone the repository to verify the docs)"
+        )
     else:
         content = readme.read_text(encoding="utf-8")
         if "placeholder" not in content.lower():
