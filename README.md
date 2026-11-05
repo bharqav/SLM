@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-284%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-285%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -1942,10 +1942,14 @@ these to 287 collected cases; 285 run by default because the 2 slow tests in
 `test_model_and_api.py` are deselected by `addopts` (`-m 'not slow'`):
 
 ```bash
-python -m pytest tests/ -v                    # 285 passed
-python -m pytest tests/ -m slow -v            # the 2 long-running tests
-python -m pytest tests/ --cov=. --cov-fail-under=80
+python -m pytest tests/ -v        # 285 passed
+python -m pytest tests/ -m slow -v
+make test                         # full suite + 80% coverage gate (see 14.2)
 ```
+
+On a clean checkout the 31 artifact-dependent tests skip (254 passed, 31
+skipped) and coverage lands near 72%, below the gate. That is expected: the
+gate needs the trained weights, which are gitignored (see 14.2).
 
 **Coverage by area** (test functions per file):
 

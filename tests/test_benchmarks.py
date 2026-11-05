@@ -223,3 +223,9 @@ class TestReadme:
         total = re.search(r"(\d+) test functions", readme)
         assert total, "README must state the total test-function count"
         assert int(total.group(1)) == sum(actual.values())
+
+        default_run = re.search(r"(\d+) run by default", readme)
+        assert default_run, "README must state the default-run test count"
+        badge = re.search(r"tests-(\d+)%20passing", readme)
+        assert badge, "README must carry the tests badge"
+        assert int(badge.group(1)) == int(default_run.group(1))
