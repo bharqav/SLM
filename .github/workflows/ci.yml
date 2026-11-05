@@ -30,6 +30,9 @@ jobs:
       - name: Run ruff linter
         run: ruff check .
 
+      - name: Run mypy type checker
+        run: mypy .
+
       # Trained weights are ~1 GB and are deliberately not committed (see
       # .gitignore and the README "Notes" section). Detect them so the
       # artifact-dependent steps can skip instead of failing on a clean
