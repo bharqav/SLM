@@ -37,7 +37,7 @@ Include the following information:
 ### Dependencies
 
 - Keep dependencies up to date: `pip install -U -r requirements.txt -c constraints.txt`
-- Run security scans: `make security` or `python -m pip_audit`
+- Run security scans: `make security` or `python -m pip_audit --requirement requirements.txt`
 - Review dependency updates before merging
 
 ### Data Privacy
