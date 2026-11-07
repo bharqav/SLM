@@ -4,7 +4,7 @@
 # Or: pip install --constraint constraints.txt -r requirements.txt
 
 # Core runtime (pinned to known-good versions)
-torch==2.5.1
+torch==2.14.1
 tiktoken==0.9.0
 transformers==4.47.1
 accelerate==1.3.0
@@ -12,7 +12,7 @@ huggingface_hub==0.28.1
 
 # Optional: server
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+uvicorn==0.34.0
 pydantic==2.10.4
 slowapi==0.1.10
 limits==5.8.0
