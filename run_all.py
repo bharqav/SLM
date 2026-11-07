@@ -37,6 +37,19 @@ SLM_CKPT = PROJECT_ROOT / "slm-training" / "best_model.pt"
 def run() -> int:
     print("[run_all] Starting full comparison pipeline...\n")
 
+    # This pipeline is a source-checkout workflow: it runs the repo's test
+    # suite and the live comparison, which need the tracked benchmarks/
+    # directory and the gitignored trained checkpoint. Neither exists in an
+    # installed wheel, so say so up front instead of failing inside pytest.
+    if not (PROJECT_ROOT / "benchmarks").is_dir():
+        print(
+            "ERROR: slm-bench must be run from a source checkout of the repository.\n"
+            f"       PROJECT_ROOT resolved to: {PROJECT_ROOT}\n"
+            "       Clone the repository and run `python run_all.py` there instead.\n"
+            "       From an installed wheel, use `slm-verify` to check the install."
+        )
+        return 2
+
     # Step 1: run pytest
     pytest_result = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/test_benchmarks.py", "-v"],

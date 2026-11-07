@@ -244,3 +244,51 @@ class TestHarnessRunStep:
         )
         captured = capsys.readouterr()
         assert "test-step" in captured.out
+
+
+class TestRunAllGuard:
+    """Tests for run_all.py's source-checkout guard.
+
+    ``run_all:run`` backs the ``slm-bench`` console script, and the wheel ships
+    the ``tests/`` package, so ``PROJECT_ROOT`` resolves to site-packages when
+    the script is installed. The guard must report the missing checkout rather
+    than fail inside pytest, and must stay silent in a real checkout.
+    """
+
+    def test_reports_missing_checkout(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture,
+    ):
+        sys.path.insert(0, str(PROJECT_ROOT))
+        import run_all  # noqa: E402
+
+        monkeypatch.setattr(run_all, "PROJECT_ROOT", tmp_path)
+
+        assert run_all.run() == 2
+
+        out = capsys.readouterr().out
+        assert "source checkout" in out
+        assert "slm-verify" in out
+
+    def test_proceeds_when_checkout_present(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture,
+    ):
+        sys.path.insert(0, str(PROJECT_ROOT))
+        import run_all  # noqa: E402
+
+        (tmp_path / "benchmarks").mkdir()
+        monkeypatch.setattr(run_all, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr(
+            run_all,
+            "subprocess",
+            MagicMock(run=MagicMock(return_value=MagicMock(returncode=1))),
+        )
+
+        assert run_all.run() == 1
+
+        assert "pytest failed" in capsys.readouterr().out
