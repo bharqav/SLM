@@ -25,23 +25,25 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 
 1. [Project Structure](#1-project-structure)
 2. [From-Scratch SLM](#2-from-scratch-slm) — Architecture, training, and inference
-3. [Qwen2.5-0.5B Comparison Baseline](#3-qwen250b-comparison-baseline) — Benchmark baseline
+3. [Qwen2.5-0.5B Comparison Baseline](#3-qwen25-05b-comparison-baseline) — Benchmark baseline
 4. [Comparison Methodology](#4-comparison-methodology) — How the comparison was generated
 5. [Data Pipeline](#5-data-pipeline) — Where the training data comes from
 6. [Architecture Diagrams](#6-architecture-diagrams) — Mermaid diagrams
 7. [Training Details](#7-training-details) — Hyperparameters, losses, and training loops
 8. [Inference & Generation](#8-inference--generation) — How to run generation
-9. [ONNX Export](#8.4-onnx-export) — Export model to ONNX with dynamic axes
-10. [Benchmarks](#9-benchmarks) — Performance and quality metrics
-11. [Auto-Training Loop](#10-auto-training-loop) — Automated training harness
-12. [What We Tried / Kept / Cut](#11-what-we-tried--kept--cut)
-13. [Docker Deployment](#12-docker-deployment) — Containerized, reproducible environment
-14. [API Server](#13-api-server) — FastAPI inference endpoint
-15. [Testing & Quality](#14-testing--quality) — Test suite, coverage, linting, type checking
-16. [Reproducibility](#15-reproducibility) — Seeded generation, constraints, pre-commit
-17. [Notebooks & Analysis](#16-notebooks--analysis) — Jupyter notebooks for EDA
-18. [License](#17-license) — Legal and ethical considerations
-19. [Reproducing the Comparison](#18-reproducing-the-comparison) — Step-by-step guide
+9. [Benchmarks](#9-benchmarks) — Performance and quality metrics
+10. [Auto-Training Loop](#10-auto-training-loop) — Automated training harness
+11. [What We Tried / Kept / Cut](#11-what-we-tried--kept--cut)
+12. [Docker Deployment](#12-docker-deployment) — Containerized, reproducible environment
+13. [API Server](#13-api-server) — FastAPI inference endpoint
+14. [Testing & Quality](#14-testing--quality) — Test suite, coverage, linting, type checking
+15. [Reproducibility](#15-reproducibility) — Seeded generation, constraints, pre-commit
+16. [Notebooks & Analysis](#16-notebooks--analysis) — Jupyter notebooks for EDA
+17. [License](#17-license) — Legal and ethical considerations
+18. [Known Issues](#18-known-issues) — Current limitations and workarounds
+19. [Reproducing the Comparison](#19-reproducing-the-comparison) — Step-by-step guide
+20. [Retrieval-Augmented Generation (RAG)](#20-retrieval-augmented-generation-rag) — Lightweight TF-IDF RAG demo
+21. [Additional Resources](#21-additional-resources)
 
 ---
 
@@ -210,7 +212,7 @@ The from-scratch SLM is a **decoder-only transformer** trained from random initi
 ### 2.2 Model Specification
 
 | Component | Value (Current) | Value (Legacy 253M) | Explanation |
-|-----------|-------|-------------|
+|-----------|-------|-------------------|-------------|
 | **Parameter count** | ~757M | ~253M | Scaled for better capacity |
 | **Non-embedding params** | ~680M | ~180M | Model body excluding token embedding + LM head |
 | **Tokenizer** | GPT-2 BPE (tiktoken) | GPT-2 BPE (tiktoken) | 50,257 vocabulary tokens |
@@ -558,7 +560,7 @@ text = enc.decode(out[0].tolist())
 
 |---
 
-## 2.10 Post-Training Quantization
+### 2.10 Post-Training Quantization
 
 Quantization reduces model size and latency by operating in lower precision. The
 project ships built-in stubs for the most common post-training methods.
@@ -718,11 +720,11 @@ flowchart LR
 
 ---
 
-## Empathetic Fine-tuning Results
+### 4.5 Empathetic Fine-tuning Results
 
 The SLM was fine-tuned on empathetic dialogue data using the **24L/24H/1536D** configuration (~757M parameters) with gradient checkpointing and mixed precision. Training ran for **500 steps** with batch-size 4, gradient accumulation 8 (effective batch 32), on CUDA (RTX 5060), and continues to 2000 steps via auto-training loop.
 
-### Training Progress (24L/24H/1536D on CUDA)
+#### 4.5.1 Training Progress (24L/24H/1536D on CUDA)
 
 | Step | Train Loss | Val Loss | Throughput | Event |
 |------|-----------|----------|------------|-------|
@@ -735,7 +737,7 @@ The SLM was fine-tuned on empathetic dialogue data using the **24L/24H/1536D** c
 
 **Best checkpoint:** step 500, val loss **3.9733**, ppl ~53.1
 
-### Evaluation vs Qwen2.5-0.5B-Instruct (Same Prompts)
+#### 4.5.2 Evaluation vs Qwen2.5-0.5B-Instruct (Same Prompts)
 
 **Benchmark methodology:** Identical prompts, max_new_tokens=40, temperature=0.7, top_k=20, CUDA.
 
@@ -824,10 +826,10 @@ The `scripts/` directory contains helper scripts to fetch external artifacts:
 python scripts/download_qwen_base.py --output-dir ./qwen-base
 
 # Download EmpatheticDialogues dataset
-python scripts/download_empathetic_dialogues.py --output-dir ./data/ed_docraw
+python scripts/download_empathetic_dialogues.py --output-dir slm-ft/data/ed_docraw
 ```
 
-> **Note:** The Qwen base model is ~1.2 GB on disk. The EmpatheticDialogues download uses the `datasets` library and requires an internet connection.
+> **Note:** The Qwen base model is ~1.2 GB on disk. The EmpatheticDialogues download fetches the public tarball with the standard library (`urllib` + `tarfile`) and extracts `train.csv`, `valid.csv`, and `test.csv` into `--output-dir`.
 
 ---
 
@@ -972,16 +974,21 @@ base_model = AutoModelForCausalLM.from_pretrained(
     load_in_4bit=True,
 )
 
-# LoRA (Stage-1)
+# LoRA — script defaults (override with --lora-r/--lora-alpha/--target-modules)
 LoraConfig(
-    r=8,
-    lora_alpha=8,
-    target_modules=["q_proj", "v_proj"],
+    r=16,
+    lora_alpha=32,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                    "gate_proj", "up_proj", "down_proj"],
     lora_dropout=0.05,
     task_type="CAUSAL_LM",
 )
 
-# Training
+# Committed adapter configs (read from each adapter_config.json):
+#   slm-ft/adapter/         r=8,  lora_alpha=8,  target_modules=["q_proj", "v_proj"]
+#   slm-ft/adapter_stage2/  r=16, lora_alpha=16, target_modules=["q_proj","k_proj","v_proj","o_proj"]
+
+# Training — recorded run settings (script defaults are lr=1e-4, accum=16, epochs=2)
 - Optimizer: AdamW, paged AdamW 8-bit
 - LR: 2e-4 cosine decay
 - Batch size: 1 × accum 4
@@ -995,6 +1002,10 @@ LoraConfig(
 - Accum: 8
 - Data: stage2_sft.jsonl (steering + replay)
 ```
+
+The committed adapter folders hold only `adapter_config.json` (rank/alpha/targets) plus a
+placeholder weight stub — no `train_log.json` — so the run hyperparameters above are the
+documented settings and cannot be re-derived from the committed artifacts.
 
 ### 7.3 Training Timeline
 
@@ -1116,7 +1127,7 @@ print(out[0].shape)  # (1, 1, 50257)
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--checkpoint` | `slm-training/best_model.pt` | Path to the PyTorch checkpoint |
-| `--output` | `slm-training/best_model.onnx` | Destination ONNX file |
+| `--output` | `slm-training/model.onnx` | Destination ONNX file |
 | `--max-seq-len` | `256` | Maximum sequence length for export validation |
 | `--trt` | off | Build TensorRT engine after export (optional) |
 
@@ -1125,8 +1136,9 @@ print(out[0].shape)  # (1, 1, 50257)
   `best_model.onnx` plus an external-data sidecar (`best_model.onnx.data`) that
   runs to roughly 1 GB, which exceeds GitHub's 100 MB per-file limit. Both are
   covered by `.gitignore`; regenerate them locally with the commands above.
-- Export uses `torch.onnx.export(..., dynamo=False)` for compatibility with
-  TorchScript-free GPT architectures.
+- Export uses `torch.onnx.export` with `opset_version=18` and `dynamic_axes`
+  for `batch_size` and `seq_len`; the TorchDynamo export backend is left at
+  its default.
 - The exported ONNX model is in inference mode and returns only the last-token
   logits, matching `model.generate()` behavior.
 - Sequence lengths above the training `block_size` (256) are not supported by
@@ -1134,9 +1146,9 @@ print(out[0].shape)  # (1, 1, 50257)
 
 ---
 
-### 9. Benchmarks
+## 9. Benchmarks
 
-#### 9.1 Forward Pass Benchmarks
+### 9.1 Forward Pass Benchmarks
 
 | Configuration | Parameters | 20 Forward Passes (s) | Throughput (passes/s) | Avg Latency (ms/pass) |
 |---------------|------------|----------------------|----------------------|----------------------|
@@ -2174,7 +2186,7 @@ The comparison samples and documentation are derived from both models and carry 
 
 ---
 
-## Known Issues
+## 18. Known Issues
 
 | Issue | Status | Workaround |
 |-------|--------|------------|
@@ -2186,9 +2198,9 @@ The comparison samples and documentation are derived from both models and carry 
 
 ---
 
-## 18. Reproducing the Comparison
+## 19. Reproducing the Comparison
 
-### 18.1 Prerequisites
+### 19.1 Prerequisites
 
 **From-Scratch SLM:**
 - Python 3.12+
@@ -2200,7 +2212,7 @@ The comparison samples and documentation are derived from both models and carry 
 - Transformers, PEFT, datasets, accelerate
 - Qwen2.5-0.5B-Instruct base model (download with `scripts/download_qwen_base.py`)
 
-### 18.2 Step-by-Step: From-Scratch SLM
+### 19.2 Step-by-Step: From-Scratch SLM
 
 ```bash
 # 1. Clone and setup
@@ -2225,7 +2237,7 @@ cd ..
 python slm-comparison/generate_live_comparison.py
 ```
 
-### 18.3 Step-by-Step: Qwen Fine-Tune
+### 19.3 Step-by-Step: Qwen Fine-Tune
 
 ```bash
 # 1. Setup environment
@@ -2234,31 +2246,32 @@ python -m venv .venv
 pip install torch transformers peft datasets accelerate bitsandbytes
 
 # 2. Download data
-# EmpatheticDialogues
-curl -O https://dl.fbaipublicfiles.com/parlai/empatheticdialogues/empatheticdialogues.tar.gz
-tar -xzf empatheticdialogues.tar.gz -C data\ed_docraw
+# EmpatheticDialogues (train.csv, valid.csv, test.csv -> slm-ft/data/ed_docraw)
+python scripts\download_empathetic_dialogues.py --output-dir slm-ft/data/ed_docraw
 
 # 3. Prepare data
-python slm-ft\prepare_data.py --ed-csv-dir data\ed_docraw
+python slm-ft\prepare_data.py --ed-csv-dir slm-ft/data/ed_docraw
 
 # 4. QLoRA Stage-1
-python slm-ft\train_qlora.py --epochs 2 --out adapter
+python slm-ft\train_qlora.py --data slm-ft/data/sft_train.jsonl --val slm-ft/data/sft_val.jsonl --epochs 2 --out slm-ft/adapter
 
 # 5. Stage-2 Steering
 python slm-ft\steering\build_steering.py
-python slm-ft\train_qlora.py --data data/stage2_sft.jsonl --init-adapter adapter --epochs 1 --lr 5e-5 --accum 8 --out adapter_stage2
+python slm-ft\train_qlora.py --data slm-ft/data/stage2_sft.jsonl --init-adapter slm-ft/adapter --epochs 1 --lr 5e-5 --accum 8 --out slm-ft/adapter_stage2
 
 # 6. Behavioral gate
-python evaluate_ft.py --adapter adapter_stage2 --gpu
+# The 5-probe behavioral eval is recorded in slm-ft/adapter_stage2/behavioral_eval.json;
+# no runner script is shipped for it, so the JSON artifact is the gate record.
+python -c "import json; d=json.load(open('slm-ft/adapter_stage2/behavioral_eval.json')); print(d['model_probes'], '/', d['total_probes'], 'probes passed, passed=', d['passed'])"
 
 # 7. Merge to fp16
-python slm-ft\merge_adapter.py --adapter adapter_stage2 --out merged_fp16
+python slm-ft\merge_adapter.py --adapter slm-ft/adapter_stage2 --out slm-ft/merged_fp16
 
 # 8. Run comparison
 python slm-comparison\generate_live_comparison.py
 ```
 
-### 18.4 Updating and Re-running
+### 19.4 Updating and Re-running
 
 > **Important:** If checkpoints, data, or environment change, re-run the relevant scripts rather than trusting a static copy of the output. The comparison is reproducible from the scripts in the repo, but environment specifics (transformer versions, hardware, etc.) can affect results.
 
@@ -2268,7 +2281,7 @@ python slm-comparison\generate_live_comparison.py
 3. Save the `comparison_samples.json` after each run
 4. Document any deviations from the standard pipeline in a `RUN_NOTES.md`
 
-### 18.5 Running the Harness
+### 19.5 Running the Harness
 
 For a one-shot verification of the entire project, use `harness.py`:
 
@@ -2306,7 +2319,7 @@ are hard errors, so `python harness.py --skip-model` passes on a clean checkout.
 
 ---
 
-## 18. Retrieval-Augmented Generation (RAG)
+## 20. Retrieval-Augmented Generation (RAG)
 
 A lightweight RAG pipeline lives in `slm-training/rag.py` with a CLI demo
 in `rag_demo.py`.  It uses only the Python stdlib — no scikit-learn, no
@@ -2352,7 +2365,7 @@ python -m pytest tests/test_rag.py -v
 
 ---
 
-## 19. Additional Resources
+## 21. Additional Resources
 
 - `MODEL_COMPARISON.md` - Detailed data tables, train/val/test splits, full benchmark tables
 - `SLM_ARCHITECTURE.md` - Architecture diagrams and hyperparameter details
@@ -2365,6 +2378,6 @@ python -m pytest tests/test_rag.py -v
 
 ---
 
-*This README was generated to provide comprehensive, educational documentation of the SLM comparison project. All benchmarks, architecture diagrams, and data pipeline descriptions are based on the actual repository state as of 2026-10-25.*
+*This README was generated to provide comprehensive, educational documentation of the SLM comparison project. All benchmarks, architecture diagrams, and data pipeline descriptions are based on the actual repository state as of 2026-11-07.*
 
 *For the most up-to-date information, always refer to the individual component files and re-run the reproduction scripts.*

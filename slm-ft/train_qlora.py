@@ -5,9 +5,14 @@ Loads base in 4-bit NF4 (bitsandbytes), trains LoRA adapters only
 (gradient checkpointing on), loss masked to assistant turns.
 
 Usage:
-    .venv/Scripts/python train_qlora.py \
-        --data data/sft_train.jsonl --val data/sft_val.jsonl \
-        --epochs 2 --out adapter/
+    .venv/Scripts/python train_qlora.py --epochs 2 --out adapter/
+    # --data/--val default to slm-ft/data/sft_{train,val}.jsonl
+
+LoRA config defaults to r=16 / alpha=32 over attention + MLP projections; override
+with --lora-r, --lora-alpha and --target-modules. The committed adapters were
+trained with different settings (stage-1 r=8/alpha=8 on q_proj,v_proj; stage-2
+r=16/alpha=16 on q_proj,k_proj,v_proj,o_proj), so pass the matching flags to
+reproduce them.
 
 Artifacts: <out>/adapter_model.safetensors + train_log.json (loss curve).
 Merge to fp16 later via merge_adapter.py if you deploy full weights.
@@ -36,8 +41,9 @@ FULL_SEQ_LEN = 1024
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/sft_train.jsonl")
-    ap.add_argument("--val", default="data/sft_val.jsonl")
+    _DATA_DIR = Path(__file__).parent / "data"
+    ap.add_argument("--data", default=str(_DATA_DIR / "sft_train.jsonl"))
+    ap.add_argument("--val", default=str(_DATA_DIR / "sft_val.jsonl"))
     ap.add_argument("--base", default=BASE)
     ap.add_argument("--out", default="adapter")
     ap.add_argument("--epochs", type=float, default=2.0)
@@ -46,6 +52,13 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--accum", type=int, default=16)
     ap.add_argument("--max-len", type=int, default=FULL_SEQ_LEN)
     ap.add_argument("--limit", type=int, default=0, help="cap #dialogs (smoke test)")
+    ap.add_argument("--lora-r", type=int, default=16, help="LoRA rank")
+    ap.add_argument("--lora-alpha", type=int, default=32, help="LoRA alpha")
+    ap.add_argument(
+        "--target-modules",
+        default="q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+        help="comma-separated LoRA target module names",
+    )
     ap.add_argument(
         "--init-adapter",
         default=None,
@@ -157,21 +170,14 @@ def main() -> None:
     model.config.use_cache = False
     model = prepare_model_for_kbit_training(model)
     model.gradient_checkpointing_enable()
+    target_modules = [m.strip() for m in args.target_modules.split(",") if m.strip()]
     lora_config = LoraConfig(
-        r=16,
-        lora_alpha=32,
+        r=args.lora_r,
+        lora_alpha=args.lora_alpha,
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=[
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "o_proj",
-            "gate_proj",
-            "up_proj",
-            "down_proj",
-        ],
+        target_modules=target_modules,
     )
     steps_done = 0
     if args.resume_from:

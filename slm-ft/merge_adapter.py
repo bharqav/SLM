@@ -1,8 +1,11 @@
 """Merge a trained QLoRA adapter into fp16 full weights for deployment.
 
 Usage:
-    .venv/Scripts/python merge_adapter.py --base Qwen/Qwen2.5-0.5B-Instruct \
-        --adapter adapter --out merged_fp16
+    .venv/Scripts/python merge_adapter.py --adapter adapter_stage2 \
+        --out merged_fp16
+
+Adapter and output paths default to this script's directory (slm-ft/), so
+the command works from any working directory.
 
 Peft loads the adapter on a CPU float16 copy of the base (fits in RAM),
 then the merged model is saved; load it later in bf16 on the GPU.
@@ -21,8 +24,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="Qwen/Qwen2.5-0.5B-Instruct")
-    ap.add_argument("--adapter", default="adapter")
-    ap.add_argument("--out", default="merged_fp16")
+    ap.add_argument("--adapter", default=str(Path(__file__).parent / "adapter"))
+    ap.add_argument("--out", default=str(Path(__file__).parent / "merged_fp16"))
     args = ap.parse_args()
 
     out = Path(args.out)
