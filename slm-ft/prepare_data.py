@@ -1,14 +1,19 @@
 """Build the empathetic-SFT corpus for the Qwen2.5-0.5B QLoRA fine-tune.
 
-Sources (downloaded/verified by hand, see README):
-- ESConv (thu-coai/esconv on HF): 910 multi-turn emotional-support dialogs (JSON in `text`).
-- EmpatheticDialogues (facebookresearch tarball): ~25k short open-domain empathetic
-  dialogs across 32 emotion contexts. NOTE: cc-by-nc-4.0 -- non-commercial use.
+Sources (fetch steps in slm-ft/README.md):
+- ESConv (thu-coai/esconv on HF): 910 multi-turn emotional-support dialogs (JSON in
+  `text`), fetched automatically by build_esconv().
+- EmpatheticDialogues (facebookresearch tarball): ~23k short open-domain empathetic
+  dialogs across 32 emotion contexts, extracted by
+  scripts/download_empathetic_dialogues.py. NOTE: cc-by-nc-4.0 -- non-commercial use.
 
-Output: slm-ft/data/sft_train.jsonl + slm-ft/data/sft_val.jsonl
-Schema per line: {"messages": [{"role", "content"}, ...]}  (user/assistant pairs)
+Outputs (in --out-dir, default slm-ft/data/):
+- sft_train.jsonl / sft_val.jsonl: one JSON object per line,
+  {"messages": [{"role": "user" | "assistant", "content": str}, ...]}.
+- corpus_stats.json: per-source and per-split counts.
 
-Conversation-level hash split (no dialog leakage between train/val).
+Dialogs are capped at MAX_TURNS and kept only with >= MIN_USER_TURNS turns per role
+(_ok). Conversations are hash-split, so no dialog leaks into val.
 """
 
 from __future__ import annotations
@@ -25,8 +30,11 @@ ESCONV_HF = "thu-coai/esconv"
 ED_URL = "https://dl.fbaipublicfiles.com/parlai/empatheticdialogues/empatheticdialogues.tar.gz"
 
 MAX_TURNS = 24  # keep dialogues manageable
-MIN_USER_TURNS = 2  # need at least one user+assistant exchange pair
+MIN_USER_TURNS = 2  # minimum user AND assistant turns for a usable SFT dialog
 VAL_FRACTION = 0.02
+# Columns build_ed() indexes by name. The CSVs written by
+# scripts/download_empathetic_dialogues.py also carry context/prompt/selfeval/tags.
+ED_REQUIRED_COLUMNS = ("conv_id", "utterance_idx", "speaker_idx", "utterance")
 
 
 def clean(text: str) -> str:
@@ -86,43 +94,41 @@ def trim_user_tail(turns: list[dict]) -> list[dict]:
 
 
 def build_ed(csv_dir: Path) -> list[list[dict]]:
-    """ED CSVs grouped by conv_id, roles from speaker_idx (0=user, 1=assistant)."""
+    """ED CSVs grouped by conv_id, roles from speaker_idx (0=user, 1=assistant).
+
+    The CSVs written by scripts/download_empathetic_dialogues.py carry the header
+    conv_id,utterance_idx,context,prompt,speaker_idx,utterance,selfeval,tags; a file
+    whose header is missing a column this indexes is rejected instead of guessed at.
+    """
     dialogs = []
-    base_header = [
-        "conv_id",
-        "utterance_idx",
-        "context",
-        "prompt",
-        "speaker_idx",
-        "utterance",
-        "selfeval",
-        "tags",
-    ]
     for name in ("train", "valid", "test"):
         path = csv_dir / f"{name}.csv"
         if not path.exists():
             sys.exit(
-                f"missing EmpatheticDialogues CSV at {path}; run download step in README"
+                f"missing EmpatheticDialogues CSV at {path}; run "
+                "`python scripts/download_empathetic_dialogues.py` (see README.md)"
             )
         by_conv: dict[str, dict] = {}
         with open(path, encoding="utf-8", newline="") as fh:
-            first_line = fh.readline()
-            first = next(csv.reader([first_line]))
-            if first and first[0].strip() == "conv_id":
-                rows: list[list[str]] = list(csv.reader(fh))
-                header = [h.strip() for h in first]
-            else:
-                # the fbaipublicfiles ed tarball ships train.csv headerless
-                rows = list(csv.reader([first_line])) + list(csv.reader(fh))
-                header = base_header
+            reader = csv.reader(fh)
+            first = next(reader, None)
+            if first is None:
+                sys.exit(f"empty EmpatheticDialogues CSV at {path}")
+            header = [h.strip() for h in first]
+            missing = [c for c in ED_REQUIRED_COLUMNS if c not in header]
+            if missing:
+                sys.exit(
+                    f"{path}: missing column(s) {', '.join(missing)}; expected the "
+                    "EmpatheticDialogues header written by "
+                    "scripts/download_empathetic_dialogues.py"
+                )
             col = {c: i for i, c in enumerate(header)}
-            drop_selfflagged = 0
-            for parts in rows:
-                if len(parts) < max(col["utterance"] + 1, col["speaker_idx"] + 1):
+            needed = max(col[c] + 1 for c in ED_REQUIRED_COLUMNS)
+            for parts in reader:
+                if len(parts) < needed:
                     continue
                 row = {c: parts[i].strip() for c, i in col.items() if i < len(parts)}
                 if row.get("selfeval", "") and "not" in row["selfeval"].lower():
-                    drop_selfflagged += 1
                     continue  # drop unproficient dialogues
                 text = clean(row["utterance"])
                 if not text or len(text) < 2:
@@ -154,7 +160,9 @@ def build_ed(csv_dir: Path) -> list[list[dict]]:
     return dialogs
 
 
-def hash_split(dialogs: list[list[dict]], val_fraction: float = VAL_FRACTION):
+def hash_split(
+    dialogs: list[list[dict]], val_fraction: float = VAL_FRACTION
+) -> tuple[list[list[dict]], list[list[dict]]]:
     train, val = [], []
     for d in dialogs:
         h = int(

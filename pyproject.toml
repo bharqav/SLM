@@ -193,6 +193,7 @@ module = [
     "guardrails",
     "inference",
     "model",
+    "prepare_data",
     "quantize",
     "rag",
     "slmlog",

@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-287%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-303%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -1949,17 +1949,17 @@ for chunk in client.chat.completions.create(
 
 ### 14.1 Test Suite
 
-The suite defines 280 test functions across 13 files. Parametrization expands
-these to 289 collected cases; 287 run by default because the 2 slow tests in
+The suite defines 296 test functions across 14 files. Parametrization expands
+these to 305 collected cases; 303 run by default because the 2 slow tests in
 `test_model_and_api.py` are deselected by `addopts` (`-m 'not slow'`):
 
 ```bash
-python -m pytest tests/ -v        # 287 passed
+python -m pytest tests/ -v        # 303 passed
 python -m pytest tests/ -m slow -v
 make test                         # full suite + 80% coverage gate (see 14.2)
 ```
 
-On a clean checkout the 31 artifact-dependent tests skip (256 passed, 31
+On a clean checkout the 31 artifact-dependent tests skip (272 passed, 31
 skipped) and coverage lands near 72%, below the gate. That is expected: the
 gate needs the trained weights, which are gitignored (see 14.2).
 
@@ -1975,6 +1975,7 @@ gate needs the trained weights, which are gitignored (see 14.2).
 | `test_benchmarks.py` | 19 | Comparison artifact schema, benchmark tables, README structure |
 | `test_evaluate_standard.py` | 15 | Standard evaluation metrics |
 | `test_harness.py` | 17 | Training harness orchestration and monitoring |
+| `test_prepare_data.py` | 16 | Empathetic-SFT corpus build: cleaning, trimming, leak-free split, ED parsing |
 | `test_inference.py` | 14 | Inference entry points |
 | `test_export.py` | 13 | ONNX export and tokenizer metadata |
 | `test_tokenizer_utils.py` | 7 | Tokenizer save/load metadata |
