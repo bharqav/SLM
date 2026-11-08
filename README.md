@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-303%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-327%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -110,7 +110,8 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 │   ├── qwen_forward_bench.json  — Qwen forward-pass results
 │   └── test_split_eval.json     — Held-out test split evaluation
 └── docs/
-    └── Training_Data_Markdown.md — Data sources and pipeline documentation
+    ├── Training_Data_Markdown.md — Data sources and pipeline documentation
+    └── production_grade_comparison.md — 757M SLM vs production-grade models (speed/quality tradeoff, N/R where unmeasured)
 ```
 
 ### Project Structure Diagram
@@ -1949,18 +1950,18 @@ for chunk in client.chat.completions.create(
 
 ### 14.1 Test Suite
 
-The suite defines 296 test functions across 14 files. Parametrization expands
-these to 305 collected cases; 303 run by default because the 2 slow tests in
+The suite defines 320 test functions across 17 files. Parametrization expands
+these to 329 collected cases; 327 run by default because the 2 slow tests in
 `test_model_and_api.py` are deselected by `addopts` (`-m 'not slow'`):
 
 ```bash
-python -m pytest tests/ -v        # 303 passed
+python -m pytest tests/ -v        # 327 passed
 python -m pytest tests/ -m slow -v
 make test                         # full suite + 80% coverage gate (see 14.2)
 ```
 
-On a clean checkout the 31 artifact-dependent tests skip (272 passed, 31
-skipped) and coverage lands near 72%, below the gate. That is expected: the
+On a clean checkout the 31 artifact-dependent tests skip (296 passed, 31
+skipped) and coverage lands at 70%, below the gate. That is expected: the
 gate needs the trained weights, which are gitignored (see 14.2).
 
 **Coverage by area** (test functions per file):
@@ -1976,6 +1977,9 @@ gate needs the trained weights, which are gitignored (see 14.2).
 | `test_evaluate_standard.py` | 15 | Standard evaluation metrics |
 | `test_harness.py` | 17 | Training harness orchestration and monitoring |
 | `test_prepare_data.py` | 16 | Empathetic-SFT corpus build: cleaning, trimming, leak-free split, ED parsing |
+| `test_train_qlora.py` | 11 | QLoRA stage-1 script: arg defaults, chat assembly, assistant-only loss masking, collation |
+| `test_build_steering.py` | 10 | Stage-2 steering mix: dialog shape, mix arithmetic, turn assembly |
+| `test_merge_adapter.py` | 3 | Adapter merge to fp16: merge-and-unload, save path, safe serialization |
 | `test_inference.py` | 14 | Inference entry points |
 | `test_export.py` | 13 | ONNX export and tokenizer metadata |
 | `test_tokenizer_utils.py` | 7 | Tokenizer save/load metadata |
@@ -2374,8 +2378,10 @@ python -m pytest tests/test_rag.py -v
 - `CONTRIBUTING.md` - Contribution guidelines and code style
 - `SECURITY.md` - Security policy and vulnerability reporting
 - `CHANGELOG.md` - Version history and changes
+- `docs/Training_Data_Markdown.md` - Data sources and pipeline documentation
+- `docs/production_grade_comparison.md` - 757M SLM vs production-grade models; speed/quality tradeoff with N/R where nothing was measured
 - `scripts/` - Download, provenance, and experiment tracking utilities
-- `.github/workflows/` - CI (Windows, Python 3.11-3.13) and release automation
+- `.github/workflows/` - CI (Windows, Python 3.11-3.13), container build, and release automation
 
 ---
 

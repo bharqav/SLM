@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "slm-project"
-version = "1.0.0"
+dynamic = ["version"]
 description = "From-scratch SLM vs Qwen fine-tune comparison with reproducible benchmarks"
 readme = "README.md"
 license = {text = "MIT"}
@@ -188,10 +192,12 @@ disallow_incomplete_defs = false
 # rather than erroring.
 [[tool.mypy.overrides]]
 module = [
+    "build_steering",
     "evaluate_standard",
     "export_onnx",
     "guardrails",
     "inference",
+    "merge_adapter",
     "model",
     "prepare_data",
     "quantize",
@@ -199,6 +205,7 @@ module = [
     "slmlog",
     "tokenizer_utils",
     "train",
+    "train_qlora",
 ]
 ignore_missing_imports = true
 
@@ -220,6 +227,11 @@ py-modules = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["slm*", "tests*"]
+
+[tool.setuptools_scm]
+# Version comes from git tags (v1.2.3 -> 1.2.3), so `pip install -e .` and the
+# release wheel both report the tagged version instead of a hard-coded one.
+# Repos with no reachable tag still build as 0.1.devN+gHASH.
 
 [tool.setuptools.package-data]
 # Explicit file lists keep the wheel reproducible: a bare "*.json" also pulls

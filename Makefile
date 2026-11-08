@@ -1,4 +1,4 @@
-.PHONY: help test test-all test-fast bench verify clean lint format format-check typecheck security api docker-build docker-run install install-all harness harness-model export-onnx
+.PHONY: help test test-all test-fast bench verify clean lint format format-check typecheck security api docker-build docker-run install install-all harness harness-model export-onnx ft-download-ed ft-data ft-steering ft-train ft-train2 ft-merge ft-all
 
 harness: ## Run full harness (tests + verify + bench + security)
 	python harness.py
@@ -73,3 +73,29 @@ install-all: ## Install project with all optional deps
 
 export-onnx: ## Export best_model.pt to ONNX with dynamic axes (requires onnx + torch)
 	python -m slm-training.export_onnx --checkpoint slm-training/best_model.pt --output slm-training/best_model.onnx --max-seq-len 256
+
+# --- slm-ft: QLoRA fine-tune of Qwen2.5-0.5B-Instruct -------------------------
+# These mirror slm-ft/README.md step for step. They need a CUDA GPU and the
+# QLoRA extra (`pip install -e ".[qlora]"`); the base model is downloaded from
+# the HuggingFace hub on first use.
+
+ft-download-ed: ## Download the EmpatheticDialogues tarball (cc-by-nc-4.0)
+	python scripts/download_empathetic_dialogues.py --output-dir slm-ft/data/ed_docraw
+
+ft-data: ## Build the SFT corpus (ESConv + EmpatheticDialogues, hash-split)
+	python slm-ft/prepare_data.py --ed-csv-dir slm-ft/data/ed_docraw
+
+ft-steering: ## Generate the stage-2 steering + replay mix
+	python slm-ft/steering/build_steering.py
+
+ft-train: ## Stage 1: QLoRA on the empathetic corpus (committed config: r=8/alpha=8, q_proj,v_proj)
+	python slm-ft/train_qlora.py --epochs 2 --out slm-ft/adapter --lora-r 8 --lora-alpha 8 --target-modules q_proj,v_proj
+
+ft-train2: ## Stage 2: policy steering from the stage-1 adapter
+	python slm-ft/train_qlora.py --data slm-ft/data/stage2_sft.jsonl --init-adapter slm-ft/adapter --epochs 1 --lr 5e-5 --accum 8 --out slm-ft/adapter_stage2
+
+ft-merge: ## Merge the stage-2 adapter into a fp16 model folder
+	python slm-ft/merge_adapter.py --adapter slm-ft/adapter_stage2 --out slm-ft/merged_fp16
+
+ft-all: ## Full slm-ft pipeline: data -> steering -> stage 1 -> stage 2 -> merge (GPU, hours)
+ft-all: ft-data ft-steering ft-train ft-train2 ft-merge

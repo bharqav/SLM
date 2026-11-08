@@ -21,12 +21,16 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-def main() -> None:
+def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="Qwen/Qwen2.5-0.5B-Instruct")
     ap.add_argument("--adapter", default=str(Path(__file__).parent / "adapter"))
     ap.add_argument("--out", default=str(Path(__file__).parent / "merged_fp16"))
-    args = ap.parse_args()
+    return ap.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

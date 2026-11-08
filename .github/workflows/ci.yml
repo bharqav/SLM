@@ -106,3 +106,47 @@ jobs:
           name: provenance-py${{ matrix.python-version }}
           path: provenance.json
           retention-days: 30
+
+  # The Dockerfile is part of the documented deploy path, so build it on every
+  # push and pull request and assert the image actually serves.
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # `load: true` puts the image in the local daemon so the smoke test can
+      # run it. The build context is trimmed by .dockerignore.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: slm-project:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Asserts what a clean checkout can assert: the image runs as the
+      # non-root user, and the API answers /health without the gitignored
+      # checkpoint (the model loads lazily on the first inference request).
+      # No port is published -- the probe talks to the container over `exec`.
+      - name: Smoke-test the image
+        run: |
+          docker run --rm --entrypoint id slm-project:ci
+          docker run --rm -d --name slm-ci slm-project:ci
+          for _ in $(seq 1 30); do
+            if docker exec slm-ci python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "$(docker inspect -f '{{.State.Running}}' slm-ci 2>/dev/null)" != "true" ]; then
+            echo "::error::Container slm-ci is not running" >&2
+            docker logs slm-ci || true
+            exit 1
+          fi
+          docker exec slm-ci python -c "import json, urllib.request; r = json.load(urllib.request.urlopen('http://localhost:8000/health')); print(r); assert r['status'] == 'ok' and r['model_loaded'] is False"
+          docker stop slm-ci

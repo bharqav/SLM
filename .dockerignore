@@ -1,0 +1,63 @@
+# Keep the build context small and the image free of training state.
+# Runtime weights are mounted from the host (see docker-compose.yml); they are
+# never baked into the image.
+
+# Version control and CI
+.git
+.gitignore
+.github
+.gitattributes
+
+# Python caches and environments
+__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+dist
+build
+.venv
+venv
+env
+
+# Model artifacts and training state (large; regenerated or mounted).
+# The extension patterns already drop the weights, so the committed text
+# artifacts next to them (preprocess_stats.json, benchmark_report.md, ...)
+# stay in the image.
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
+*.onnx
+*.onnx.data
+*.tokenizer.json
+*.jsonl
+*.csv
+*.parquet
+slm-training/losses.json
+slm-training/training_stats.json
+slm-training/train_log.json
+slm-ft/adapter
+slm-ft/adapter_stage2
+slm-ft/merged_fp16
+slm-ft/data
+serving/*.log
+
+# Development and test-only content
+tests
+notebooks
+docs
+*.ipynb
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Local-only files
+.env
+*.log
+tmp_*
+docker-compose.yml
+docker-compose.prod.yml
+.dockerignore

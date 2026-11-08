@@ -1,0 +1,39 @@
+# Dependabot keeps the pinned runtime and development dependencies current.
+# pip covers requirements.txt and pyproject.toml; github-actions covers the
+# workflow action versions (actions/checkout, docker/build-push-action, ...).
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      python-dev:
+        patterns:
+          - "pytest*"
+          - "coverage*"
+          - "ruff"
+          - "mypy"
+          - "bandit"
+          - "pip-audit"
+          - "pyupgrade"
+          - "build"
+      huggingface:
+        patterns:
+          - "torch"
+          - "transformers"
+          - "datasets"
+          - "accelerate"
+          - "peft"
+          - "bitsandbytes"
+          - "safetensors"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"

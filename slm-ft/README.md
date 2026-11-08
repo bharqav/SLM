@@ -20,7 +20,9 @@ code prose), the artifact
 produced here is intended to power the chat pipeline's `main` tier once wired to the backend
 gateway.
 
-All commands in this document are run from the repository root.
+All commands in this document are run from the repository root. Every step also
+has a Makefile shortcut: `make ft-download-ed`, `ft-data`, `ft-steering`,
+`ft-train`, `ft-train2`, `ft-merge`, or `ft-all` for the whole pipeline.
 
 ## Setup (done once)
 
