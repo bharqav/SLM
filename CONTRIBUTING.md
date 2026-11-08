@@ -85,6 +85,25 @@ python run_all.py
 - Update docstrings for API changes
 - Add entries to `CHANGELOG.md` for significant changes
 
+### Mermaid Diagrams
+
+`README.md` contains Mermaid diagrams. GitHub renders them server-side, and
+several constructs that look valid in a flowchart do not parse — a broken
+diagram renders as raw, unstyled code instead of a figure. Keep to these rules:
+
+- **Quote labels that contain parentheses or brackets**:
+  `B["Token Embedding<br/>(50,257 × 1536)"]`, not
+  `B[Token Embedding<br/>(50,257 × 1536)]`.
+- **Close parallelograms on both sides**: `E1[/health GET/]`, not
+  `E1[/health GET]`.
+- **No loops and no indexed node IDs**: `for i from 1 to 24 ... end` and
+  `QB[i][Block i]` are not supported. Represent repeated blocks with a single
+  labelled node inside a counting subgraph —
+  `subgraph Blocks[24 Transformer Blocks]` containing
+  `QB[Transformer Block<br/>RMSNorm + Attention + MLP]`.
+
+To check a diagram before committing, paste it into <https://mermaid.live>.
+
 ## Review Process
 
 1. Maintainers will review your PR as soon as possible

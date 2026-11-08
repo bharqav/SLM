@@ -72,6 +72,13 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 
 ### Fixed
 
+- Five Mermaid diagrams in `README.md` did not parse, so GitHub rendered them
+  as raw code instead of figures: unquoted node labels containing parentheses,
+  unterminated parallelogram shapes (`[/health GET]`), and
+  `for i from 1 to N ... end` loops with indexed node IDs (`QB[i][...]`).
+  Labels are now quoted, parallelograms are closed on both sides, and the
+  repeated-block loops are represented by a single labelled node inside a
+  counting subgraph. `CONTRIBUTING.md` now documents these constraints.
 - `slm-ft/README.md` and the top-level README now agree with the shipped
   scripts: `prepare_data.py` constants and output layout, the
   `train_qlora.py` `--lora-r` / `--lora-alpha` / `--target-modules` flags, and

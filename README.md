@@ -309,8 +309,8 @@ The token embedding matrix (50,257 × 1536 = 77.2M parameters) is shared with th
 ```mermaid
 graph TD
     subgraph Input[Input Processing]
-        A[Token IDs] --> B[Token Embedding<br/>(50257 × 1536)]
-        C[Position IDs] --> D[Position Embedding<br/>(256 × 1536)]
+        A[Token IDs] --> B["Token Embedding<br/>(50257 × 1536)"]
+        C[Position IDs] --> D["Position Embedding<br/>(256 × 1536)"]
         B --> E[Add + Dropout]
         D --> E
     end
@@ -335,7 +335,7 @@ graph TD
 
     E --> Blocks
     Blocks --> LN_F[Final LayerNorm]
-    LN_F --> LM[LM Head<br/>(tied with token embedding)]
+    LN_F --> LM["LM Head<br/>(tied with token embedding)"]
     LM --> O[Logits over Vocabulary]
 
     style Blocks fill:#e1f5fe,stroke:#01579b
@@ -619,15 +619,13 @@ The Qwen baseline is **Qwen2.5-0.5B-Instruct** (0.5B parameters), used as a comp
 graph TB
     subgraph Base[Qwen2.5-0.5B-Instruct Base]
         direction TB
-        TE[Token Embedding<br/>(151,936 × 896)]
-        PE[Position Embedding<br/>(24,576 × 896)]
+        TE["Token Embedding<br/>(151,936 × 896)"]
+        PE["Position Embedding<br/>(24,576 × 896)"]
     end
 
     subgraph Blocks[24 Transformer Blocks]
         direction TB
-        for i from 1 to 24
-            QB[i][Block i: RMSNorm + Attention + MLP]
-        end
+        QB[Transformer Block<br/>RMSNorm + Attention + MLP]
     end
 
     Base --> Blocks
@@ -841,8 +839,8 @@ python scripts/download_empathetic_dialogues.py --output-dir slm-ft/data/ed_docr
 ```mermaid
 graph TD
     subgraph Input[Input Processing]
-        A[Token IDs] --> B[Token Embedding<br/>(50257 × 1536)]
-        C[Position IDs] --> D[Position Embedding<br/>(256 × 1536)]
+        A[Token IDs] --> B["Token Embedding<br/>(50257 × 1536)"]
+        C[Position IDs] --> D["Position Embedding<br/>(256 × 1536)"]
         B --> E[Add + Dropout]
         D --> E
     end
@@ -867,7 +865,7 @@ graph TD
 
     E --> Blocks
     Blocks --> LN_F[Final LayerNorm]
-    LN_F --> LM[LM Head<br/>(tied with token embedding)]
+    LN_F --> LM["LM Head<br/>(tied with token embedding)"]
     LM --> O[Logits over Vocabulary]
 
     style Blocks fill:#e1f5fe,stroke:#01579b
@@ -880,15 +878,13 @@ graph TD
 graph TB
     subgraph Base[Qwen2.5-0.5B-Instruct Base]
         direction TB
-        TE[Token Embedding<br/>(151,936 × 2048)]
-        PE[Position Embedding<br/>(24,576 × 2048)]
+        TE["Token Embedding<br/>(151,936 × 2048)"]
+        PE["Position Embedding<br/>(24,576 × 2048)"]
     end
 
     subgraph Blocks[36 Transformer Blocks]
         direction TB
-        for i from 1 to 36
-            QB[i][Block i: RMSNorm + Attention + MLP]
-        end
+        QB[Transformer Block<br/>RMSNorm + Attention + MLP]
     end
 
     subgraph LoRA[QLoRA Adapter]
@@ -1698,12 +1694,12 @@ graph LR
 
     subgraph FastAPI[FastAPI Server]
         direction TB
-        E1[/health GET] --> R1[Return model status]
-        E2[/generate POST] --> R2[Input guardrails -> Generate -> Output guardrails -> Response]
-        E3[/model/info GET] --> R3[Return architecture details]
-        E4[/safety/info GET] --> R4[Return guardrail config]
-        E5[/v1/chat/completions POST] --> R5[OpenAI-compatible chat generation]
-        E6[/v1/completions POST] --> R6[OpenAI-compatible legacy completions]
+        E1[/health GET/] --> R1[Return model status]
+        E2[/generate POST/] --> R2[Input guardrails -> Generate -> Output guardrails -> Response]
+        E3[/model/info GET/] --> R3[Return architecture details]
+        E4[/safety/info GET/] --> R4[Return guardrail config]
+        E5[/v1/chat/completions POST/] --> R5[OpenAI-compatible chat generation]
+        E6[/v1/completions POST/] --> R6[OpenAI-compatible legacy completions]
     end
 
     subgraph Model[SLM Model]
