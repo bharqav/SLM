@@ -8,32 +8,65 @@
 .github
 .gitattributes
 
-# Python caches and environments
+# Python caches and environments. Every pattern that has to match below the
+# context root needs a `**/` prefix: Docker treats `*` as "within one path
+# segment", so a bare `*.pt` drops only root-level checkpoints while
+# `slm-training/*.pt` is still sent to the daemon. This repo carries multi-GB
+# nested venvs under slm-training/ and slm-ft/, so the prefix is the
+# difference between a ~20 MB context and a multi-GB one.
 __pycache__
+**/__pycache__
 *.py[cod]
+**/*.py[cod]
 *.egg-info
+**/*.egg-info
 .eggs
+**/.eggs
 dist
 build
 .venv
+**/.venv
+slm-training/.venv
+slm-ft/.venv
 venv
 env
+.pytest_cache
+**/.pytest_cache
+.mypy_cache
+**/.mypy_cache
+.ruff_cache
+**/.ruff_cache
+.coverage
+**/.coverage
+htmlcov
+**/htmlcov
 
 # Model artifacts and training state (large; regenerated or mounted).
-# The extension patterns already drop the weights, so the committed text
-# artifacts next to them (preprocess_stats.json, benchmark_report.md, ...)
-# stay in the image.
+# The `**/` extension patterns drop the weights wherever they live, so the
+# committed text artifacts next to them (preprocess_stats.json,
+# benchmark_report.md, ...) stay in the image.
 *.pt
+**/*.pt
 *.pth
+**/*.pth
 *.ckpt
+**/*.ckpt
 *.bin
+**/*.bin
 *.safetensors
+**/*.safetensors
 *.onnx
+**/*.onnx
 *.onnx.data
+**/*.onnx.data
 *.tokenizer.json
+**/*.tokenizer.json
 *.jsonl
+**/*.jsonl
 *.csv
+**/*.csv
 *.parquet
+**/*.parquet
 slm-training/losses.json
 slm-training/training_stats.json
 slm-training/train_log.json
@@ -48,16 +81,15 @@ tests
 notebooks
 docs
 *.ipynb
-.pytest_cache
-.mypy_cache
-.ruff_cache
-.coverage
-htmlcov
+**/*.ipynb
 
 # Local-only files
 .env
+**/.env
 *.log
+**/*.log
 tmp_*
+**/tmp_*
 docker-compose.yml
 docker-compose.prod.yml
 .dockerignore

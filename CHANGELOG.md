@@ -23,6 +23,10 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
   parsing.
 - Container build job in CI and a `.dockerignore`, so the image builds from a
   minimal context and never ships training data, adapters or checkpoints.
+  The ignore patterns are `**/`-prefixed because Docker treats `*` as "within
+  one path segment": a bare `*.pt` drops only root-level checkpoints, while
+  `slm-training/*.pt` is still sent. With the prefixes the context is 872 kB;
+  without them it was 2.85 GB.
 - `dependabot.yml` covering the `pip` ecosystem and GitHub Actions.
 - Fine-tuning Makefile targets mirroring `slm-ft/README.md`:
   `ft-download-ed`, `ft-data`, `ft-steering`, `ft-train`, `ft-train2`,
@@ -73,6 +77,9 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
   reproducible from a clean checkout and no longer depend on local artifacts.
 - Comparison-artifact tests skip when the artifact has not been generated.
 - The shipped verification gate passes outside a source checkout.
+- The image smoke test in CI probes `/health` through `docker exec` and
+  asserts the container is still running and `model_loaded` is `false`, so a
+  broken image fails the build instead of the next deploy.
 
 ## [1.0.0] - 2026-10-20
 
