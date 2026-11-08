@@ -64,6 +64,11 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
   `TestReadme::test_test_suite_counts_match`.
 - Benchmark numbers now reflect the expanded prompt set (20 prompts: 10
   empathetic, 10 code/technical).
+- `constraints.txt` was refreshed to the versions the project actually runs on
+  (torch 2.15.0, transformers 5.22.2, huggingface-hub 2.4.0, tiktoken 0.14.0,
+  numpy 2.5.4, peft 0.21.2, datasets 5.1.0, pytest 9.2.0, ruff 0.17.4,
+  mypy 2.4.1), and the GitHub Actions used by CI and the release workflow were
+  bumped to their current majors.
 
 ### Fixed
 
@@ -80,6 +85,11 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 - The image smoke test in CI probes `/health` through `docker exec` and
   asserts the container is still running and `model_loaded` is `false`, so a
   broken image fails the build instead of the next deploy.
+- `requirements.lock` was regenerated with `pip freeze --exclude-editable`
+  from the project's own environment. The previous file was a freeze of a
+  different machine's environment: it carried 88 packages this project never
+  installs (anomalib, ultralytics, mujoco, kornia, lightning, ...) alongside
+  stale pins for the packages it does use.
 
 ## [1.0.0] - 2026-10-20
 

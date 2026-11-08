@@ -2066,7 +2066,7 @@ pip install -r requirements.txt -c constraints.txt
 
 This project uses `constraints.txt` for known-good pins and `requirements.lock` for exact reproduction:
 
-1. `constraints.txt` pins minimum compatible versions
+1. `constraints.txt` pins exact versions of the direct dependencies
 2. `requirements.lock` is generated from `pip freeze` and captures the exact installed tree
 3. Both are compatible with `pip` without lockfile tooling
 
