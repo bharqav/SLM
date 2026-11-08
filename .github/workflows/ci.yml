@@ -14,10 +14,10 @@ jobs:
         python-version: ["3.11", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -74,7 +74,7 @@ jobs:
         run: python -m pip_audit --requirement requirements.txt
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
           flags: unittests
@@ -82,7 +82,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload comparison artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: comparison-artifacts-py${{ matrix.python-version }}
           path: |
@@ -101,7 +101,7 @@ jobs:
         run: python scripts/generate_provenance.py --output provenance.json
 
       - name: Upload provenance manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: provenance-py${{ matrix.python-version }}
           path: provenance.json
@@ -112,15 +112,15 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # `load: true` puts the image in the local daemon so the smoke test can
       # run it. The build context is trimmed by .dockerignore.
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
