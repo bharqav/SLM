@@ -71,8 +71,8 @@ install: ## Install project in editable mode with dev deps
 install-all: ## Install project with all optional deps
 	pip install -e ".[all]"
 
-export-onnx: ## Export best_model.pt to ONNX with dynamic axes (requires onnx + torch)
-	python -m slm-training.export_onnx --checkpoint slm-training/best_model.pt --output slm-training/best_model.onnx --max-seq-len 256
+export-onnx: ## Export best_clean_model_v2.pt to ONNX with dynamic axes (requires onnx + torch)
+	python -m slm-training.export_onnx --checkpoint slm-training/best_clean_model_v2.pt --output slm-training/best_model.onnx --max-seq-len 256
 
 # --- slm-ft: QLoRA fine-tune of Qwen2.5-0.5B-Instruct -------------------------
 # These mirror slm-ft/README.md step for step. They need a CUDA GPU and the

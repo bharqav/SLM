@@ -664,6 +664,50 @@ class TestOpenAICompatEndpoints:
         assert data["object"] == "chat.completion"
         assert data["choices"][0]["message"]["role"] == "assistant"
 
+    def test_chat_prompt_appends_assistant_cue(self):
+        """A trailing user message must cue the model to answer."""
+        from slm_api import ChatMessage, format_messages_to_prompt
+
+        prompt = format_messages_to_prompt([ChatMessage(role="user", content="Hello")])
+        assert prompt == "User: Hello\nAssistant:"
+
+    def test_chat_prompt_keeps_trailing_assistant_turn(self):
+        from slm_api import ChatMessage, format_messages_to_prompt
+
+        prompt = format_messages_to_prompt(
+            [
+                ChatMessage(role="user", content="Hello"),
+                ChatMessage(role="assistant", content="Hi there"),
+            ]
+        )
+        assert prompt == "User: Hello\nAssistant: Hi there"
+
+    def test_chat_prompt_renders_system_first(self):
+        from slm_api import ChatMessage, format_messages_to_prompt
+
+        prompt = format_messages_to_prompt(
+            [
+                ChatMessage(role="system", content="Be concise."),
+                ChatMessage(role="user", content="Say hi"),
+            ]
+        )
+        assert prompt == "System: Be concise.\nUser: Say hi\nAssistant:"
+
+    def test_generate_reports_the_prompt_it_sent(self, client, slm_checkpoint):
+        response = client.post(
+            "/generate", json={"prompt": "What is 2+2?", "max_tokens": 4}
+        )
+        assert response.status_code == 200
+        assert response.json()["prompt_sent"] == "User: What is 2+2?\nAssistant:"
+
+    def test_generate_code_mode_sends_prompt_verbatim(self, client, slm_checkpoint):
+        response = client.post(
+            "/generate",
+            json={"prompt": "def f():", "max_tokens": 4, "mode": "code"},
+        )
+        assert response.status_code == 200
+        assert response.json()["prompt_sent"] == "def f():"
+
 
 class TestAuth:
     @pytest.fixture()

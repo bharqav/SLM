@@ -93,15 +93,124 @@ def repetition_ratio(text):
     return 1.0 - len(set(grams)) / len(grams)
 
 
+USER_PREFIX = "User: "
+# Turns are trained as "User: <text>\nAssistant: <answer>", and tiktoken merges
+# the space after "Assistant:" into the answer's first token (" Hi" is a single
+# token, not " " + "Hi").  The cue must therefore stop at the colon: a trailing
+# space would append a standalone space token that never occurs in training,
+# which scrambled the first-token distribution and made the model open with
+# fragments like "ive" and loop.  benchmarks/evaluate_empathy.py already ends the
+# cue at the colon.
+ASSISTANT_SUFFIX = "\nAssistant:"
+
+# Markers that begin a *following* turn.  A single response ends at the first
+# one, so these double as the strings generation should stop at: the corpus is
+# multi-turn and the model otherwise keeps writing the next turn, which is
+# discarded anyway but costs time and can exhaust max_new_tokens.
+TURN_MARKERS = ("\n" + USER_PREFIX, ASSISTANT_SUFFIX)
+
+_CODE_PREFIXES = (
+    "def ",
+    "class ",
+    "import ",
+    "from ",
+    "return ",
+    "if ",
+    "elif ",
+    "for ",
+    "while ",
+    "async ",
+    "await ",
+    "const ",
+    "let ",
+    "var ",
+    "function ",
+    "public ",
+    "private ",
+    "void ",
+    "int ",
+    "std::",
+    "SELECT ",
+    "INSERT ",
+    "UPDATE ",
+    "DELETE ",
+    "CREATE ",
+    "#include",
+    "# TODO",
+)
+
+
+def looks_like_code(text: str) -> bool:
+    """Cheap heuristic: is this prompt a code fragment rather than a question?"""
+    t = text.lstrip()
+    if any(t.startswith(h) for h in _CODE_PREFIXES):
+        return True
+    stripped = text.rstrip()
+    if stripped.endswith((":", "{", "(", "[")):
+        return True
+    return text.count("{") != text.count("}") or text.count("(") != text.count(")")
+
+
+def format_prompt(text: str, mode: str) -> str:
+    """Render a prompt in the format the model was trained on.
+
+    Dialogue and QA were trained as ``User: <text>\\nAssistant: <answer>``, while
+    code completion was trained on raw source. ``auto`` routes each prompt by
+    shape so the default behaviour needs no flag.
+
+    The assistant cue ends at the colon, with no trailing space: in the corpus
+    that space belongs to the answer's first token (see ``ASSISTANT_SUFFIX``).
+    """
+    if mode == "code":
+        return text
+    if mode == "chat":
+        return f"{USER_PREFIX}{text}{ASSISTANT_SUFFIX}"
+    return text if looks_like_code(text) else f"{USER_PREFIX}{text}{ASSISTANT_SUFFIX}"
+
+
+def truncate_at_next_turn(text: str) -> str:
+    """Cut a completion at the start of the following turn.
+
+    The dialogue corpus is multi-turn, so the model sometimes keeps writing after
+    its own answer - either the *user's* reply or a second assistant turn. A
+    single response should end there. Both markers are cut, whichever comes
+    first one. The result is trimmed as well, because the first generated token
+    carries the space the corpus format implies (" Hi" is one token).
+    """
+    cuts = [i for i in (text.find(m) for m in TURN_MARKERS) if i != -1]
+    return text[: min(cuts)].strip() if cuts else text.strip()
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--checkpoint", default="best_model.pt")
+    ap.add_argument("--checkpoint", default="best_clean_model_v2.pt")
     ap.add_argument("--prompt", default=None)
     ap.add_argument("--tokens", type=int, default=50)
-    ap.add_argument("--temperature", type=float, default=0.7)
-    ap.add_argument("--top-k", type=int, default=50)
+    ap.add_argument("--temperature", type=float, default=0.3)
+    ap.add_argument("--top-k", type=int, default=20)
+    ap.add_argument(
+        "--repetition-penalty",
+        type=float,
+        default=1.2,
+        help=(
+            "Penalise tokens that already appeared in the generation. 1.0 is "
+            "off; 1.2 breaks the loops this model falls into on open-ended "
+            "prompts and matches the API default."
+        ),
+    )
     ap.add_argument("--samples", type=int, default=1)
     ap.add_argument("--seed", type=int, default=1337)
+    ap.add_argument(
+        "--mode",
+        choices=["auto", "chat", "code"],
+        default="auto",
+        help=(
+            "How to format the prompt before generation. 'chat' wraps it as "
+            "'User: <text>\\nAssistant:' (the format the model was trained on "
+            "for dialogue and QA); 'code' sends it verbatim for code "
+            "completion; 'auto' picks per prompt from its shape."
+        ),
+    )
     ap.add_argument(
         "--quantize",
         choices=["int8", "int4", "gptq", "awq"],
@@ -150,22 +259,29 @@ def main():
                 warn(f"Refused prompt: {safety.reason}")
                 continue
 
-            ids = enc.encode_ordinary(prompt)
+            fed = format_prompt(prompt, args.mode)
+            ids = enc.encode_ordinary(fed)
             if not ids:
                 ids = [enc.eot_token]
             x = torch.tensor(ids, dtype=torch.long, device=device)[None, ...]
             t0 = time.time()
             try:
                 out = model.generate(
-                    x, args.tokens, temperature=args.temperature, top_k=args.top_k
+                    x,
+                    args.tokens,
+                    temperature=args.temperature,
+                    top_k=args.top_k,
+                    repetition_penalty=args.repetition_penalty,
+                    eos_token_id=enc.eot_token,
                 )
             except Exception as e:
                 warn(f"generation failed for {prompt!r}: {e}")
                 continue
             dt = time.time() - t0
             text = enc.decode(out[0].tolist())
-            completion = text[len(prompt) :]
+            completion = text[len(fed) :]
             completion = clean_dialogue_artifacts(completion)
+            completion = truncate_at_next_turn(completion)
             total_tokens += args.tokens
             total_time += dt
 
@@ -179,6 +295,7 @@ def main():
             results.append(
                 {
                     "prompt": prompt,
+                    "prompt_sent": fed,
                     "completion": completion,
                     "full": text,
                     "repetition_ratio": round(rep, 3),
@@ -188,6 +305,8 @@ def main():
             )
             print("\n" + "=" * 70)
             print(f"PROMPT: {prompt!r}")
+            if fed != prompt:
+                print(f"SENT:   {fed!r}")
             print("-" * 70)
             print(text)
             print("-" * 70)

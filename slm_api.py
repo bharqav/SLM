@@ -45,6 +45,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
 
 from guardrails import check_input, check_output, is_degenerate  # noqa: E402
+from inference import TURN_MARKERS, format_prompt, truncate_at_next_turn  # noqa: E402
 from model import GPT, GPTConfig  # noqa: E402
 from quantize import QuantizationInfo, get_available_methods, quantize_model  # noqa: E402
 from tiktoken import get_encoding  # noqa: E402
@@ -76,7 +77,7 @@ def _parse_rate_limit(value: str) -> str:
 _REQUEST_TIMEOUT = float(os.environ.get("REQUEST_TIMEOUT", "30"))
 _RATE_LIMIT = _parse_rate_limit(os.environ.get("RATE_LIMIT", "60/minute"))
 _CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
-_CHECKPOINT = os.environ.get("SLM_CHECKPOINT", "best_model.pt")
+_CHECKPOINT = os.environ.get("SLM_CHECKPOINT", "best_clean_model_v2.pt")
 _DEVICE_ENV = os.environ.get("MODEL_DEVICE", "").strip().lower()
 
 # ---------------------------------------------------------------------------
@@ -279,17 +280,25 @@ async def _metrics_and_logging(
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., description="Input prompt text", min_length=1)
     max_new_tokens: int = Field(default=50, ge=1, le=200)
-    temperature: float = Field(default=0.7, ge=0.1, le=2.0)
-    top_k: int = Field(default=50, ge=1, le=100)
+    temperature: float = Field(default=0.3, ge=0.1, le=2.0)
+    top_k: int = Field(default=20, ge=1, le=100)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
     repetition_penalty: float = Field(default=1.2, ge=1.0, le=2.0)
     eos_token_id: int | None = Field(
         default=50256, description="EOS token ID for early stopping"
     )
+    mode: Literal["auto", "chat", "code"] = Field(
+        default="auto",
+        description=(
+            "Prompt format: 'chat' wraps as 'User: <text>\\nAssistant:', "
+            "'code' sends the prompt verbatim, 'auto' picks by prompt shape"
+        ),
+    )
 
 
 class GenerateResponse(BaseModel):
     prompt: str
+    prompt_sent: str = ""
     completion: str
     completion_tokens: int
     prompt_tokens: int
@@ -414,7 +423,8 @@ async def generate(
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    tokens = enc.encode(req.prompt)
+    fed = format_prompt(req.prompt, req.mode)
+    tokens = enc.encode(fed)
     if not tokens:
         tokens = [enc.eot_token]
 
@@ -442,7 +452,8 @@ async def generate(
     dt = time.perf_counter() - t0
     n_new = max(out.numel() - len(tokens), 0)
     text = enc.decode(out[0].tolist())
-    completion = text[len(req.prompt) :] if text.startswith(req.prompt) else text
+    completion = text[len(fed) :] if text.startswith(fed) else text
+    completion = truncate_at_next_turn(completion)
     toks_per_sec = n_new / max(dt, 1e-6)
 
     out_safety = check_output(completion)
@@ -455,6 +466,7 @@ async def generate(
 
     return GenerateResponse(
         prompt=req.prompt,
+        prompt_sent=fed,
         completion=completion,
         completion_tokens=n_new,
         prompt_tokens=len(tokens),
@@ -548,7 +560,7 @@ class ChatMessage(BaseModel):
 class ChatCompletionRequest(BaseModel):
     model: str = "slm"
     messages: list[ChatMessage] = Field(..., min_length=1)
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
     max_tokens: int = Field(default=256, ge=1, le=1024)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     stream: bool = Field(default=False)
@@ -600,11 +612,18 @@ class CompletionRequest(BaseModel):
     model: str = "slm"
     prompt: str | list[str] = Field(..., description="Prompt text or list of prompts")
     max_tokens: int = Field(default=256, ge=1, le=1024)
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     n: int = Field(default=1, ge=1, le=10)
     stream: bool = Field(default=False)
     stop: list[str] | str | None = None
+    mode: Literal["auto", "chat", "code"] = Field(
+        default="auto",
+        description=(
+            "Prompt format: 'chat' wraps as 'User: <text>\\nAssistant:', "
+            "'code' sends the prompt verbatim, 'auto' picks by prompt shape"
+        ),
+    )
 
 
 class CompletionChoice(BaseModel):
@@ -650,7 +669,16 @@ class ModelListResponse(BaseModel):
 
 
 def format_messages_to_prompt(messages: list[ChatMessage]) -> str:
-    """Convert OpenAI-style messages into the SLM prompt format."""
+    """Convert OpenAI-style messages into the SLM prompt format.
+
+    Dialogue and QA were trained as ``User: <text>\\nAssistant: <answer>``, so a
+    trailing user message gets the ``\\nAssistant:`` cue that tells the model
+    to answer; a trailing assistant message is left alone so the model
+    continues it instead of answering itself.
+
+    The cue ends at the colon, with no trailing space: in the corpus that space
+    belongs to the answer's first token (see ``inference.ASSISTANT_SUFFIX``).
+    """
     parts: list[str] = []
     for msg in messages:
         if msg.role == "system":
@@ -661,7 +689,10 @@ def format_messages_to_prompt(messages: list[ChatMessage]) -> str:
             parts.append(f"Assistant: {msg.content}" if msg.content else "Assistant:")
         elif msg.role == "function":
             parts.append(f"Function: {msg.content}" if msg.content else "Function:")
-    return "\n".join(parts)
+    prompt = "\n".join(parts)
+    if messages and messages[-1].role == "user":
+        prompt += "\nAssistant:"
+    return prompt
 
 
 def apply_stop(text: str, stop: list[str] | str | None) -> str:
@@ -681,7 +712,7 @@ def encode_and_generate(
     max_new_tokens: int,
     temperature: float,
     top_p: float,
-    top_k: int = 50,
+    top_k: int = 20,
     repetition_penalty: float = 1.2,
     eos_token_id: int | None = 50256,
 ) -> tuple[str, int, int, float]:
@@ -706,6 +737,13 @@ def encode_and_generate(
                 top_p=top_p,
                 repetition_penalty=repetition_penalty,
                 eos_token_id=eos_token_id,
+                # The corpus is multi-turn, so the model keeps writing the next
+                # turn after its own answer.  Stopping here is output-neutral -
+                # truncate_at_next_turn() would discard that text anyway - but it
+                # removes the wasted decode and the tail where generation runs to
+                # max_new_tokens and blows past the request timeout.
+                stop_strings=TURN_MARKERS,
+                decode_fn=enc.decode,
             )
     except Exception as exc:
         raise HTTPException(
@@ -720,6 +758,7 @@ def encode_and_generate(
         if full_text.startswith(prompt_text)
         else full_text
     )
+    completion = truncate_at_next_turn(completion)
     return completion, len(tokens), n_new, dt
 
 
@@ -757,6 +796,8 @@ async def completions(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=safety.reason,
         )
+
+    prompt_text = format_prompt(prompt_text, req.mode)
 
     try:
         completion, prompt_tokens, n_new, dt = encode_and_generate(
@@ -808,6 +849,8 @@ async def completions_stream(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=safety.reason,
         )
+
+    prompt_text = format_prompt(prompt_text, req.mode)
 
     async def event_stream() -> AsyncGenerator[str, None]:
         try:

@@ -10,7 +10,7 @@ services:
       - ./slm-ft:/app/slm-ft
     command: python -m uvicorn slm_api:app --host 0.0.0.0 --port 8000
     environment:
-      - SLM_CHECKPOINT=slm-training/best_model.pt
+      - SLM_CHECKPOINT=slm-training/best_clean_model_v2.pt
       - MODEL_DEVICE=cpu
     deploy:
       resources:

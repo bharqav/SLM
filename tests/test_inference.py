@@ -20,7 +20,14 @@ sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))
 import inference  # noqa: E402
 import slmlog  # noqa: E402
 from guardrails import GuardrailResult  # noqa: E402
-from inference import get_encoder, load_model, repetition_ratio  # noqa: E402
+from inference import (  # noqa: E402
+    format_prompt,
+    get_encoder,
+    load_model,
+    looks_like_code,
+    repetition_ratio,
+    truncate_at_next_turn,
+)
 from model import GPT, GPTConfig  # noqa: E402
 from quantize import QuantizationInfo  # noqa: E402
 
@@ -138,6 +145,119 @@ class TestRepetitionRatio:
         assert repetition_ratio(text) == 0.0
 
 
+class TestFormatPrompt:
+    def test_chat_mode_wraps_in_role_markers(self):
+        assert format_prompt("What is the capital of Australia?", "chat") == (
+            "User: What is the capital of Australia?\nAssistant:"
+        )
+
+    def test_chat_cue_has_no_trailing_space(self):
+        """The corpus merges the space after 'Assistant:' into the answer's
+        first token, so a trailing space is an out-of-training context."""
+        assert format_prompt("Hello", "chat").endswith("\nAssistant:")
+        assert not format_prompt("Hello", "chat").endswith(" ")
+
+    def test_code_mode_sends_prompt_verbatim(self):
+        assert format_prompt("def preprocess(text):", "code") == "def preprocess(text):"
+
+    def test_auto_routes_code_prompts_verbatim(self):
+        assert format_prompt("def preprocess(text):", "auto") == "def preprocess(text):"
+        assert (
+            format_prompt("SELECT * FROM users WHERE", "auto")
+            == "SELECT * FROM users WHERE"
+        )
+
+    def test_auto_wraps_questions(self):
+        formatted = format_prompt("I have been feeling really down lately", "auto")
+        assert formatted == "User: I have been feeling really down lately\nAssistant:"
+
+    def test_chat_mode_overrides_code_shape(self):
+        assert format_prompt("def f():", "chat") == "User: def f():\nAssistant:"
+
+    def test_looks_like_code_detects_unbalanced_braces(self):
+        assert looks_like_code("return {") is True
+        assert looks_like_code("Explain why the sky is blue.") is False
+
+
+class TestTruncateAtNextTurn:
+    def test_cuts_the_following_user_turn(self):
+        text = "That sounds hard. What is going on?\nUser: I lost my job."
+        assert truncate_at_next_turn(text) == "That sounds hard. What is going on?"
+
+    def test_leaves_a_single_turn_untouched(self):
+        assert (
+            truncate_at_next_turn("I am sorry to hear that.")
+            == "I am sorry to hear that."
+        )
+
+    def test_trims_the_leading_space_the_corpus_implies(self):
+        assert (
+            truncate_at_next_turn(" The capital is Paris.") == "The capital is Paris."
+        )
+
+    def test_keeps_an_answer_that_mentions_the_word_user(self):
+        assert (
+            truncate_at_next_turn("Ask the user for details.")
+            == "Ask the user for details."
+        )
+
+    def test_cuts_a_second_assistant_turn(self):
+        text = (
+            "Here is one way to do it.\nAssistant: Alternatively, you could try this."
+        )
+        assert truncate_at_next_turn(text) == "Here is one way to do it."
+
+    def test_cuts_at_whatever_marker_comes_first(self):
+        text = "Answer.\nAssistant: more\nUser: next question"
+        assert truncate_at_next_turn(text) == "Answer."
+
+
+class TestGenerateStopStrings:
+    """`stop_strings` ends generation at a decoded marker instead of at the cap."""
+
+    @staticmethod
+    def _fixed_logits(idx, idx_cond=None):
+        # Every position predicts token 7, so the continuation decodes to "XXXX..."
+        logits = torch.zeros(idx.size(0), idx.size(1), 64)
+        logits[:, :, 7] = 100.0
+        return logits, None
+
+    def _model(self, monkeypatch):
+        torch.manual_seed(0)
+        model = GPT.from_config(_tiny_config())
+        model.eval()
+        monkeypatch.setattr(model, "forward", self._fixed_logits)
+        return model
+
+    def test_stop_strings_end_generation_early(self, monkeypatch):
+        model = self._model(monkeypatch)
+        x = torch.tensor([[1, 2, 3]])
+
+        with torch.no_grad():
+            out = model.generate(
+                x,
+                max_new_tokens=20,
+                stop_strings=["XXXX"],
+                decode_fn=lambda ids: "X" * len(ids),
+            )
+
+        assert out.shape[1] == x.shape[1] + 4
+
+    def test_without_stop_strings_generation_runs_to_the_cap(self, monkeypatch):
+        model = self._model(monkeypatch)
+        x = torch.tensor([[1, 2, 3]])
+
+        with torch.no_grad():
+            out = model.generate(x, max_new_tokens=20)
+
+        assert out.shape[1] == x.shape[1] + 20
+
+    def test_stop_strings_without_decode_fn_is_rejected(self, monkeypatch):
+        model = self._model(monkeypatch)
+        with pytest.raises(ValueError, match="decode_fn"):
+            model.generate(torch.tensor([[1]]), max_new_tokens=4, stop_strings=["X"])
+
+
 class TestMain:
     def _load_fake(self, model):
         return mock.patch.object(
@@ -158,6 +278,45 @@ class TestMain:
             assert inference.main() == 0
         assert model.calls == 1
         assert "PROMPT:" in capsys.readouterr().out
+
+    def test_repetition_penalty_default_is_passed_to_generate(self):
+        """The CLI must forward the repetition penalty, or the model loops."""
+        model = _FakeModel()
+        with (
+            self._load_fake(model),
+            mock.patch.object(inference, "get_encoder", return_value=_FakeEncoder()),
+            mock.patch.object(
+                model, "generate", return_value=torch.tensor([[1, 2, 3, 4]])
+            ) as gen,
+            mock.patch.object(
+                sys, "argv", ["inference.py", "--prompt", "def calculate_"]
+            ),
+        ):
+            assert inference.main() == 0
+        assert gen.call_args.kwargs["repetition_penalty"] == 1.2
+
+    def test_repetition_penalty_flag_overrides_default(self):
+        model = _FakeModel()
+        with (
+            self._load_fake(model),
+            mock.patch.object(inference, "get_encoder", return_value=_FakeEncoder()),
+            mock.patch.object(
+                model, "generate", return_value=torch.tensor([[1, 2, 3, 4]])
+            ) as gen,
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "inference.py",
+                    "--prompt",
+                    "def calculate_",
+                    "--repetition-penalty",
+                    "1.0",
+                ],
+            ),
+        ):
+            assert inference.main() == 0
+        assert gen.call_args.kwargs["repetition_penalty"] == 1.0
 
     def test_missing_checkpoint_returns_one(self, capsys):
         with (
@@ -224,4 +383,4 @@ class TestMain:
             assert inference.main() == 0
         content = samples.read_text(encoding="utf-8")
         assert "Inference samples" in content
-        assert "checkpoint: best_model.pt" in content
+        assert "checkpoint: best_clean_model_v2.pt" in content

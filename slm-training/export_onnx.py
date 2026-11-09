@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=PROJECT_ROOT / "slm-training" / "best_model.pt",
+        default=PROJECT_ROOT / "slm-training" / "best_clean_model_v2.pt",
         help="Path to the PyTorch checkpoint.",
     )
     parser.add_argument(

@@ -7,6 +7,7 @@ the output projection.
 """
 
 import math
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 
 import torch
@@ -217,9 +218,20 @@ class GPT(nn.Module):
         top_p=None,
         repetition_penalty=1.0,
         eos_token_id=None,
+        stop_strings: list[str] | None = None,
+        decode_fn: Callable[[list[int]], str] | None = None,
     ):
-        """Autoregressively sample `max_new_tokens` continuations of `idx`."""
+        """Autoregressively sample `max_new_tokens` continuations of `idx`.
+
+        `stop_strings` ends generation as soon as the decoded continuation
+        contains any of them; `decode_fn` maps a list of token IDs to text and is
+        required when `stop_strings` is given.  Both default to off, so callers
+        that do not need text-level stopping pay nothing for it.
+        """
         self.eval()
+        if stop_strings and decode_fn is None:
+            raise ValueError("decode_fn is required when stop_strings is given")
+        start_len = idx.size(1)
         finished = torch.zeros(idx.size(0), dtype=torch.bool, device=idx.device)
         for _ in range(max_new_tokens):
             idx_cond = (
@@ -277,4 +289,14 @@ class GPT(nn.Module):
                 break
 
             idx = torch.cat((idx, idx_next), dim=1)
+
+            if stop_strings and not finished.all():
+                for i in range(idx.size(0)):
+                    if finished[i]:
+                        continue
+                    continuation = decode_fn(idx[i, start_len:].tolist())
+                    if any(s in continuation for s in stop_strings):
+                        finished[i] = True
+                if finished.all():
+                    break
         return idx

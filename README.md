@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-327%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-350%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -72,12 +72,21 @@ The repo is **not** a claim that one model is a distilled or compressed version 
 │   ├── model.py                 — GPT architecture (~757M params, 24L/24H/1536D)
 │   ├── train.py                 — Training loop
 │   ├── inference.py             — Text generation
-│   ├── preprocess.py            — Data tokenization + split
-│   ├── empathy_train.bin        — Empathy training tokens (~2.1M)
-│   ├── empathy_val.bin          — Empathy validation tokens (~44.3K)
+│   ├── preprocess.py            — Code-corpus tokenization + split
+│   ├── preprocess_clean.py      — Role-marked dialogue+QA corpus builder
+│   ├── distill_qwen.py          — Distil Qwen2.5-0.5B answers into the corpus
+│   ├── empathy_train.bin        — Legacy empathy tokens, no role markers (~2.1M)
+│   ├── empathy_val.bin          — Legacy empathy validation tokens (~44.3K)
+│   ├── clean_train.bin          — Clean role-marked corpus (~5.9M, incl. 1M code)
+│   ├── clean_val.bin            — Clean validation split (~157K)
+│   ├── clean_stats.json         — Clean corpus statistics
+│   ├── qwen_distill.jsonl       — Qwen-distilled answers (20K Alpaca records)
 │   ├── best_model.pt            — Code checkpoint (step 500, val loss ~4.28)
 │   ├── best_empathy_model.pt    — Empathy checkpoint (step 500)
-│   ├── best_empathy_model_v2.pt — Latest empathy checkpoint (step 500, val loss 3.9733)
+│   ├── best_empathy_model_v2.pt — Legacy empathy checkpoint (step 500, val loss 3.9733)
+│   ├── best_clean_model.pt      — Continued-training checkpoint on the clean corpus
+│   ├── best_clean_model_v2.pt   — Default checkpoint (temp 0.3 / top_k 20)
+│   ├── checkpoints_757m/        — Archived 757M-parameter checkpoints
 │   ├── final_model.pt           — Final checkpoint
 │   ├── training_config.json     — Current training configuration
 │   ├── training_stats.json      — Training statistics
@@ -490,6 +499,85 @@ flowchart TB
 | Empathetic-dialogue corpus (empathy run) | Curated subset of dialogue data | ~25.9K conversations, ~2.15M tokens | Empathetic Dialogues |
 | Stage-2 steering set | Qwen policy steering | 30 dialogs + replay | Hand-written |
 
+#### Phase 3: Clean Role-Marked Corpus (Continued Training)
+
+The legacy empathy corpus had two structural defects that made the model's answers
+non-sequiturs:
+
+1. **No speaker markers.** Turns were joined with a bare `\n`, so the model never
+   learned which side of the conversation it was generating.
+2. **Consecutive same-role turns.** 2,511 runs of back-to-back user (or back-to-back
+   assistant) messages taught the model to continue a message with an unrelated one.
+
+`slm-training/preprocess_clean.py` rebuilds the corpus from the raw dialogue JSONL and
+the Alpaca instruction dataset:
+
+- Every dialogue turn is rendered as `User: <text>\nAssistant: <text>`, and consecutive
+  same-role turns are merged into one.
+- Alpaca instruction/response pairs are added in the same role format so the model can
+  answer general questions, not only offer support.
+- Answers longer than `--max-output-tokens` are dropped, which keeps replies to the point.
+- A 1M-token slice of the code corpus (`train.bin`) is appended verbatim, because code
+  completion is a *continuation* distribution rather than a dialogue. The model
+  distinguishes the two by prompt shape: a bare code prefix continues in code, a
+  `User:/Assistant:` prefix continues in dialogue.
+- The dialogue and Alpaca splits are disjoint, so validation is leak-free.
+
+| Corpus | Records | Tokens | Notes |
+|--------|---------|--------|-------|
+| `clean_train.bin` | 22,364 dialogues + 44,481 QA pairs + 1M code | ~5.93M | role-marked |
+| `clean_val.bin` | 434 dialogues + 1,789 QA pairs | ~157K | held out, leak-free |
+
+The 253M checkpoint is then continued on this corpus with weights-only initialisation:
+
+```bash
+python train.py \
+    --init-from best_empathy_model.pt \
+    --n-layer 16 --n-head 16 --n-embd 1024 --block-size 256 \
+    --train-bin clean_train.bin --val-bin clean_val.bin \
+    --batch-size 8 --grad-accum-steps 4 \
+    --learning-rate 6e-5 --min-lr 6e-6 --warmup-steps 150 \
+    --max-steps 2500 --dropout 0.1 \
+    --gradient-checkpointing --device cuda \
+    --best-path best_clean_model.pt
+```
+
+`--init-from` loads only the model weights (the optimizer state and step counter are
+reset), which is the right choice when the data distribution changes: resuming the old
+optimizer would carry stale momentum tuned for the legacy corpus.
+
+#### Phase 4: Qwen Distillation
+
+The clean corpus fixes *structure*, but the model still had to invent its own style.
+To get answers that read like Qwen's, the model is distilled from
+`Qwen/Qwen2.5-0.5B-Instruct` on the same Alpaca instructions:
+
+```bash
+# 1. Generate Qwen's answers (batched, deterministic at temperature 0.3)
+python distill_qwen.py \
+    --limit 20000 --batch-size 128 --max-new 256 \
+    --temperature 0.3 --out qwen_distill.jsonl
+
+# 2. Mix them into the corpus in the same role format
+python preprocess_clean.py \
+    --code-bin train.bin --code-tokens 1000000 \
+    --distill qwen_distill.jsonl --distill-val 1000
+
+# 3. Continue training from the clean checkpoint
+python train.py \
+    --init-from best_clean_model.pt \
+    --n-layer 16 --n-head 16 --n-embd 1024 --block-size 256 \
+    --train-bin clean_train.bin --val-bin clean_val.bin \
+    --learning-rate 4e-5 --max-steps 12000 \
+    --gradient-checkpointing --device cuda \
+    --best-path best_clean_model_v2.pt
+```
+
+`distill_qwen.py --start N` resumes a partial run without regenerating earlier
+records, and `--limit` caps the slice. The distilled records use the same
+`instruction`/`input`/`output` shape as Alpaca, so they are rendered identically by
+`preprocess_clean.py` and held out of validation by `--distill-val`.
+
 ### 2.8 Training Code Highlights
 
 **`slm-training/train.py`** key parameters:
@@ -522,7 +610,7 @@ model = GPT.from_config(cfg, use_gradient_checkpointing=True)
 - Val loss per eval interval
 - Perplexity on val set
 - Throughput (tokens/sec)
-- Saved checkpoints: best_model.pt, best_empathy_model.pt, best_empathy_model_v2.pt
+- Saved checkpoints: best_model.pt, best_empathy_model.pt, best_empathy_model_v2.pt, best_clean_model.pt, best_clean_model_v2.pt
 - Checkpoint rotation: keeps last 3 + best
 ```
 
@@ -554,8 +642,9 @@ text = enc.decode(out[0].tolist())
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
-| **temperature** | 1.0 | 0.1 - 2.0 | Higher = more random, Lower = more deterministic |
-| **top_k** | 50 | 1 - 100 | Limits sampling to top-k tokens |
+| **temperature** | 0.3 | 0.1 - 2.0 | Higher = more random, Lower = more deterministic |
+| **top_k** | 20 | 1 - 100 | Limits sampling to top-k tokens |
+| **repetition_penalty** | 1.2 | 1.0 - 2.0 | Penalises tokens already generated; 1.0 is off |
 | **max_new_tokens** | 50 | 1 - 200 | Max tokens to generate |
 | **eos_id** | None | token ID | Stop generation at EOS token |
 
@@ -583,13 +672,13 @@ cross-platform but return the unmodified model.
 
 ```bash
 # Quantize at inference time (INT8 on CUDA)
-python -m slm-training.inference --checkpoint best_model.pt --quantize int8
+python -m slm-training.inference --checkpoint best_clean_model_v2.pt --quantize int8
 
 # INT4 requires CUDA
-python -m slm-training.inference --checkpoint best_model.pt --quantize int4
+python -m slm-training.inference --checkpoint best_clean_model_v2.pt --quantize int4
 
 # GPTQ / AWQ stubs work anywhere
-python -m slm-training.inference --checkpoint best_model.pt --quantize gptq
+python -m slm-training.inference --checkpoint best_clean_model_v2.pt --quantize gptq
 ```
 
 **Python API:**
@@ -955,7 +1044,7 @@ model = GPT.from_config(cfg, use_gradient_checkpointing=True)
 - Val loss per eval interval
 - Perplexity on val set
 - Throughput (tokens/sec)
-- Saved checkpoints: best_model.pt, best_empathy_model.pt, best_empathy_model_v2.pt
+- Saved checkpoints: best_model.pt, best_empathy_model.pt, best_empathy_model_v2.pt, best_clean_model.pt, best_clean_model_v2.pt
 - Checkpoint rotation: keeps last 3 + best
 ```
 
@@ -1037,13 +1126,23 @@ import torch
 
 cfg = GPTConfig()
 model = GPT(cfg)
-state = torch.load("best_model.pt", map_location="cpu", weights_only=False)
+state = torch.load("best_clean_model.pt", map_location="cpu", weights_only=False)
 model.load_state_dict(state["model"])
 model.eval()
 
 from tiktoken import get_encoding
 
 enc = get_encoding("gpt2")
+
+# Dialogue and QA prompts are role-marked, exactly as in training. The cue ends
+# at the colon: tiktoken merges the space into the answer's first token, so a
+# trailing space would be a context the model never saw in training.
+tokens = enc.encode("User: What is the capital of Australia?\nAssistant:")
+x = torch.tensor([tokens], dtype=torch.long)
+out = model.generate(x, max_new_tokens=50, temperature=0.7, top_k=20)
+text = enc.decode(out[0].tolist())
+
+# Code prompts are sent verbatim -- the code corpus was trained raw.
 tokens = enc.encode("def preprocess(text):")
 x = torch.tensor([tokens], dtype=torch.long)
 out = model.generate(x, max_new_tokens=50, temperature=0.7, top_k=20)
@@ -1071,10 +1170,21 @@ text = tokenizer.decode(out[0], skip_special_tokens=True)
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
-| **temperature** | 1.0 | 0.1 - 2.0 | Higher = more random, Lower = more deterministic |
-| **top_k** | 50 | 1 - 100 | Limits sampling to top-k tokens |
+| **temperature** | 0.3 | 0.1 - 2.0 | Higher = more random, Lower = more deterministic |
+| **top_k** | 20 | 1 - 100 | Limits sampling to top-k tokens |
+| **repetition_penalty** | 1.2 | 1.0 - 2.0 | Penalises tokens already generated; 1.0 is off |
 | **max_new_tokens** | 50 | 1 - 200 | Max tokens to generate |
 | **eos_id** | None | token ID | Stop generation at EOS token |
+
+Two behaviours matter for clean answers:
+
+- **EOS is generated.** The model is trained on sequences that end with the EOS
+  token, so sampling stops there instead of running to `max_new_tokens`.
+- **The answer is cut at the next user turn.** Sampling is done from the full
+  context, and `truncate_at_next_turn` then cuts the text at the first `User:` or
+  `Assistant:` marker after the generated span. Without this the model keeps
+  writing after it has finished the reply, producing a second question or answer
+  that was never asked for.
 
 ### 8.4 ONNX Export
 
@@ -1092,13 +1202,13 @@ make export-onnx
 
 # Or directly
 python -m slm-training.export_onnx \
-  --checkpoint slm-training/best_model.pt \
+  --checkpoint slm-training/best_clean_model_v2.pt \
   --output slm-training/best_model.onnx \
   --max-seq-len 256
 
 # With TensorRT engine build (requires tensorrt package)
 python -m slm-training.export_onnx \
-  --checkpoint slm-training/best_model.pt \
+  --checkpoint slm-training/best_clean_model_v2.pt \
   --output slm-training/best_model.onnx \
   --trt
 ```
@@ -1123,7 +1233,7 @@ print(out[0].shape)  # (1, 1, 50257)
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `--checkpoint` | `slm-training/best_model.pt` | Path to the PyTorch checkpoint |
+| `--checkpoint` | `slm-training/best_clean_model_v2.pt` | Path to the PyTorch checkpoint |
 | `--output` | `slm-training/model.onnx` | Destination ONNX file |
 | `--max-seq-len` | `256` | Maximum sequence length for export validation |
 | `--trt` | off | Build TensorRT engine after export (optional) |
@@ -1250,7 +1360,7 @@ python benchmarks/evaluate_standard.py \
 | `--few-shot` | 0 | Number of few-shot examples |
 | `--batch-size` | 8 | Batch size for evaluation |
 | `--model` | slm-scratch | Model name or checkpoint path |
-| `--checkpoint` | best_model.pt | Local checkpoint path |
+| `--checkpoint` | best_clean_model_v2.pt | Local checkpoint path |
 | `--device` | cpu | Device (cpu/cuda) |
 | `--output` | benchmarks/standard_nlp_eval.json | Output JSON path |
 | `--limit` | None | Limit examples per task |
@@ -1490,7 +1600,7 @@ services:
       - ./logs:/app/logs
     environment:
       - API_KEY=${API_KEY:-change-me-to-a-real-key}
-      - SLM_CHECKPOINT=${SLM_CHECKPOINT:-slm-training/best_model.pt}
+      - SLM_CHECKPOINT=${SLM_CHECKPOINT:-slm-training/best_clean_model_v2.pt}
       - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - WORKERS=${WORKERS:-1}
@@ -1559,7 +1669,7 @@ docker compose -f docker-compose.prod.yml down
 make serve
 
 # Or with explicit environment variables
-SLM_CHECKPOINT=slm-training/best_model.pt API_KEY=my-key make serve
+SLM_CHECKPOINT=slm-training/best_clean_model_v2.pt API_KEY=my-key make serve
 ```
 
 ### 12.5 Prometheus Metrics
@@ -1579,7 +1689,7 @@ All runtime settings are read from the environment. Copy `.env.example` to `.env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `API_KEY` | `change-me-to-a-real-key` | Bearer token required on every endpoint (`Authorization: Bearer <key>`). When left at the default, auth is **disabled** (local dev only) - always set a real key before exposing the server. |
-| `SLM_CHECKPOINT` | `slm-training/best_model.pt` | Path to the checkpoint, relative to the project root. |
+| `SLM_CHECKPOINT` | `slm-training/best_clean_model_v2.pt` | Path to the checkpoint, relative to the project root. |
 | `MODEL_DEVICE` | auto | `cpu` or `cuda`. Defaults to CUDA when available, else CPU. |
 | `LOG_LEVEL` | `INFO` | Python log level for the structured JSON log stream. |
 | `RATE_LIMIT` | `60/minute` | Per-client-IP request limit on generation endpoints, in `limits` syntax (`60/minute`, `1000/hour`, `10/second`). Exceeding it returns HTTP 429. Set to an empty string to disable. |
@@ -1642,6 +1752,7 @@ All generation paths enforce local guardrails before and after inference:
 ```json
 {
   "prompt": "...",
+  "prompt_sent": "...",
   "completion": "...",
   "completion_tokens": 35,
   "prompt_tokens": 4,
@@ -1661,18 +1772,26 @@ curl -X POST "http://localhost:8000/generate" \
   -d '{
     "prompt": "def preprocess(text):",
     "max_new_tokens": 50,
-    "temperature": 0.7,
+    "temperature": 0.3,
     "top_k": 20,
     "top_p": 0.9,
     "repetition_penalty": 1.2,
-    "eos_token_id": 50256
+    "eos_token_id": 50256,
+    "mode": "auto"
   }'
 ```
+
+**Prompt formatting:** `mode` controls how the prompt is rendered before
+generation. `"chat"` (the model's trained dialogue format) wraps the text as
+`User: <text>\nAssistant:`; `"code"` sends it verbatim for code completion;
+`"auto"` (default) picks per prompt from its shape. The exact string the model
+received is echoed back as `prompt_sent`.
 
 **Response:**
 ```json
 {
   "prompt": "def preprocess(text):",
+  "prompt_sent": "def preprocess(text):",
   "completion": "\n    Preprocess text using the provided model and the processor.\n\n    Args:\n        text (`str`):\n            Text to preprocess.\n\n        Returns:",
   "completion_tokens": 35,
   "prompt_tokens": 4,
@@ -1756,7 +1875,7 @@ curl -X POST "http://localhost:8000/v1/completions" \
     "model": "slm",
     "prompt": "def preprocess(text):",
     "max_tokens": 50,
-    "temperature": 0.7,
+    "temperature": 0.3,
     "top_p": 1.0
   }'
 ```
@@ -1786,6 +1905,11 @@ curl -X POST "http://localhost:8000/v1/completions" \
 
 Supports full message history, system prompts, and function/tool calling.
 
+Messages are rendered into the role-marked format the model was trained on:
+a trailing `user` message gets the `Assistant:` cue appended, while a trailing
+`assistant` message is left alone so the model continues it instead of
+answering itself.
+
 ```bash
 curl -X POST "http://localhost:8000/v1/chat/completions" \
   -H "Content-Type: application/json" \
@@ -1796,7 +1920,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
       {"role": "user", "content": "Write a Python function to reverse a string."}
     ],
     "max_tokens": 128,
-    "temperature": 0.7,
+    "temperature": 0.3,
     "top_p": 1.0
   }'
 ```
@@ -1946,17 +2070,17 @@ for chunk in client.chat.completions.create(
 
 ### 14.1 Test Suite
 
-The suite defines 320 test functions across 17 files. Parametrization expands
-these to 329 collected cases; 327 run by default because the 2 slow tests in
+The suite defines 343 test functions across 17 files. Parametrization expands
+these to 352 collected cases; 350 run by default because the 2 slow tests in
 `test_model_and_api.py` are deselected by `addopts` (`-m 'not slow'`):
 
 ```bash
-python -m pytest tests/ -v        # 327 passed
+python -m pytest tests/ -v        # 350 passed
 python -m pytest tests/ -m slow -v
 make test                         # full suite + 80% coverage gate (see 14.2)
 ```
 
-On a clean checkout the 31 artifact-dependent tests skip (296 passed, 31
+On a clean checkout the 33 artifact-dependent tests skip (317 passed, 33
 skipped) and coverage lands at 70%, below the gate. That is expected: the
 gate needs the trained weights, which are gitignored (see 14.2).
 
@@ -1964,7 +2088,7 @@ gate needs the trained weights, which are gitignored (see 14.2).
 
 | Test file | Tests | What it validates |
 |---|---|---|
-| `test_model_and_api.py` | 57 | Model loading, generation, FastAPI endpoints, rate limiting, CORS, metrics, request timeouts |
+| `test_model_and_api.py` | 62 | Model loading, generation, FastAPI endpoints, rate limiting, CORS, metrics, request timeouts |
 | `test_quantization.py` | 42 | INT8/INT4 CPU dispatch, GPTQ/AWQ stubs, bitsandbytes import paths |
 | `test_safety.py` | 41 | Prompt injection, jailbreak attempts, toxicity filters, output filtering |
 | `test_rag.py` | 22 | TF-IDF indexing, document chunking, cosine similarity retrieval |
@@ -1976,7 +2100,7 @@ gate needs the trained weights, which are gitignored (see 14.2).
 | `test_train_qlora.py` | 11 | QLoRA stage-1 script: arg defaults, chat assembly, assistant-only loss masking, collation |
 | `test_build_steering.py` | 10 | Stage-2 steering mix: dialog shape, mix arithmetic, turn assembly |
 | `test_merge_adapter.py` | 3 | Adapter merge to fp16: merge-and-unload, save path, safe serialization |
-| `test_inference.py` | 14 | Inference entry points |
+| `test_inference.py` | 32 | Inference entry points, role-marked prompt routing, turn-boundary truncation and stopping |
 | `test_export.py` | 13 | ONNX export and tokenizer metadata |
 | `test_tokenizer_utils.py` | 7 | Tokenizer save/load metadata |
 | `test_download_scripts.py` | 6 | Download scripts, experiment tracker, provenance |
@@ -2230,8 +2354,9 @@ pip install tiktoken
 cd slm-training
 python train.py
 
-# 4. Generate samples
+# 4. Generate samples (auto routes chat vs code by prompt shape)
 python inference.py --prompt "I feel down" --tokens 50
+python inference.py --prompt "def preprocess(text):" --tokens 50 --mode code
 
 # 5. Run live comparison
 cd ..

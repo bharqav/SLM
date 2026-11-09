@@ -16,8 +16,8 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 
 - Fine-tuning core is now covered by tests: `tests/test_train_qlora.py` (11),
   `tests/test_build_steering.py` (10) and `tests/test_merge_adapter.py` (3).
-  The suite now defines 320 test functions across 17 files, which expand to 329
-  collected cases (327 run by default).
+  The suite now defines 343 test functions across 17 files, which expand to 352
+  collected cases (350 run by default).
 - `tests/test_prepare_data.py` (16 cases) covering the Empathetic-SFT corpus
   build: cleaning, trimming, leak-free splitting and EmpatheticDialogues
   parsing.
@@ -46,6 +46,42 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 - FastAPI inference server (`slm_api.py`) with Bearer auth, rate limiting,
   CORS and request timeouts.
 - Seeded generation (`--seed 1337`) for reproducible outputs.
+- `slm-training/preprocess_clean.py`, which rebuilds the training corpus as
+  role-marked `User:/Assistant:` dialogues, merges consecutive same-role turns,
+  mixes in Alpaca instruction/response pairs for general QA, and can append a
+  slice of the code corpus for code completion. Emits `clean_train.bin`,
+  `clean_val.bin` and `clean_stats.json`.
+- `slm-training/distill_qwen.py`, which generates Qwen2.5-0.5B-Instruct answers
+  for the Alpaca instructions in batches and writes them as JSONL.
+  `preprocess_clean.py --distill <file>` mixes those records into the corpus in
+  the same role format and holds `--distill-val` of them out of validation. The
+  teacher's style, not just its structure, is what makes the answers read like
+  Qwen's.
+- `truncate_at_next_turn` in `slm-training/inference.py`, used by both the
+  inference CLI and `slm_api.py`: the generated text is cut at the first `User:` or
+  `Assistant:` marker after the answer, so the model cannot keep writing a second
+  question or answer after it has finished the reply.
+- `--init-from` in `slm-training/train.py` for weights-only continued training:
+  it loads model weights (tolerating a `torch.compile` `_orig_mod.` prefix and
+  non-matching buffers) while resetting the optimizer and step counter.
+- Prompt-format routing for inference and the API. `slm-training/inference.py`
+  gained `--mode {auto,chat,code}` and a `format_prompt()` helper that wraps
+  dialogue prompts as `User: <text>\nAssistant:` and leaves code prompts
+  verbatim; `/generate` and `/v1/completions` accept the same `mode` field, and
+  the `/generate` response echoes the exact string sent as `prompt_sent`.
+  `format_messages_to_prompt` in `slm_api.py` now appends the `\nAssistant:`
+  cue when the last message is a user turn, so `/v1/chat/completions` answers
+  instead of continuing its own reply.
+- Tests for prompt-format routing: `TestFormatPrompt` (6 cases) in
+  `tests/test_inference.py` and five endpoint cases in
+  `tests/test_model_and_api.py` covering the `Assistant:` cue, `mode` handling
+  and the `prompt_sent` echo.
+- `GPT.generate` in `slm-training/model.py` accepts `stop_strings` and
+  `decode_fn`: when both are given, a sequence ends as soon as its decoded
+  continuation contains any stop string. Both default to off, so callers that
+  do not need text-level stopping are unaffected. `slm_api.py` passes
+  `inference.TURN_MARKERS` as the stop strings, so generation ends at the next
+  turn boundary instead of running to `max_new_tokens`.
 
 ### Changed
 
@@ -64,6 +100,13 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
   `TestReadme::test_test_suite_counts_match`.
 - Benchmark numbers now reflect the expanded prompt set (20 prompts: 10
   empathetic, 10 code/technical).
+- README section 8.1 now points at `best_clean_model.pt` and demonstrates the
+  role-marked prompt format for both dialogue and code completion.
+- Inference and API defaults were lowered to `temperature 0.3` / `top_k 20`
+  (from `1.0` / `50`) so answers stay on-topic, generation now stops on the EOS
+  token the model was trained with, and the default checkpoint moved to
+  `slm-training/best_clean_model_v2.pt` in `inference.py`, `slm_api.py` and
+  `docker-compose.yml`.
 - `constraints.txt` was refreshed to the versions the project actually runs on
   (torch 2.15.0, transformers 5.22.2, huggingface-hub 2.4.0, tiktoken 0.14.0,
   numpy 2.5.4, peft 0.21.2, datasets 5.1.0, pytest 9.2.0, ruff 0.17.4,
@@ -72,6 +115,41 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 
 ### Fixed
 
+- Answers opened with fragments like "ive" and drifted into loops and
+  non-sequiturs instead of answering the question. The weights were not at
+  fault: the corpus renders a turn as `User: <text>\nAssistant: <answer>`, and
+  tiktoken merges the space after `Assistant:` into the answer's first token
+  (`" Hi"` is one token, not `" "` plus `"Hi"`). `ASSISTANT_SUFFIX` in
+  `slm-training/inference.py` and the cue in `slm_api.py` both ended with a
+  trailing space, so the model was asked to continue from a standalone space
+  token that never occurs in training. Measured on `best_clean_model_v3.pt`,
+  that context flattened the first-token distribution (`" -"` 0.116,
+  `" capital"` 0.094, `"ive"` 0.211); ending the cue at the colon makes it
+  sharp (`"The"` 0.990, `"To"` 0.450, `"A"` 0.957). The cue is now
+  `\nAssistant:` everywhere, and `truncate_at_next_turn` trims the leading space
+  the first generated token carries.
+- The 253M checkpoint answered every prompt with a non-sequitur, regardless of
+  the question asked. Root cause: the legacy `empathy_train.bin` had no speaker
+  markers and contained 2,511 runs of consecutive same-role turns, so the model
+  learned to continue a message with an unrelated one; it also held no
+  instruction data, so general questions were entirely out of distribution.
+  The model is now continued on the clean role-marked corpus
+  (`clean_train.bin`) built by `preprocess_clean.py`, and the best checkpoint is
+  `best_clean_model.pt`. Inference must wrap non-code prompts as
+  `User: <text>\nAssistant:` to match the training format (the trailing-space
+  correction is recorded under Fixed below).
+- Generation ran past the end of the answer: the model kept writing after it had
+  finished the reply, emitting a second question or a follow-up answer that was
+  never asked for, and it never stopped on its own because no EOS token was set.
+  Generation now stops at the EOS token the corpus ends each record with, and
+  `truncate_at_next_turn` cuts the text at the next `User:`/`Assistant:` marker as
+  a second line of defence.
+- The model loops on open-ended prompts, repeating a phrase or clause instead of
+  finishing the answer ("Exercise regularly" three times, "because of the way ...
+  because of the way ..."). `slm_api.py` already passed `repetition_penalty` but
+  the inference CLI never did, so `inference.py` gained `--repetition-penalty`
+  (default 1.2) and both `generate()` call sites forward it. 1.2 is enough to
+  break the loop without changing the answer; 1.0 keeps the old behaviour.
 - Five Mermaid diagrams in `README.md` did not parse, so GitHub rendered them
   as raw code instead of figures: unquoted node labels containing parentheses,
   unterminated parallelogram shapes (`[/health GET]`), and

@@ -65,6 +65,36 @@ def _record_experiment(name: str, config: str, metrics: list[str]) -> None:
         pass
 
 
+def _load_init_weights(model, path):
+    """Load model WEIGHTS ONLY from a checkpoint file (no optimizer, no step).
+
+    Used by ``--init-from`` so an existing model can be continued on a new or
+    cleaned corpus.  The run starts from step 0 with a fresh optimizer, which is
+    what you want when the data distribution changes.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"--init-from checkpoint not found: {path}")
+    # The checkpoint is a local, trusted artifact written by this trainer.
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    state = payload.get("model") if isinstance(payload, dict) else payload
+    if not isinstance(state, dict):
+        raise ValueError(f"{path} does not contain model weights")
+    # torch.compile wraps state-dict keys in "_orig_mod."; strip it so the
+    # weights load into an eager model.
+    state = {
+        (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
+        for k, v in state.items()
+    }
+    missing, unexpected = model.load_state_dict(state, strict=False)
+    if missing:
+        log(f"init-from: {len(missing)} tensors missing (kept random init): {missing[:5]}")
+    if unexpected:
+        log(f"init-from: {len(unexpected)} unexpected tensors ignored: {unexpected[:5]}")
+    step = payload.get("step") if isinstance(payload, dict) else None
+    origin = f"step {step}" if step is not None else "no step recorded"
+    log(f"Initialized weights from {os.path.basename(path)} ({origin}); optimizer reset")
+
+
 def _handle_sigint(signum, frame):
     if _INTERRUPTED["flag"]:
         raise KeyboardInterrupt
@@ -124,6 +154,16 @@ def build_args():
         "C++ compiler, unavailable on stock Windows)",
     )
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument(
+        "--init-from",
+        default=None,
+        help=(
+            "Initialize model WEIGHTS ONLY from a checkpoint file. The optimizer and step "
+            "counter are reset, so the run starts fresh on the current corpus while keeping "
+            "the language ability already learned. Use this to continue an existing model on "
+            "a cleaned corpus without retraining from scratch."
+        ),
+    )
     ap.add_argument("--benchmark", type=int, default=0)
     ap.add_argument(
         "--data-dir",
@@ -377,6 +417,9 @@ def main():
     model = GPT.from_config(
         cfg, use_gradient_checkpointing=args.gradient_checkpointing
     ).to(device)
+
+    if args.init_from:
+        _load_init_weights(model, args.init_from)
 
     import contextlib
 
@@ -748,7 +791,9 @@ def main():
             )
         )
         if best_val < float("inf"):
-            log(f"Best val loss {best_val:.4f} @ step {best_val_step} -> best_model.pt")
+            log(
+                f"Best val loss {best_val:.4f} @ step {best_val_step} -> {args.best_path or BEST_PATH}"
+            )
     return 0
 
 
