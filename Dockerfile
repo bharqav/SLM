@@ -24,7 +24,13 @@ WORKDIR /app
 
 # Copy requirements first for layer caching
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Every container config in this repo runs on CPU (MODEL_DEVICE=cpu), so install the
+# CPU-only torch wheel first. The default Linux wheel bundles the CUDA runtime (several
+# GB), which bloats the image and exhausts disk on CI runners. Requirements are then
+# satisfied by the torch that is already installed.
+RUN pip install --upgrade pip && \
+    pip install torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install -r requirements.txt
 
 # Copy project files. The .dockerignore keeps training data, adapters and
 # checkpoints out; mount them at run time instead (see docker-compose.yml).

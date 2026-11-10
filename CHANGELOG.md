@@ -117,6 +117,9 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 
 ### Fixed
 
+- The Docker image now installs the CPU-only torch wheel. The default Linux wheel bundles the
+  CUDA runtime, which filled the CI runner's disk (`No space left on device`) and made the
+  `docker-build` job fail intermittently on pushes to `main`.
 - Mermaid diagrams in the README (two Qwen architecture graphs) failed to render on GitHub
   because a node label with parentheses was unquoted; the label is now quoted.
 - Stale claims removed: `SLM_ARCHITECTURE.md` described a 12-layer 768-wide model while stating

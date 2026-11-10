@@ -1659,7 +1659,11 @@ RUN useradd -m -u 1000 slm && \
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# CPU-only torch: every container config here runs with MODEL_DEVICE=cpu, and the
+# default Linux wheel bundles the CUDA runtime (several GB).
+RUN pip install --upgrade pip && \
+    pip install torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install -r requirements.txt
 COPY --chown=slm:slm . .
 
 USER slm
