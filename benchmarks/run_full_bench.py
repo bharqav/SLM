@@ -225,10 +225,6 @@ qwen_fb = forward_bench(qwen_model, "Qwen2.5-0.5B")
 # ---------------------------------------------------------------------------
 # Build markdown report
 # ---------------------------------------------------------------------------
-speedup_fwd = round(
-    qwen_fb["throughput_passes_s"] / max(slm_fb["throughput_passes_s"], 0.1), 0
-)
-
 report = f"""# SLM Project — Comprehensive Benchmark Report
 
 **Generated:** {time.strftime("%Y-%m-%d")}
@@ -240,14 +236,21 @@ now hold real merged weights rather than the placeholder stubs shipped in earlie
 revisions, and current merged-versus-base measurements are in `README.md` sections
 9.1 and 9.2.
 
+**Superseded timings:** the throughput and latency figures in this file come from a single
+CPU run on 2026-10-28 with a smaller SLM (10L/10H/640D) and are not representative. The
+current, reproducible measurements are `benchmarks/forward_matrix.json` and
+`benchmarks/generation_matrix.json` (README sections 9.1 and 9.2). In those, the 253M SLM
+is faster than base Qwen2.5-0.5B-Instruct, and the 757M SLM is slower, because it has no
+KV cache.
+
 ## 1. Forward-Pass Throughput Benchmarks
 
 | Configuration | Parameters | 20 Forward Passes (s) | Throughput (passes/s) | Avg Latency (ms/pass) |
 |---------------|------------|----------------------|----------------------|----------------------|
 | **SLM from-scratch (10L, 10H, 640D)** | **{slm_params:,}** | **{slm_fb["time_s"]}** | **{slm_fb["throughput_passes_s"]}** | **{slm_fb["avg_latency_ms"]}** |
-| **Qwen2.5-0.5B-Instruct (24L, 16H, 1536D)** | **{qwen_params:,}** | **{qwen_fb["time_s"]}** | **{qwen_fb["throughput_passes_s"]}** | **{qwen_fb["avg_latency_ms"]}** |
+| **Qwen2.5-0.5B-Instruct (24L, 14H, 896D)** | **{qwen_params:,}** | **{qwen_fb["time_s"]}** | **{qwen_fb["throughput_passes_s"]}** | **{qwen_fb["avg_latency_ms"]}** |
 
-**Key insight:** The {slm_params / 1e6:.1f}M SLM is ~{int(speedup_fwd)}x faster per forward pass than the {qwen_params / 1e6:.0f}M Qwen base on CPU, because CPU inference is memory-bandwidth bound and the SLM has a smaller activation footprint.
+**Note:** this is a single run; see the superseded-timings note above for the current measurements.
 
 ## 2. Text Generation Benchmarks (Same {len(PROMPTS)} Prompts)
 
@@ -285,7 +288,7 @@ revisions, and current merged-versus-base measurements are in `README.md` sectio
 
 - **SLM:** Generates plausible-looking docstrings and code completions because it was trained on code prose. Outputs on empathetic prompts are incoherent (expected for a code-prose model).
 - **Qwen2.5-0.5B:** Generates coherent English and structured code. On empathetic prompts it gives supportive replies. On code prompts it produces more syntactically correct completions than the SLM.
-- **Speed:** SLM is faster on CPU due to smaller size. On GPU, Qwen would likely be faster in absolute tok/s due to better optimization, but the SLM's small size still gives it low latency.
+- **Speed:** measured on CPU in this run only; the SLM has no KV cache, so its advantage shrinks or reverses as it grows (see the superseded-timings note above).
 
 ## 6. Reproducibility
 

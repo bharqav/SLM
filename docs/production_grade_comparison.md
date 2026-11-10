@@ -48,18 +48,20 @@
 
 ### 2.2 Project-Measured Metrics (CPU-only)
 
-| Metric | This SLM (757M) | Qwen2.5-0.5B (proxy) |
-|--------|-----------------|----------------------|
-| Forward-pass throughput | 38.5 passes/s | 0.7 passes/s |
-| Generation throughput | 42.9 tok/s | 2.4 tok/s |
-| Avg prompt latency | 0.93 s | 16.81 s |
-| Peak memory (fp32) | ~311 MB | ~11.8 GB |
-| Empathy eval throughput | 12.2 tok/s | 5.6 tok/s |
+| Metric | This SLM (757M) | Qwen2.5-0.5B-Instruct (base) |
+|--------|-----------------|------------------------------|
+| Forward-pass throughput (seq 64) | 3.3 passes/s | 3.7 passes/s |
+| Generation throughput | 4.69 tok/s | 9.92 tok/s |
+| Mean prompt latency (40 new tokens) | 5.38 s | 4.03 s |
+| RSS after load (fp32) | 6,078 MB | 3,631 MB |
+
+Source: `benchmarks/forward_matrix.json` and `benchmarks/generation_matrix.json`
+(CPU, float32, 8 threads, seed 1337).
 
 ### 2.3 What These Numbers Mean
 
 - **The 757M SLM has no recorded MMLU / HellaSwag / HumanEval / MATH / GSM8K / ARC score.** It has not been evaluated on standard academic benchmarks. The only quality signal in the repo is an empathy eval showing that, even after fine-tuning on empathetic dialogue, the model produces repetitive/fragmented outputs compared to Qwen2.5-0.5B.
-- **The speed advantage is real and large.** On CPU, the 757M SLM is ~55x faster per forward pass and ~18x faster at generation than the 0.5B Qwen base. This is because CPU inference is memory-bandwidth bound, and the SLM has a much smaller activation footprint.
+- **There is no speed advantage at 757M.** In the current matrix benchmarks (README sections 9.1 and 9.2, CPU, float32), the 757M SLM is 1.1x slower per forward pass (3.3 vs 3.7 passes/s) and 2.1x slower at generation (4.69 vs 9.92 tok/s) than the 0.5B Qwen base, because it has no KV cache. Only the 253M model is faster (12.54 vs 9.92 tok/s).
 - **The quality gap is also real.** A 757M model trained from scratch on ~120M code tokens plus ~2.5M empathy tokens does not compete with 3B–9B models trained on trillions of tokens. The repo's own empathy eval notes: "produces repetitive, fragmented outputs."
 
 ---

@@ -117,6 +117,13 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 
 ### Fixed
 
+- Mermaid diagrams in the README (two Qwen architecture graphs) failed to render on GitHub
+  because a node label with parentheses was unquoted; the label is now quoted.
+- Stale claims removed: `SLM_ARCHITECTURE.md` described a 12-layer 768-wide model while stating
+  757M parameters; `MODEL_CARD.md` and `docs/production_grade_comparison.md` claimed the 757M SLM
+  was ~50x faster than Qwen2.5-0.5B and better at empathy. The current benchmarks show the 757M
+  model is slower, and quality is worse. `benchmarks/benchmark_report.md` and its generator
+  mislabelled Qwen as 24L/16H/1536D and carried the same speed claim.
 - Answers opened with fragments like "ive" and drifted into loops and
   non-sequiturs instead of answering the question. The weights were not at
   fault: the corpus renders a turn as `User: <text>\nAssistant: <answer>`, and

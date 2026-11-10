@@ -723,7 +723,7 @@ graph TB
 
     subgraph Blocks[24 Transformer Blocks]
         direction TB
-        QB[Transformer Block<br/>RMSNorm + GQA Attention<br/>14 heads × 64 dim (2 KV heads)<br/>+ MLP 896→4864→896]
+        QB["Transformer Block<br/>RMSNorm + GQA Attention<br/>14 heads × 64 dim (2 KV heads)<br/>+ MLP 896→4864→896"]
     end
 
     Base --> Blocks
@@ -995,7 +995,7 @@ graph TB
 
     subgraph Blocks[24 Transformer Blocks]
         direction TB
-        QB[Transformer Block<br/>RMSNorm + GQA Attention<br/>14 heads × 64 dim (2 KV heads)<br/>+ MLP 896→4864→896]
+        QB["Transformer Block<br/>RMSNorm + GQA Attention<br/>14 heads × 64 dim (2 KV heads)<br/>+ MLP 896→4864→896"]
     end
 
     subgraph LoRA[QLoRA Adapter]
