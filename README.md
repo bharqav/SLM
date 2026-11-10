@@ -849,17 +849,17 @@ Run started 2026-10-31 09:18:42; validation every 200 steps.
 
 | Model | Params | Load | RSS after load | KV cache | Tokens | Time | tok/s |
 |-------|--------|------|----------------|----------|--------|------|-------|
-| SLM 24L (`best_empathy_model_v2.pt`) | 757.5M | 8.30 s | 6,079 MB | no | 126 | 27.89 s | 4.52 |
-| SLM 16L (`final_model.pt`) | 253.3M | 3.33 s | 2,924 MB | no | 144 | 11.28 s | 12.76 |
-| Qwen2.5-0.5B-Instruct (base) | 494.0M | 3.33 s | 3,635 MB | yes | 200 | 18.95 s | 10.56 |
-| Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`) | 494.0M | 1.48 s | 5,616 MB | yes | 200 | 21.19 s | 9.44 |
+| SLM 24L (`best_empathy_model_v2.pt`) | 757.5M | 9.15 s | 6,078 MB | no | 126 | 26.89 s | 4.69 |
+| SLM 16L (`final_model.pt`) | 253.3M | 3.22 s | 2,907 MB | no | 144 | 11.49 s | 12.54 |
+| Qwen2.5-0.5B-Instruct (base) | 494.0M | 3.47 s | 3,631 MB | yes | 200 | 20.17 s | 9.92 |
+| Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`) | 494.0M | 0.99 s | 3,923 MB | yes | 200 | 18.83 s | 10.62 |
 
-Per-prompt throughput is flat within each model (SLM 16L: 12.33–13.30 tok/s; Qwen base: 10.47–10.63 tok/s; merged fine-tune: 8.75–9.74 tok/s), as expected for a decode-bound workload. Qwen emitted the full 40 tokens on every prompt, while both SLMs stopped early on some, so their total token counts are lower.
+Per-prompt throughput is flat within each model (SLM 16L: 12.06–12.95 tok/s; Qwen base: 9.08–10.54 tok/s; merged fine-tune: 10.58–10.69 tok/s), as expected for a decode-bound workload. Qwen emitted the full 40 tokens on every prompt, while both SLMs stopped early on some, so their total token counts are lower.
 
 **Summary:**
-- **SLM 16L** is 1.21x faster than base Qwen2.5-0.5B-Instruct in generation (12.76 vs 10.56 tok/s) on CPU.
-- **SLM 24L** is 2.34x slower than base Qwen (4.52 vs 10.56 tok/s). It has no KV cache, so it re-encodes the entire context on every token; Qwen caches keys and values.
-- **Merged QLoRA fine-tune** runs at 9.44 tok/s, 11% below the base model it was built from. That gap is within this host's run-to-run spread (an earlier run of the same script measured base 11.26 vs merged 10.57, only 6% apart): the merged artifact has the same architecture, parameter count, and KV-cache path as the base, so its per-token cost should be identical. Treat it as noise, not a fine-tuning cost.
+- **SLM 16L** is 1.26x faster than base Qwen2.5-0.5B-Instruct in generation (12.54 vs 9.92 tok/s) on CPU.
+- **SLM 24L** is 2.11x slower than base Qwen (4.69 vs 9.92 tok/s). It has no KV cache, so it re-encodes the entire context on every token; Qwen caches keys and values.
+- **Merged QLoRA fine-tune** runs at 10.62 tok/s against the base's 9.92 — a 7% edge in this run, but the direction has reversed across runs of the same script (−11% and −6% in earlier runs). The merged artifact has the same architecture, parameter count, and KV-cache path as the base, so its per-token cost is identical. Treat the merged-vs-base gap as unmeasured rather than real.
 - **Forward pass** tells the same story from the other direction: 16L 9.1 passes/s vs Qwen 3.7 (2.5x faster), 24L 3.3 vs 3.7 (1.1x slower), merged 3.5 vs base 3.7 (6% apart, within noise). See §9.1.
 
 **Key insight:** The 24L model is slower than Qwen2.5-0.5B-Instruct at generation, not faster. Its value is architectural independence — a from-scratch SLM trained on the project's own corpus with no external dependency. When raw speed matters, the 16L model is the faster option. Verbatim completions are in `benchmarks/generation_matrix.json`.
@@ -1340,12 +1340,12 @@ CPU, float32, 8 threads, 5 prompts, `max_new_tokens=40`, temperature 0.7, top_k 
 
 | Model | Params | Load | RSS after load | KV cache | Tokens | Total Time (s) | Mean Throughput (tok/s) | Mean Prompt Latency (s) |
 |-------|--------|------|----------------|----------|--------|----------------|------------------------|------------------------|
-| SLM 24L (`best_empathy_model_v2.pt`) | 757.5M | 8.30 s | 6,079 MB | no | 126 | 27.89 | 4.52 | 5.578 |
-| SLM 16L (`final_model.pt`) | 253.3M | 3.33 s | 2,924 MB | no | 144 | 11.28 | 12.76 | 2.256 |
-| Qwen2.5-0.5B-Instruct (base) | 494.0M | 3.33 s | 3,635 MB | yes | 200 | 18.95 | 10.56 | 3.789 |
-| Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`) | 494.0M | 1.48 s | 5,616 MB | yes | 200 | 21.19 | 9.44 | 4.237 |
+| SLM 24L (`best_empathy_model_v2.pt`) | 757.5M | 9.15 s | 6,078 MB | no | 126 | 26.89 | 4.69 | 5.378 |
+| SLM 16L (`final_model.pt`) | 253.3M | 3.22 s | 2,907 MB | no | 144 | 11.49 | 12.54 | 2.297 |
+| Qwen2.5-0.5B-Instruct (base) | 494.0M | 3.47 s | 3,631 MB | yes | 200 | 20.17 | 9.92 | 4.034 |
+| Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`) | 494.0M | 0.99 s | 3,923 MB | yes | 200 | 18.83 | 10.62 | 3.766 |
 
-**Key insight:** The 16L SLM is 1.21x faster than base Qwen2.5-0.5B-Instruct at generation (12.76 vs 10.56 tok/s). The 24L SLM is 2.34x slower (4.52 vs 10.56) because it has no KV cache — it re-encodes the entire context on every generated token, while Qwen caches keys and values. The merged fine-tune trails its own base by 11% (9.44 vs 10.56 tok/s) at identical parameter count and KV-cache behaviour. Same shapes and same FLOPs, so the two should cost the same per token; that gap is this host's run-to-run spread, not a fine-tuning cost — an earlier run of the same script had base Qwen at 11.26 tok/s and merged at 10.57 (6% apart). Treat the merged-vs-base gap as unmeasured rather than real. Per-prompt throughput is flat within each model (SLM 16L: 12.33–13.30; Qwen base: 10.47–10.63; merged: 8.75–9.74 tok/s), which is what a decode-bound workload should look like. Qwen emitted the full 40 tokens on every prompt; both SLMs stopped early on some, so their token totals are lower.
+**Key insight:** The 16L SLM is 1.26x faster than base Qwen2.5-0.5B-Instruct at generation (12.54 vs 9.92 tok/s). The 24L SLM is 2.11x slower (4.69 vs 9.92) because it has no KV cache — it re-encodes the entire context on every generated token, while Qwen caches keys and values. The merged fine-tune measured 10.62 tok/s against its base's 9.92 — a 7% edge, but that direction has reversed across runs of the same script (−11% and −6% earlier). The two earlier runs measured the merged row with the base model still resident in the same process, which is a plausible contributor to its slowdown; the corrected run puts the two within 7%. Same shapes and same FLOPs, so the two should cost the same per token; treat the merged-vs-base gap as unmeasured rather than real. Per-prompt throughput is flat within each model (SLM 16L: 12.06–12.95; Qwen base: 9.08–10.54; merged: 10.58–10.69 tok/s), which is what a decode-bound workload should look like. Qwen emitted the full 40 tokens on every prompt; both SLMs stopped early on some, so their token totals are lower.
 
 ### 9.3 Held-Out Test Split Evaluation
 
@@ -1363,17 +1363,17 @@ Verbatim per-prompt results from `benchmarks/generation_matrix.json` (CPU, float
 
 | Model | Tokens | Latency (s) | tok/s | Completion (first 150 chars) |
 |-------|--------|-------------|-------|------------------------------|
-| SLM 24L | 40 | 8.352 | 4.79 | ".\ni am sorry to hear that, but i hope you get through it soon, and i know it will be a very stressful situation for you.\nthank you. I really appreciat" |
-| SLM 16L | 18 | 1.318 | 13.66 | ".\nThat is good to hear! I hope everything goes well for you." |
-| Qwen2.5-0.5B | 40 | 3.506 | 11.41 | ", and I've decided to start a journal. I'm not sure where to begin or what topics to write about.\nJournaling can be an effective way of coping with st" |
+| SLM 24L | 40 | 8.668 | 4.61 | ".\ni am sorry to hear that, but i hope you get through it soon, and i know it will be a very stressful situation for you.\nthank you. I really appreciat" |
+| SLM 16L | 18 | 1.448 | 12.43 | ".\nThat is good to hear! I hope everything goes well for you." |
+| Qwen2.5-0.5B | 40 | 4.270 | 9.37 | ", and I've decided to start a journal. I'm not sure where to begin or what topics to write about.\nJournaling can be an effective way of coping with st" |
 
 #### Prompt: "def preprocess(text):"
 
 | Model | Tokens | Latency (s) | tok/s | Completion (first 150 chars) |
 |-------|--------|-------------|-------|------------------------------|
-| SLM 24L | 6 | 1.261 | 4.76 | "You have an appointment?" |
-| SLM 16L | 18 | 1.314 | 13.70 | "\"\"\"This function is an async function rather than a simple type.\"\"\"" |
-| Qwen2.5-0.5B | 40 | 3.542 | 11.29 | "# Remove all punctuation\n    import string, re\n    \n    for char in text:\n        if not (char.isalpha() or char.isdigit()):\n            text = text.r" |
+| SLM 24L | 6 | 1.252 | 4.79 | "You have an appointment?" |
+| SLM 16L | 18 | 1.389 | 12.95 | "\"\"\"This function is an async function rather than a simple type.\"\"\"" |
+| Qwen2.5-0.5B | 40 | 4.404 | 9.08 | "# Remove all punctuation\n    import string, re\n    \n    for char in text:\n        if not (char.isalpha() or char.isdigit()):\n            text = text.r" |
 
 Both SLM completions on the code prompt are off-topic — see §9.6.
 
@@ -1383,12 +1383,14 @@ CPU, float32, measured after loading the model and before generation. Artifact: 
 
 | Model | Params | Load Latency (s) | RSS after load |
 |-------|--------|-----------------|----------------|
-| SLM 24L (`best_empathy_model_v2.pt`) | 757.5M | 8.30 | 6,079 MB |
-| SLM 16L (`final_model.pt`) | 253.3M | 3.33 | 2,924 MB |
-| Qwen2.5-0.5B-Instruct (base) | 494.0M | 3.33 | 3,635 MB |
-| Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`) | 494.0M | 1.48 | 5,616 MB |
+| SLM 24L (`best_empathy_model_v2.pt`) | 757.5M | 9.15 | 6,078 MB |
+| SLM 16L (`final_model.pt`) | 253.3M | 3.22 | 2,907 MB |
+| Qwen2.5-0.5B-Instruct (base) | 494.0M | 3.47 | 3,631 MB |
+| Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`) | 494.0M | 0.99 | 3,923 MB |
 
-The 24L SLM costs the most: 2.4 GB more resident than base Qwen, because its 757M parameters are held in float32. Load latency tracks weight size (3.03 GB for the 24L vs 1.98 GB for base Qwen). The merged artifact loads faster than the base because it is a single local fp16 safetensors file read directly, whereas the base goes through the Hub loader; its higher RSS reflects the float32 upcast the CPU harness performs.
+The 24L SLM costs the most: 2.4 GB more resident than base Qwen, because its 757M parameters are held in float32. Load latency tracks weight size (3.03 GB for the 24L vs 1.98 GB for base Qwen). The merged artifact loads faster than the base because it is a single local fp16 safetensors file read directly, whereas the base goes through the Hub loader. Its RSS lands within 8% of the base's (3,923 vs 3,631 MB), which is what two float32 copies of the same 494M parameters should cost.
+
+**Provenance note:** an earlier revision of this table reported 5,616 MB for the merged row. That figure double-counted the base Qwen model, which the benchmark harness left resident in the same process while loading the merged artifact, so both rows carried the base's 1.98 GB. The harness now frees the base model before loading the merged one; the corrected figure is 3,923 MB.
 
 ### 9.6 Quality Observations
 
@@ -1398,7 +1400,7 @@ Measured from the completions in `benchmarks/generation_matrix.json` (5 prompts,
 - **SLM 16L (clean corpus):** On the empathetic prompt it is on-topic and brief ("That is good to hear! I hope everything goes well for you."). On code prompts it produces prose or fragments rather than code: `SELECT * FROM users WHERE` → "`your_name = '<h1.2>'`;...", `async function fetchUserData(` → "data) -> data.\n[1, 2, 3, 4]".
 - **Qwen2.5-0.5B-Instruct (base):** Coherent and on-topic on every prompt, including syntactically correct code completions for all four code prompts.
 - **Qwen2.5-0.5B-Instruct + QLoRA stage-2 (`merged_fp16`):** Same behaviour as the base on all five prompts — coherent prose on the empathetic prompt, syntactically valid code on the four code prompts. The fine-tune did not degrade the code behaviour the LoRA stages were not trained on, which is the main regression risk of a narrow SFT corpus. Whether it actually improves empathetic behaviour needs the behavioural gate the repo does not yet automate (§8).
-- **Speed:** 16L is 1.21x faster than base Qwen at generation; 24L is 2.34x slower; the merged fine-tune trails its base by 11% (§9.2), a gap within run-to-run noise on this host.
+- **Speed:** 16L is 1.26x faster than base Qwen at generation; 24L is 2.11x slower; the merged fine-tune is indistinguishable from its base (§9.2) — the measured gap has run from −11% to +7% across runs of the same script.
 
 **Bottom line:** Neither from-scratch SLM matches Qwen's output quality on these prompts. The 16L model is the faster of the two and is reasonable for short empathetic replies; the 24L model is slower and more narrow. The project's quality-oriented path is the QLoRA fine-tune over Qwen2.5-0.5B-Instruct (§6), whose merged fp16 artifact is what the matrix benchmarks load.
 

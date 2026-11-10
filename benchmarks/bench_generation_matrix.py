@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gc
 import inspect
 import json
 import sys
@@ -416,6 +417,11 @@ def main() -> int:
         f"kv_cache={rows[-1]['uses_kv_cache']}",
         flush=True,
     )
+    # Free the base model before loading the merged one: rss_after_load_mb is
+    # read from the live process, so a resident base model gets counted twice
+    # in the merged row (base weights + merged weights on top).
+    del qwen_model, qwen_tok
+    gc.collect()
 
     merged_row_skipped = None
     if args.skip_merged:
