@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-10T09:41:03+0530",
+  "script": "benchmarks/bench_generation_matrix.py",
+  "harness": {
+    "device": "cpu",
+    "dtype": "float32",
+    "max_new_tokens": 40,
+    "temperature": 0.7,
+    "top_k": 20,
+    "top_p": 0.9,
+    "repetition_penalty": 1.2,
+    "seed": 1337,
+    "cleaned": true,
+    "prompts": [
+      "def preprocess(text):",
+      "I have been feeling really down lately",
+      "class ChatMessage:",
+      "async function fetchUserData(",
+      "SELECT * FROM users WHERE"
+    ],
+    "merged_row_skipped": null,
+    "torch": "2.15.0+cpu",
+    "python": "3.14.9",
+    "platform": "win32",
+    "cpu_count": 16,
+    "torch_num_threads": 8
+  },
+  "rows": [
+    {
+      "name": "SLM 24L (best_empathy_model_v2.pt)",
+      "kind": "slm-scratch",
+      "checkpoint": "slm-training/best_empathy_model_v2.pt",
+      "checkpoint_step": 1000,
+      "checkpoint_best_val_loss": 3.9259250164031982,
+      "model_config": {
+        "vocab_size": 50257,
+        "block_size": 256,
+        "n_layer": 24,
+        "n_head": 24,
+        "n_embd": 1536,
+        "dropout": 0.1,
+        "bias": true
+      },
+      "params": 757547520,
+      "weight_bytes": 3030190080,
+      "load_latency_s": 8.303,
+      "rss_after_load_mb": 6078.8,
+      "uses_kv_cache": false,
+      "total_tokens": 126,
+      "total_time_s": 27.889,
+      "mean_tokens_per_second": 4.52,
+      "mean_prompt_latency_s": 5.578,
+      "results": [
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 6,
+          "latency_s": 1.3307,
+          "tokens_per_second": 4.51,
+          "completion": "You have an appointment?"
+        },
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 40,
+          "latency_s": 8.7838,
+          "tokens_per_second": 4.55,
+          "completion": ".\ni am sorry to hear that, but i hope you get through it soon, and i know it will be a very stressful situation for you.\nthank you. I really appreciate it."
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 0,
+          "latency_s": 0.1402,
+          "tokens_per_second": 0.0,
+          "completion": ""
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 40,
+          "latency_s": 8.7913,
+          "tokens_per_second": 4.55,
+          "completion": "s\nThat is so cool! I have been on the middle of that show.  What did you do?\nI was just trying to get my own life over.  I really want to"
+        },
+        {
+          "prompt": "SELECT * FROM users WHERE",
+          "prompt_tokens": 5,
+          "completion_tokens": 40,
+          "latency_s": 8.8431,
+          "tokens_per_second": 4.52,
+          "completion": "!\nI know, but I've heard about it for a while.  It's not that big deal though - it was so annoying!\nYeah it is just the best thing you have to"
+        }
+      ]
+    },
+    {
+      "name": "SLM 16L (final_model.pt)",
+      "kind": "slm-scratch",
+      "checkpoint": "slm-training/final_model.pt",
+      "checkpoint_step": 4000,
+      "checkpoint_best_val_loss": 2.919698715209961,
+      "model_config": {
+        "vocab_size": 50257,
+        "block_size": 256,
+        "n_layer": 16,
+        "n_head": 16,
+        "n_embd": 1024,
+        "dropout": 0.1,
+        "bias": true
+      },
+      "params": 253266944,
+      "weight_bytes": 1013067776,
+      "load_latency_s": 3.329,
+      "rss_after_load_mb": 2924.2,
+      "uses_kv_cache": false,
+      "total_tokens": 144,
+      "total_time_s": 11.281,
+      "mean_tokens_per_second": 12.76,
+      "mean_prompt_latency_s": 2.256,
+      "results": [
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 6,
+          "completion_tokens": 18,
+          "latency_s": 1.3557,
+          "tokens_per_second": 13.28,
+          "completion": "\"\"\"This function is an async function rather than a simple type.\"\"\""
+        },
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 18,
+          "latency_s": 1.3536,
+          "tokens_per_second": 13.3,
+          "completion": ".\nThat is good to hear! I hope everything goes well for you."
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 40,
+          "latency_s": 3.1992,
+          "tokens_per_second": 12.5,
+          "completion": "An example of a chatbot for customer service could be about a restaurant delivery app. This technology would allow customers to easily find restaurants, choose "
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 7,
+          "completion_tokens": 40,
+          "latency_s": 3.2433,
+          "tokens_per_second": 12.33,
+          "completion": "data) -> data.\n[1, 2, 3, 4] \nTo determine if a given string contains only the number of characters in it. The provided example is for each"
+        },
+        {
+          "prompt": "SELECT * FROM users WHERE",
+          "prompt_tokens": 5,
+          "completion_tokens": 28,
+          "latency_s": 2.1293,
+          "tokens_per_second": 13.15,
+          "completion": "`your_name = '<h1.2>'`;\n  return <input type=\"email\" />;\n}"
+        }
+      ]
+    },
+    {
+      "name": "Qwen2.5-0.5B-Instruct",
+      "kind": "qwen",
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_config": {
+        "num_hidden_layers": 24,
+        "num_attention_heads": 14,
+        "num_key_value_heads": 2,
+        "hidden_size": 896,
+        "intermediate_size": 4864,
+        "vocab_size": 151936,
+        "tie_word_embeddings": true
+      },
+      "params": 494032768,
+      "weight_bytes": 1976131072,
+      "load_latency_s": 3.325,
+      "rss_after_load_mb": 3634.8,
+      "uses_kv_cache": true,
+      "total_tokens": 200,
+      "total_time_s": 18.947,
+      "mean_tokens_per_second": 10.56,
+      "mean_prompt_latency_s": 3.789,
+      "results": [
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 4,
+          "completion_tokens": 40,
+          "latency_s": 3.8012,
+          "tokens_per_second": 10.52,
+          "completion": "# Remove all punctuation\n    import string, re\n    \n    for char in text:\n        if not (char.isalpha() or char.isdigit()):\n            text = text.replace(cha"
+        },
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 40,
+          "latency_s": 3.7637,
+          "tokens_per_second": 10.63,
+          "completion": ", and I've decided to start a journal. I'm not sure where to begin or what topics to write about.\nJournaling can be an effective way of coping with stress and a"
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 40,
+          "latency_s": 3.7979,
+          "tokens_per_second": 10.53,
+          "completion": "def __init__(self, message):\n        self.message = message\n        self.user_id = None\n        \ndef get_user_from_message(message):\n    \n    # Split the messag"
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 5,
+          "completion_tokens": 40,
+          "latency_s": 3.8221,
+          "tokens_per_second": 10.47,
+          "completion": "accessToken) {\n    const url = `https://api.github.com/user?access_token=${accessToken}`;\n    \n    try{\n        const response = await fetch(url);\n        if (!"
+        },
+        {
+          "prompt": "SELECT * FROM users WHERE",
+          "prompt_tokens": 5,
+          "completion_tokens": 40,
+          "latency_s": 3.7624,
+          "tokens_per_second": 10.63,
+          "completion": "username = 'user1' LIMIT 5\n# SELECT id, name, email FROM users WHERE username = 'user1'\nSELECT * FROM customers WHERE customer_id IN (SELECT custid FROM orders"
+        }
+      ]
+    },
+    {
+      "name": "Qwen2.5-0.5B-Instruct + QLoRA stage-2 (merged_fp16)",
+      "kind": "qwen-ft",
+      "model_id": "C:\\SubD\\Transfer\\Projects\\SLM\\slm-ft\\merged_fp16",
+      "load_source": "slm-ft/merged_fp16",
+      "proxy_for": null,
+      "merged_from": "slm-ft/adapter_stage2",
+      "adapter": {
+        "path": "slm-ft/adapter_stage2",
+        "r": 8,
+        "lora_alpha": 8,
+        "target_modules": [
+          "v_proj",
+          "q_proj"
+        ],
+        "peft_type": "LORA",
+        "trainable_scalars": 540672
+      },
+      "model_config": {
+        "num_hidden_layers": 24,
+        "num_attention_heads": 14,
+        "num_key_value_heads": 2,
+        "hidden_size": 896,
+        "intermediate_size": 4864,
+        "vocab_size": 151936,
+        "tie_word_embeddings": true,
+        "torch_dtype": null
+      },
+      "params": 494032768,
+      "weight_bytes": 988065536,
+      "weight_dtype": "float16",
+      "load_dtype": "float32",
+      "load_latency_s": 1.48,
+      "rss_after_load_mb": 5616.5,
+      "uses_kv_cache": true,
+      "total_tokens": 200,
+      "total_time_s": 21.187,
+      "mean_tokens_per_second": 9.44,
+      "mean_prompt_latency_s": 4.237,
+      "results": [
+        {
+          "prompt": "def preprocess(text):",
+          "prompt_tokens": 4,
+          "completion_tokens": 40,
+          "latency_s": 4.5714,
+          "tokens_per_second": 8.75,
+          "completion": "# Remove all white spaces\n    text = ' '.join([word for word in text if not word.isspace()])\n    \n    return [int(i) for i in re.findall(r'\\"
+        },
+        {
+          "prompt": "I have been feeling really down lately",
+          "prompt_tokens": 7,
+          "completion_tokens": 40,
+          "latency_s": 4.2074,
+          "tokens_per_second": 9.51,
+          "completion": ", and I feel like a failure. How do I change my outlook on life?\nIt's important to recognize when you're having negative thoughts or feelings about your situati"
+        },
+        {
+          "prompt": "class ChatMessage:",
+          "prompt_tokens": 4,
+          "completion_tokens": 40,
+          "latency_s": 4.1592,
+          "tokens_per_second": 9.62,
+          "completion": "def __init__(self, message):\n    self.message = message\n    if isinstance(message, str): \n      self.type = 'text'\n    elif isinstance(message, dict) and list"
+        },
+        {
+          "prompt": "async function fetchUserData(",
+          "prompt_tokens": 5,
+          "completion_tokens": 40,
+          "latency_s": 4.1051,
+          "tokens_per_second": 9.74,
+          "completion": "accessToken) {\n    const url = `https://api.github.com/user?access_token=${accessToken}`;\n    \n    try{\n        const response = await fetch(url);\n        if(re"
+        },
+        {
+          "prompt": "SELECT * FROM users WHERE",
+          "prompt_tokens": 5,
+          "completion_tokens": 40,
+          "latency_s": 4.1436,
+          "tokens_per_second": 9.65,
+          "completion": "username = 'user1' LIMIT 5\nselect * from customers where id in ( select customer_id from orders where order_date between '2018-04-03' and"
+        }
+      ]
+    }
+  ]
+}

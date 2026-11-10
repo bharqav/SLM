@@ -10,11 +10,16 @@ Usage:
 
 LoRA config defaults to r=16 / alpha=32 over attention + MLP projections; override
 with --lora-r, --lora-alpha and --target-modules. The committed adapters were
-trained with different settings (stage-1 r=8/alpha=8 on q_proj,v_proj; stage-2
-r=16/alpha=16 on q_proj,k_proj,v_proj,o_proj), so pass the matching flags to
-reproduce them.
+trained with different settings (stage-1 r=8/alpha=8 on q_proj,v_proj; the
+stage-2 adapter_config.json in git HEAD says r=16/alpha=16 on
+q_proj,k_proj,v_proj,o_proj, but the stage-2 run actually executed with
+--init-adapter slm-ft/adapter, and that path ignores the CLI LoRA flags in
+favour of the loaded adapter's config — so the trained stage-2 weights are also
+rank-8 over q_proj,v_proj). Pass the matching flags to reproduce a run from
+scratch; pass --init-adapter to continue from a previous adapter.
 
-Artifacts: <out>/adapter_model.safetensors + train_log.json (loss curve).
+Artifacts: <out>/adapter_model.safetensors + adapter_config.json + train_log.json
+(loss curve and resolved hyperparameters).
 Merge to fp16 later via merge_adapter.py if you deploy full weights.
 """
 

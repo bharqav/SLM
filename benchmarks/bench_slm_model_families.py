@@ -17,6 +17,18 @@ def utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def count_slm_params(model: Any) -> str:
+    """Parameter count of a loaded from-scratch GPT model.
+
+    The model ties ``lm_head.weight`` to ``transformer.wte.weight``
+    (model.py line 130), so ``parameters()`` already counts the shared
+    tensor once. Verified against the checkpoint state_dict dedup:
+    253.3M (16L/1024D), 757.5M (24L/1536D), 123.8M (12L/768D).
+    """
+    total = sum(p.numel() for p in model.parameters())
+    return f"{total / 1e6:.0f}M"
+
+
 def now_ms() -> float:
     return time.perf_counter() * 1000.0
 
@@ -91,7 +103,7 @@ def load_slm_tier(checkpoint: str = "best_model.pt") -> dict[str, Any]:
         "step": ck.get("step"),
         "best_val_loss": ck.get("best_val_loss"),
         "device": device,
-        "params_estimate": "757M",
+        "params_estimate": count_slm_params(model),
         "tokenizer": "tiktoken gpt2",
         "peak_device_memory_bytes": peak_mem_bytes,
         "seed_used": seed,
@@ -182,11 +194,35 @@ def bench_slm_decode(
 QWEN_DIR = PROJECT_ROOT / "slm-ft" / "merged_fp16"
 
 
+def _load_qwen_model(model_name: str, device: str) -> tuple[Any, Any]:
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=False)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        dtype=torch.float16 if device == "cuda" else torch.float32,
+        device_map="auto" if device == "cuda" else "cpu",
+        trust_remote_code=False,
+    )
+    model.eval()
+    return tokenizer, model
+
+
 def load_qwen_tier() -> dict[str, Any]:
+    """Load the Qwen tier, preferring the merged QLoRA artifact.
+
+    ``slm-ft/merged_fp16`` is produced by ``slm-ft/merge_adapter.py`` from
+    ``slm-ft/adapter_stage2``. When it is missing or still a placeholder stub
+    (the 346-byte JSON written before a real merge), the loader falls back to
+    base ``Qwen/Qwen2.5-0.5B-Instruct`` and records that fallback explicitly
+    (``load_source`` / ``proxy_for``). Without those fields a report would
+    silently present the base model as the fine-tuned adapter.
+    """
     t0 = now_ms()
     try:
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: F401
     except ImportError as exc:
         return {
             "name": "qwen-qlora",
@@ -197,24 +233,39 @@ def load_qwen_tier() -> dict[str, Any]:
         }
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+    base_name = "Qwen/Qwen2.5-0.5B-Instruct"
+    merged = QWEN_DIR / "model.safetensors"
+    model_name = base_name
+    load_source = "base_hf"
+    proxy_for: str | None = None
+    if merged.exists() and merged.stat().st_size > 1_000_000:
+        model_name = str(QWEN_DIR)
+        load_source = "merged_fp16"
+
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=False)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            dtype=torch.float16 if device == "cuda" else torch.float32,
-            device_map="auto" if device == "cuda" else "cpu",
-            trust_remote_code=False,
-        )
-        model.eval()
+        tokenizer, model = _load_qwen_model(model_name, device)
     except Exception as exc:  # noqa: BLE001
-        return {
-            "name": "qwen-qlora",
-            "load_success": False,
-            "load_latency_ms": round(now_ms() - t0, 1),
-            "error": repr(exc),
-            "samples": [],
-        }
+        if load_source != "merged_fp16":
+            return {
+                "name": "qwen-qlora",
+                "load_success": False,
+                "load_latency_ms": round(now_ms() - t0, 1),
+                "error": repr(exc),
+                "samples": [],
+            }
+        proxy_for = str(QWEN_DIR)
+        load_source = "base_hf"
+        model_name = base_name
+        try:
+            tokenizer, model = _load_qwen_model(model_name, device)
+        except Exception as exc2:  # noqa: BLE001
+            return {
+                "name": "qwen-qlora",
+                "load_success": False,
+                "load_latency_ms": round(now_ms() - t0, 1),
+                "error": f"merged_fp16: {exc!r}; base fallback: {exc2!r}",
+                "samples": [],
+            }
 
     peak_mem_bytes = 0
     if device == "cuda":
@@ -228,13 +279,62 @@ def load_qwen_tier() -> dict[str, Any]:
         "load_success": True,
         "load_latency_ms": round(now_ms() - t0, 1),
         "checkpoint": model_name,
+        "load_source": load_source,
+        "proxy_for": proxy_for,
         "device": device,
-        "params_estimate": "0.5B base",
+        "params_estimate": count_slm_params(model),
+        "adapter": (
+            {
+                "merged_from": str(QWEN_DIR),
+                "source_adapter": "slm-ft/adapter_stage2",
+                "trainable_scalars": _adapter_trainable_scalars(),
+                "config": _adapter_config_summary(),
+            }
+            if load_source == "merged_fp16"
+            else None
+        ),
         "tokenizer": "Qwen2.5 tokenizer",
         "peak_device_memory_bytes": peak_mem_bytes,
         "model_ref": model,
         "tokenizer_ref": tokenizer,
-        "generation_config": {},
+        "generation_config": _read_generation_config(),
+    }
+
+
+def _adapter_trainable_scalars() -> int | None:
+    """Scalar count of the stage-2 LoRA adapter weights on disk."""
+    path = PROJECT_ROOT / "slm-ft" / "adapter_stage2" / "adapter_model.safetensors"
+    if not path.exists():
+        return None
+    try:
+        from safetensors import safe_open
+
+        total = 0
+        with safe_open(str(path), framework="pt", device="cpu") as handle:
+            for key in handle.keys():
+                total += int(handle.get_tensor(key).numel())
+        return total
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _adapter_config_summary() -> dict[str, Any]:
+    """Rank/alpha/targets recorded in the stage-2 adapter config."""
+    import json
+
+    path = PROJECT_ROOT / "slm-ft" / "adapter_stage2" / "adapter_config.json"
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    return {
+        "r": raw.get("r"),
+        "lora_alpha": raw.get("lora_alpha"),
+        "lora_dropout": raw.get("lora_dropout"),
+        "target_modules": raw.get("target_modules"),
+        "peft_type": raw.get("peft_type"),
     }
 
 
@@ -417,7 +517,7 @@ def load_slm_pt_only(checkpoint: str = "best_model.pt") -> dict[str, Any]:
         "step": ck.get("step"),
         "best_val_loss": ck.get("best_val_loss"),
         "device": device,
-        "params_estimate": "757M",
+        "params_estimate": count_slm_params(model),
         "tokenizer": "tiktoken gpt2",
         "peak_device_memory_bytes": peak_mem_bytes,
         "model_ref": model,
