@@ -55,7 +55,7 @@
       "load_latency_ms": 4894.2,
       "tokenizer": "Qwen2Tokenizer (qwen2.5)",
       "params": 494032768,
-      "note": "Base model used as proxy for merged_fp16 placeholder"
+      "note": "Base model used as the Qwen tier for this run; no merged fine-tune is loaded"
     }
   },
   "samples": [

@@ -36,7 +36,7 @@
 - load_latency_ms: 20202.3
 - tokenizer: Qwen2Tokenizer (qwen2.5)
 - params: 494,032,768
-- note: Base model used as proxy for merged_fp16 placeholder
+- note: Base model used as the Qwen tier for this run; no merged fine-tune is loaded
 
 ## Generations (Same Prompts)
 
@@ -209,4 +209,4 @@
 1. **Tokenizer stability**: Both tiers produce consistent token outputs across runs.
 2. **Speed**: SLM is faster on CPU due to smaller parameter count and activation footprint.
 3. **Quality**: Qwen base produces more coherent English and code completions; SLM produces plausible docstrings from its code-prose training.
-4. **Limitation**: Qwen merged-fp16 weights are placeholders; base model is used as the closest available proxy.
+4. **Limitation**: the Qwen tier is the base Qwen2.5-0.5B-Instruct model; this script does not load the merged fine-tune.

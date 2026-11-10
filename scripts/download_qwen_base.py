@@ -2,7 +2,8 @@
 """Download Qwen2.5-0.5B base model for fine-tuning.
 
 This script downloads the base model and tokenizer from HuggingFace Hub.
-It does NOT download the fine-tuned merged weights (which are placeholders).
+It does NOT download the fine-tuned merged weights; those are produced locally by
+merging the QLoRA adapter into the base model (see `slm-ft/README.md`).
 
 Usage:
     python scripts/download_qwen_base.py
@@ -53,7 +54,8 @@ def main() -> int:
 
     print(f"Model files saved to {out}")
     print(
-        "Note: The repo's merged_fp16/ contains placeholder weights, not real merged checkpoints."
+        "Note: the repo's merged_fp16/ is generated locally by merging the QLoRA "
+        "adapter; it is not downloaded."
     )
     return 0
 

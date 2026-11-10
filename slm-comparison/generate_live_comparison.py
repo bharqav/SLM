@@ -138,7 +138,10 @@ def load_qwen_base(model_name: str = "Qwen/Qwen2.5-0.5B-Instruct") -> dict[str, 
             "model": model,
             "tok": tok,
             "params": sum(p.numel() for p in model.parameters()),
-            "note": "Base model used as proxy for merged_fp16 placeholder",
+            "note": (
+                "Base model used as the Qwen tier for this run; "
+                "no merged fine-tune is loaded"
+            ),
         }
     except Exception as exc:
         return {
@@ -326,7 +329,8 @@ def render_md(report: dict[str, Any]) -> str:
         "3. **Quality**: Qwen base produces more coherent English and code completions; SLM produces plausible docstrings from its code-prose training."
     )
     lines.append(
-        "4. **Limitation**: Qwen merged-fp16 weights are placeholders; base model is used as the closest available proxy.\n"
+        "4. **Limitation**: the Qwen tier is the base Qwen2.5-0.5B-Instruct model; "
+        "this script does not load the merged fine-tune.\n"
     )
 
     return "\n".join(lines)

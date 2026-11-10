@@ -613,8 +613,8 @@ Caveats on the artifacts as they stand:
   `best_empathy_model_v2.pt` on disk is step 1000 / 3.9259. The checkpoint was
   retrained after that comparison was generated, so the samples are stale.
 - Its Qwen tier is the base `Qwen2.5-0.5B-Instruct` (494,032,768 params), not
-  the fine-tuned adapter. The tier is labeled `qwen-base` and carries the note
-  "Base model used as proxy for merged_fp16 placeholder". It predates the
+  the fine-tuned adapter. The tier is labeled `qwen-base` and carries a note
+  that the base model is used as the Qwen tier for that run. It predates the
   2026-11-10 merge; the matrix scripts now measure the merged artifact
   directly (see section 6.3).
 

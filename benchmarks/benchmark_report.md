@@ -2,7 +2,12 @@
 
 **Generated:** 2026-10-28 18:44–19:08 UTC  <br>
 **Environment:** CPU-only, Python 3.13, PyTorch 2.14.1  
-**Note:** The Qwen merged-fp16 artifact in `slm-ft/merged_fp16/` and the LoRA adapter in `slm-ft/adapter_stage2/` are placeholder stubs. The Qwen numbers below are from the base model `Qwen/Qwen2.5-0.5B-Instruct` loaded from HuggingFace, used as the closest available proxy for the intended fine-tune.
+**Note:** The Qwen numbers below are from the base model `Qwen/Qwen2.5-0.5B-Instruct`
+loaded from HuggingFace, used as a proxy for the intended fine-tune. This script
+benchmarks the base model only: `slm-ft/merged_fp16/` and `slm-ft/adapter_stage2/`
+now hold real merged weights rather than the placeholder stubs shipped in earlier
+revisions, and current merged-versus-base measurements are in `README.md` sections
+9.1 and 9.2.
 
 ## 1. Forward-Pass Throughput Benchmarks
 
