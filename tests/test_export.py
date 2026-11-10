@@ -194,7 +194,10 @@ class TestMainCLI:
 
         assert rc == 0
         _, kwargs = mock_export.call_args
-        assert kwargs["checkpoint"] == PROJECT_ROOT / "slm-training" / "best_clean_model_v2.pt"
+        assert (
+            kwargs["checkpoint"]
+            == PROJECT_ROOT / "slm-training" / "best_clean_model_v2.pt"
+        )
 
     def test_trt_flag_enables_tensorrt(self, slm_checkpoint):
         sys.path.insert(0, str(PROJECT_ROOT / "slm-training"))

@@ -187,9 +187,7 @@ class TestSFTDataset:
         assert len(ds) == 2
 
     def test_limit_caps_rows(self, tmp_path):
-        path = self._make(
-            tmp_path, [_dialog(("user", "a"), ("assistant", "b"))] * 5
-        )
+        path = self._make(tmp_path, [_dialog(("user", "a"), ("assistant", "b"))] * 5)
         ds = SFTDataset(path, FakeTokenizer(), 64, limit=3)
         assert len(ds) == 3
 

@@ -14,6 +14,8 @@ trigger — so everything since the 1.0.0 hard-coded version is listed here.
 
 ### Added
 
+- CI now enforces `ruff format --check .`, and the files that had drifted from
+  the formatter were reformatted.
 - Fine-tuning core is now covered by tests: `tests/test_train_qlora.py` (11),
   `tests/test_build_steering.py` (10) and `tests/test_merge_adapter.py` (3).
   The suite now defines 343 test functions across 17 files, which expand to 352

@@ -41,7 +41,9 @@ class FakeTokenizer:
 
 def _patch_loaders(monkeypatch, merged):
     monkeypatch.setattr(
-        merge_adapter.AutoModelForCausalLM, "from_pretrained", lambda *a, **k: FakeModel()
+        merge_adapter.AutoModelForCausalLM,
+        "from_pretrained",
+        lambda *a, **k: FakeModel(),
     )
     monkeypatch.setattr(
         merge_adapter.AutoTokenizer, "from_pretrained", lambda *a, **k: FakeTokenizer()

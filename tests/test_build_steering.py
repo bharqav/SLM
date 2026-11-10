@@ -101,14 +101,21 @@ class TestMain:
 
         steering = [
             json.loads(line)
-            for line in (out / "steering_sft.jsonl").read_text(encoding="utf-8").splitlines()
+            for line in (out / "steering_sft.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]
         stage2 = [
             json.loads(line)
-            for line in (out / "stage2_sft.jsonl").read_text(encoding="utf-8").splitlines()
+            for line in (out / "stage2_sft.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]
         assert len(steering) == EXPECTED_STEERING
-        assert len(stage2) == EXPECTED_STEERING * build_steering.WEIGHT + build_steering.REPLAY_N
+        assert (
+            len(stage2)
+            == EXPECTED_STEERING * build_steering.WEIGHT + build_steering.REPLAY_N
+        )
 
         stats = json.loads((out / "steering_stats.json").read_text(encoding="utf-8"))
         assert stats == {

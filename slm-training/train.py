@@ -82,17 +82,23 @@ def _load_init_weights(model, path):
     # torch.compile wraps state-dict keys in "_orig_mod."; strip it so the
     # weights load into an eager model.
     state = {
-        (k[len("_orig_mod."):] if k.startswith("_orig_mod.") else k): v
+        (k[len("_orig_mod.") :] if k.startswith("_orig_mod.") else k): v
         for k, v in state.items()
     }
     missing, unexpected = model.load_state_dict(state, strict=False)
     if missing:
-        log(f"init-from: {len(missing)} tensors missing (kept random init): {missing[:5]}")
+        log(
+            f"init-from: {len(missing)} tensors missing (kept random init): {missing[:5]}"
+        )
     if unexpected:
-        log(f"init-from: {len(unexpected)} unexpected tensors ignored: {unexpected[:5]}")
+        log(
+            f"init-from: {len(unexpected)} unexpected tensors ignored: {unexpected[:5]}"
+        )
     step = payload.get("step") if isinstance(payload, dict) else None
     origin = f"step {step}" if step is not None else "no step recorded"
-    log(f"Initialized weights from {os.path.basename(path)} ({origin}); optimizer reset")
+    log(
+        f"Initialized weights from {os.path.basename(path)} ({origin}); optimizer reset"
+    )
 
 
 def _handle_sigint(signum, frame):
