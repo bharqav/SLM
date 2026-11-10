@@ -8,6 +8,7 @@ instead of downloading Qwen2.5-0.5B-Instruct.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "slm-ft"))
 
 from train_qlora import (  # noqa: E402
     SFTDataset,
+    bitsandbytes_hint,
     build_example,
     collate,
     parse_args,
@@ -109,6 +111,21 @@ class TestParseArgs:
         assert args.target_modules == "q_proj,v_proj"
         assert args.epochs == 3.0
         assert args.limit == 10
+
+
+class TestBitsandbytesHint:
+    """The guard must track the real install state, not a hard-coded answer."""
+
+    def test_hint_matches_install_state(self):
+        installed = importlib.util.find_spec("bitsandbytes") is not None
+        assert (bitsandbytes_hint() is None) == installed
+
+    def test_hint_names_the_windows_environment(self):
+        hint = bitsandbytes_hint()
+        if hint is None:
+            pytest.skip("bitsandbytes is installed in this environment")
+        assert "slm-ft" in hint
+        assert "pip install bitsandbytes" in hint
 
 
 class TestBuildExample:

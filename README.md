@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://img.shields.io/badge/CI-GitHub%20Actions%20(Windows)-orange)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-yellowgreen)
-![Tests](https://img.shields.io/badge/tests-350%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-352%20passing-brightgreen)
 
 ## Executive Summary
 
@@ -2156,17 +2156,17 @@ for chunk in client.chat.completions.create(
 
 ### 14.1 Test Suite
 
-The suite defines 343 test functions across 17 files. Parametrization expands
-these to 352 collected cases; 350 run by default because the 2 slow tests in
+The suite defines 345 test functions across 17 files. Parametrization expands
+these to 354 collected cases; 352 run by default because the 2 slow tests in
 `test_model_and_api.py` are deselected by `addopts` (`-m 'not slow'`):
 
 ```bash
-python -m pytest tests/ -v        # 350 passed
+python -m pytest tests/ -v        # 352 passed
 python -m pytest tests/ -m slow -v
 make test                         # full suite + 80% coverage gate (see 14.2)
 ```
 
-On a clean checkout the 33 artifact-dependent tests skip (317 passed, 33
+On a clean checkout the 33 artifact-dependent tests skip (319 passed, 33
 skipped) and coverage lands at 70%, below the gate. That is expected: the
 gate needs the trained weights, which are gitignored (see 14.2).
 
@@ -2183,7 +2183,7 @@ gate needs the trained weights, which are gitignored (see 14.2).
 | `test_evaluate_standard.py` | 15 | Standard evaluation metrics |
 | `test_harness.py` | 17 | Training harness orchestration and monitoring |
 | `test_prepare_data.py` | 16 | Empathetic-SFT corpus build: cleaning, trimming, leak-free split, ED parsing |
-| `test_train_qlora.py` | 11 | QLoRA stage-1 script: arg defaults, chat assembly, assistant-only loss masking, collation |
+| `test_train_qlora.py` | 13 | QLoRA stage-1 script: arg defaults, chat assembly, assistant-only loss masking, collation, bitsandbytes preflight |
 | `test_build_steering.py` | 10 | Stage-2 steering mix: dialog shape, mix arithmetic, turn assembly |
 | `test_merge_adapter.py` | 3 | Adapter merge to fp16: merge-and-unload, save path, safe serialization |
 | `test_inference.py` | 32 | Inference entry points, role-marked prompt routing, turn-boundary truncation and stopping |

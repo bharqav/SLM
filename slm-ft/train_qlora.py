@@ -26,6 +26,7 @@ Merge to fp16 later via merge_adapter.py if you deploy full weights.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import time
 from pathlib import Path
@@ -153,8 +154,34 @@ def eval_loss(model, loader, device):
     return tot / max(1, n)
 
 
+def bitsandbytes_hint() -> str | None:
+    """Return a remediation hint when bitsandbytes is unavailable, else None.
+
+    The 4-bit QLoRA path cannot run without bitsandbytes. This repo declares it
+    only for non-Windows platforms (see requirements.txt), so on Windows the
+    script must be run from the dedicated slm-ft virtualenv. Without this check
+    the failure surfaces as a raw ImportError from transformers' quantizer
+    dispatch, naming neither the fix nor the correct interpreter.
+    """
+    if importlib.util.find_spec("bitsandbytes") is not None:
+        return None
+    return (
+        "bitsandbytes is required for 4-bit QLoRA but is not installed in this "
+        "interpreter.\n"
+        "requirements.txt declares it only for non-Windows platforms. On Windows, "
+        "run this script from the dedicated slm-ft environment:\n"
+        "    slm-ft\\.venv\\Scripts\\python.exe slm-ft\\train_qlora.py --epochs 2 "
+        "--out slm-ft/adapter\n"
+        "Install it there first with:\n"
+        "    slm-ft\\.venv\\Scripts\\python.exe -m pip install bitsandbytes"
+    )
+
+
 def main() -> None:
     args = parse_args()
+    hint = bitsandbytes_hint()
+    if hint is not None:
+        raise SystemExit(hint)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     device = "cuda"

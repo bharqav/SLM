@@ -61,6 +61,12 @@ seq len 1024, batch 1 x accum 16, AdamW 1e-4 cosine with 3% warmup, gradient che
 VRAM peak is about 5.5 to 6.5 GB, which fits the 8.5 GB card (leave the `slm-training` training
 run idle or finished before launching).
 
+Both training commands must run from this `.venv`. The 4-bit NF4 base needs
+bitsandbytes, which the root project environment deliberately does not carry
+on Windows (see the platform marker in `requirements.txt`). `train_qlora.py`
+checks for it at startup and exits with the interpreter to use and the install
+command, instead of failing later inside transformers' quantizer dispatch.
+
 The LoRA flags above reproduce the committed stage-1 adapter (r=8/alpha=8 on q_proj,v_proj).
 The committed stage-2 adapter records a different config (r=16/alpha=16 on q/k/v/o_proj);
 `--init-adapter` carries the loaded adapter's own config forward, so the documented stage-2
