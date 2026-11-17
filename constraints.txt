@@ -6,7 +6,7 @@
 # Core runtime (pinned to known-good versions)
 torch==2.15.0
 tiktoken==0.14.0
-transformers==5.22.2
+transformers==5.23.0
 accelerate==1.15.0
 huggingface_hub==2.4.0
 
@@ -18,12 +18,12 @@ slowapi==0.1.10
 limits==5.8.0
 
 # Optional: QLoRA
-peft==0.21.2
+peft==0.21.3
 # Linux/CUDA only: the Windows marker in requirements.txt excludes bitsandbytes on
 # this machine, so the pin is not exercised by the Windows CI. 0.50.2 is the newest
 # release that accepts the pinned torch (requires torch>=2.4,<3).
 bitsandbytes==0.50.2; platform_system != "Windows" or platform_machine != "AMD64"
-datasets==5.1.0
+datasets==5.2.0
 
 # Testing
 pytest==9.2.0
